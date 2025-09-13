@@ -25,14 +25,15 @@ continue execution without breaking tests.
 """
 from __future__ import annotations
 
+# pylint: disable=broad-exception-caught, invalid-name
+
 from dataclasses import dataclass
 from datetime import datetime
-import math
 import os
 import warnings
 from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 # Optional imports; the modules may not exist in minimal environments.
 try:  # pragma: no cover - dependency may be missing
@@ -172,51 +173,93 @@ def fetch_tools_for_tasks(
 
 
 @dataclass
-class _ToolHistory:
-    name: str
-    last_used: datetime
-    count: int
+class _HistoryRecord:
+    """A single tool execution record."""
+
+    is_success: bool
+    created_at: datetime
 
 
-def _fetch_tool_history(tools: Sequence[str], db_url: Optional[str]) -> List[_ToolHistory]:
-    """Fetch history information for ``tools`` from PostgreSQL."""
+def _fetch_tool_history(
+    tools: Sequence[str], db_url: Optional[str], limit: int = 50
+) -> Dict[str, List[_HistoryRecord]]:
+    """Return the most recent history records for each tool.
+
+    The result is a mapping of ``tool_name`` to a list of
+    :class:`_HistoryRecord` objects sorted by ``created_at`` descending.
+    Only the ``limit`` most recent records are returned for each tool.
+    """
     if not tools or psycopg is None or db_url is None:  # pragma: no cover
-        return []
+        return {}
+
+    history: Dict[str, List[_HistoryRecord]] = defaultdict(list)
     try:  # pragma: no cover - external service
         with psycopg.connect(db_url) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT tool_name, MAX(created_at) AS last_used, COUNT(*) AS cnt
-                    FROM tool_call_history
-                    WHERE tool_name = ANY(%s)
-                    GROUP BY tool_name
-                    """,
-                    (list(tools),),
-                )
-                rows = cur.fetchall()
-        return [_ToolHistory(r[0], r[1], r[2]) for r in rows]
+                for tool in tools:
+                    cur.execute(
+                        """
+                        SELECT is_success, created_at
+                        FROM tool_call_history
+                        WHERE tool_name = %s
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                        """,
+                        (tool, limit),
+                    )
+                    rows = cur.fetchall()
+                    history[tool] = [
+                        _HistoryRecord(is_success=r[0], created_at=r[1]) for r in rows
+                    ]
     except Exception as exc:  # pragma: no cover
         warnings.warn(f"History fetch failed: {exc}")
-        return []
+        return {}
+
+    return history
+
+
+def compute_performance_score(
+    records: Sequence[_HistoryRecord], decay: float = 0.8
+) -> int:
+    """Compute a recency-weighted success score for ``records``.
+
+    The algorithm mirrors the JavaScript implementation used in other
+    parts of the project.  ``decay`` represents the exponential decay per
+    day.  A score between 0 and 100 is returned.
+    """
+    if not records:
+        return 0
+
+    now = datetime.utcnow()
+    num = 0.0
+    den = 0.0
+    for rec in records:
+        age_days = (now - rec.created_at).total_seconds() / (60 * 60 * 24)
+        weight = decay**age_days
+        den += weight
+        if rec.is_success:
+            num += weight
+    return int(round((num / den) * 100)) if den else 0
 
 
 def rank_tools_by_history(
-    tools: Sequence[str], *, db_url: Optional[str] = None, decay: float = 0.0001
+    tools: Sequence[str], *, db_url: Optional[str] = None, records_to_check: int = 50, decay: float = 0.8
 ) -> List[str]:
-    """Rank tools using an exponential recency/frequency score.
+    """Rank ``tools`` by their computed performance score.
 
-    ``decay`` controls how quickly the score decays with time
-    (expressed in seconds).  Tools with no history information retain
-    their original order.
+    ``records_to_check`` determines how many recent history entries are
+    considered for each tool.  ``decay`` controls the exponential decay
+    per day used by :func:`compute_performance_score`.
     """
-    histories = _fetch_tool_history(tools, db_url)
-    now = datetime.utcnow()
-    scores = defaultdict(float)
-    for h in histories:
-        age = (now - h.last_used).total_seconds()
-        scores[h.name] = h.count * math.exp(-decay * age)
-    return sorted(tools, key=lambda t: scores.get(t, 0), reverse=True)
+    histories = _fetch_tool_history(tools, db_url, limit=records_to_check)
+    scores: Dict[str, int] = {}
+    for tool in tools:
+        records = histories.get(tool, [])
+        scores[tool] = compute_performance_score(records, decay=decay)
+
+    # Stable sort by score so tools with equal scores retain their
+    # original relative order.
+    return sorted(tools, key=lambda t: scores.get(t, -1), reverse=True)
 
 
 def find_best_tools(
