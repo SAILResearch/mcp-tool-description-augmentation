@@ -24,12 +24,19 @@ runner.
 import argparse
 import sys
 import unittest
+from pathlib import Path
+
+
+# Ensure the repository root is importable when the script is executed
+# directly (e.g. ``python tests/...``).  ``sys.path`` normally points to the
+# test directory, so we prepend the project root to make ``mcpuniverse``
+# available without requiring ``PYTHONPATH`` tweaks.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:  # pragma: no cover - defensive
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import pytest
-from mcpuniverse.tracer.collectors import FileCollector
-from mcpuniverse.benchmark.runner import BenchmarkRunner
-from mcpuniverse.callbacks.handlers.vprint import get_vprint_callbacks
-from mcpuniverse.utils.task_search import find_best_tools
+from mcpuniverse.tracer.collectors.file import FileCollector
 
 
 # Global flags controlled by command line arguments.  Defaults are
@@ -48,9 +55,14 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
             # could be extracted from a task file or provided via a CLI
             # option.  ``find_best_tools`` will handle any missing
             # dependencies gracefully.
+            from mcpuniverse.utils.task_search import find_best_tools
+
             find_best_tools("financial analysis", dry_run=bool(DRY_RUN))
             if DRY_RUN:
                 return
+
+        from mcpuniverse.benchmark.runner import BenchmarkRunner
+        from mcpuniverse.callbacks.handlers.vprint import get_vprint_callbacks
 
         trace_collector = FileCollector(log_file="log/financial_analysis.log")
         benchmark = BenchmarkRunner("test/financial_analysis.yaml")
