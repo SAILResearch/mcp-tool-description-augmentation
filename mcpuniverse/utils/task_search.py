@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import os
+from pathlib import Path
 import warnings
 from collections import defaultdict
 from difflib import SequenceMatcher
@@ -50,6 +51,11 @@ try:  # pragma: no cover
     import psycopg
 except Exception:  # pragma: no cover
     psycopg = None  # type: ignore
+
+try:  # pragma: no cover - optional dependency
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover
+    load_dotenv = None  # type: ignore
 
 
 def _embed_text(text: str) -> Optional[List[float]]:
@@ -275,6 +281,25 @@ def find_best_tools(
     results and returns an empty list without performing any further
     processing.
     """
+
+    if load_dotenv is not None:  # pragma: no cover - simple IO
+        env_path = Path(__file__).resolve().parents[2] / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)  # type: ignore[arg-type]
+        else:
+            load_dotenv()  # type: ignore[call-arg]
+
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if not openai_key:
+        warnings.warn(
+            "OPENAI_API_KEY not set; embeddings will be skipped", RuntimeWarning
+        )
+
+    if qdrant_url is None:
+        qdrant_url = os.getenv("QDRANT_URL")
+    if db_url is None:
+        db_url = os.getenv("DB_URL")
+
     semantic_ids, lexical_ids = search_similar_tasks(
         description, qdrant_url=qdrant_url
     )

@@ -235,6 +235,17 @@ Configure the following environment variables in your `.env` file. The required 
 | `NOTION_API_KEY` | Notion | Integration token for Notion workspace access | [Integration Setup](https://developers.notion.com/docs/authorization#obtaining-a-token) |
 | `NOTION_ROOT_PAGE` | Notion | Root page ID for your Notion workspace | See configuration example below |
 
+##### Task Search Infrastructure
+
+Place your `.env` file in the repository root (the same directory as this `README.md`) so the workflow helpers can discover it. Populate the following entries to enable the enhanced tool discovery flow:
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `QDRANT_URL` | Base URL for the Qdrant vector database used to look up similar tasks | `http://localhost:6334` |
+| `DB_URL` | PostgreSQL connection string containing historical tool executions | `postgresql://user:pass@localhost:5432/mcp` |
+
+The task similarity search also reuses `OPENAI_API_KEY` from the [core provider configuration](#core-llm-providers) to generate embeddings.
+
 ##### System Paths
 
 | Environment Variable | Description | Example |
