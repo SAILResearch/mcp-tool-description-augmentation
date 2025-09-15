@@ -322,6 +322,8 @@ python tests/benchmark/test_benchmark_browser_automation.py
 
 # Financial Analysis
 python tests/benchmark/test_benchmark_financial_analysis.py
+# Search previous tasks and report matching tools without running the benchmark
+python tests/benchmark/test_benchmark_financial_analysis.py --task-search 1 --dry-run 1
 
 # Repository Management
 python tests/benchmark/test_benchmark_repository_management.py
@@ -332,6 +334,11 @@ python tests/benchmark/test_benchmark_web_search.py
 # 3D Design
 python tests/benchmark/test_benchmark_3d_design.py
 ```
+
+The ``--task-search`` flag embeds the financial analysis description and
+retrieves similar tasks from the vector database.  Combine it with
+``--dry-run`` to print the matching task IDs and tool scores without
+running the benchmark.
 
 #### Batch Execution
 
