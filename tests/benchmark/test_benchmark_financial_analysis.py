@@ -13,8 +13,8 @@ the module directly:
 
 ``--dry-run``
     Only meaningful in combination with ``--task-search``.  The search is
-    executed and diagnostic information is printed but the benchmark
-    itself is not run.
+    executed and diagnostic information is printed while the benchmark
+    runner skips task execution and evaluation.
 
 The arguments are parsed before invoking :func:`unittest.main` so that
 any remaining parameters continue to work with the standard unittest
@@ -50,17 +50,6 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
 
     @pytest.mark.skip
     async def test(self):
-        if TASK_SEARCH:
-            # The description is intentionally brief – in real scenarios it
-            # could be extracted from a task file or provided via a CLI
-            # option.  ``find_best_tools`` will handle any missing
-            # dependencies gracefully.
-            from mcpuniverse.utils.task_search import find_best_tools
-
-            find_best_tools("financial analysis", dry_run=bool(DRY_RUN))
-            if DRY_RUN:
-                return
-
         from mcpuniverse.benchmark.runner import BenchmarkRunner
         from mcpuniverse.callbacks.handlers.vprint import get_vprint_callbacks
 
@@ -68,9 +57,15 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
         benchmark = BenchmarkRunner("test/financial_analysis.yaml")
 
         results = await benchmark.run(
-            trace_collector=trace_collector, callbacks=get_vprint_callbacks()
+            trace_collector=trace_collector,
+            callbacks=get_vprint_callbacks(),
+            task_search=bool(TASK_SEARCH),
+            dry_run=bool(DRY_RUN),
         )
         print(results)
+
+        if DRY_RUN:
+            return
 
         from mcpuniverse.benchmark.report import BenchmarkReport
         report = BenchmarkReport(benchmark, trace_collector=trace_collector)

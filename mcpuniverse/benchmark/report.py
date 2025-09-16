@@ -92,10 +92,12 @@ class BenchmarkReport:
                 llm_call_count = total_turns
 
             # Add to summary
+            total_evaluations = task_passed + task_notpassed
+            score = task_passed / total_evaluations if total_evaluations else 0.0
             section_summary.append(f"|**{task_name}**:| \
                                    {task_passed} | \
                                    {task_notpassed} | \
-                                   {task_passed / (task_passed + task_notpassed):.2f} | \
+                                   {score:.2f} | \
                                    {llm_call_count} |")
 
         return section_details
