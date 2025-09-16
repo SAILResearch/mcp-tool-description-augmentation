@@ -5,7 +5,7 @@ Benchmarks for evaluating agents and LLMs
 import json
 import os
 import hashlib
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Sequence, Tuple
 from contextlib import AsyncExitStack
 
 import yaml
@@ -26,8 +26,38 @@ from mcpuniverse.callbacks.base import (
     BaseCallback,
     CallbackMessage,
     MessageType,
-    send_message_async, send_message
+    send_message_async,
+    send_message,
 )
+
+
+def _normalise_server_configs(
+    configs: Optional[Sequence[Dict[str, Any]]],
+) -> Tuple[Tuple[str, str, Tuple[str, ...]], ...]:
+    """Create a hashable representation of server configurations."""
+
+    if not configs:
+        return tuple()
+
+    normalised: List[Tuple[str, str, Tuple[str, ...]]] = []
+    for config in configs:
+        if not isinstance(config, dict):
+            continue
+        name = config.get("name")
+        if not name:
+            continue
+        transport = str(config.get("transport", "stdio"))
+        tools_value = config.get("tools")
+        if isinstance(tools_value, (list, tuple)):
+            tools = tuple(str(tool) for tool in tools_value)
+        elif tools_value is None:
+            tools = tuple()
+        else:
+            tools = (str(tools_value),)
+        normalised.append((str(name), transport, tools))
+
+    normalised.sort(key=lambda item: item[0])
+    return tuple(normalised)
 
 
 class BenchmarkConfig(BaseModel):
@@ -216,6 +246,22 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                 metadata={"event": "list_tools", "data": agent}
             ))
 
+            default_server_configs: List[Dict[str, Any]] = []
+            default_server_state: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = tuple()
+            current_server_state: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = tuple()
+            if isinstance(agent, BaseAgent):
+                raw_servers = getattr(agent, "_config", None)
+                if raw_servers is not None:
+                    raw_list = getattr(raw_servers, "servers", [])
+                else:
+                    raw_list = []
+                if isinstance(raw_list, list):
+                    for server in raw_list:
+                        if isinstance(server, dict):
+                            default_server_configs.append(dict(server))
+                default_server_state = _normalise_server_configs(default_server_configs)
+                current_server_state = default_server_state
+
             task_results, task_trace_ids = {}, {}
             for idx, task_path in enumerate(benchmark.tasks):
                 async with AsyncExitStack():
@@ -269,22 +315,44 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                             continue
 
                     if isinstance(agent, BaseAgent):
-                        override_servers: Optional[List[Dict[str, Any]]] = None
+                        target_servers: Optional[List[Dict[str, Any]]] = None
+                        target_source: Optional[str] = None
                         if best_tools:
                             recommended_servers = build_server_configs_from_tools(agent, best_tools)
                             if recommended_servers:
-                                override_servers = recommended_servers
-                                self._logger.info(
-                                    "Applying %d recommended tools from task search", len(best_tools)
-                                )
+                                target_servers = recommended_servers
+                                target_source = "task_search"
                             else:
                                 self._logger.warning(
                                     "No matching server configuration found for recommended tools"
                                 )
-                        if override_servers is None and task.use_specified_server():
-                            override_servers = task.get_mcp_servers()
-                        if override_servers:
-                            await agent.change_servers(override_servers)
+                        if target_servers is None and task.use_specified_server():
+                            task_servers = task.get_mcp_servers()
+                            if isinstance(task_servers, list) and task_servers:
+                                target_servers = [
+                                    dict(server) for server in task_servers if isinstance(server, dict)
+                                ]
+                                target_source = "task_config"
+                        if target_servers is None:
+                            target_servers = default_server_configs
+                            target_source = "default"
+
+                        normalised_target = (
+                            default_server_state
+                            if target_servers is default_server_configs
+                            else _normalise_server_configs(target_servers)
+                        )
+                        if normalised_target != current_server_state:
+                            await agent.change_servers(target_servers)
+                            current_server_state = normalised_target
+                            if target_source == "task_search":
+                                self._logger.info(
+                                    "Applying %d recommended tools from task search", len(best_tools)
+                                )
+                        elif target_source == "task_search":
+                            self._logger.info(
+                                "Recommended tools already active; keeping existing server configuration"
+                            )
                     elif task.use_specified_server():
                         self._logger.warning(
                             "Task requires specified servers but agent %s cannot change servers",
