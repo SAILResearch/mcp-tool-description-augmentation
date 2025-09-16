@@ -5,7 +5,7 @@ Benchmarks for evaluating agents and LLMs
 import json
 import os
 import hashlib
-from typing import List, Dict, Optional, Any, Sequence
+from typing import List, Dict, Optional, Any
 from contextlib import AsyncExitStack
 
 import yaml
@@ -14,6 +14,7 @@ from mcpuniverse.common.misc import AutodocABCMeta
 from mcpuniverse.llm.base import BaseLLM
 from mcpuniverse.agent.base import Executor, BaseAgent
 from mcpuniverse.mcp.manager import MCPManager
+from mcpuniverse.mcp.tools import build_server_configs_from_tools
 from mcpuniverse.workflows.builder import WorkflowBuilder
 from mcpuniverse.benchmark.task import Task
 from mcpuniverse.tracer.collectors.base import BaseCollector
@@ -164,52 +165,6 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
         # store the outputs
         self._benchmark_results = None
 
-    @staticmethod
-    def _build_server_configs_from_tools(
-            agent: BaseAgent,
-            tools: Sequence[Any]
-    ) -> List[Dict[str, Any]]:
-        """Build MCP server configs from a list of tools."""
-        if not tools:
-            return []
-
-        server_tools: Dict[str, List[str]] = {}
-        for tool in tools:
-            server_name = getattr(tool, "server", "")
-            tool_name = getattr(tool, "name", "")
-            if not server_name or not tool_name:
-                continue
-            server_tool_list = server_tools.setdefault(server_name, [])
-            if tool_name not in server_tool_list:
-                server_tool_list.append(tool_name)
-
-        if not server_tools:
-            return []
-
-        try:
-            dumped_config = agent.dump_config()
-        except Exception:  # pragma: no cover - defensive guard
-            dumped_config = {}
-
-        config_section = dumped_config.get("config", {}) if isinstance(dumped_config, dict) else {}
-        available_servers = {}
-        if isinstance(config_section, dict):
-            for server in config_section.get("servers", []) or []:
-                if not isinstance(server, dict):
-                    continue
-                server_name = server.get("name")
-                if not server_name:
-                    continue
-                available_servers[server_name] = {k: v for k, v in server.items() if k != "tools"}
-
-        server_configs: List[Dict[str, Any]] = []
-        for server_name, tool_names in server_tools.items():
-            base_config = available_servers.get(server_name, {"name": server_name})
-            config = {k: v for k, v in base_config.items()}
-            config["tools"] = tool_names
-            server_configs.append(config)
-        return server_configs
-
     async def run(
             self,
             mcp_manager: Optional[MCPManager] = None,
@@ -316,8 +271,9 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                     if isinstance(agent, BaseAgent):
                         override_servers: Optional[List[Dict[str, Any]]] = None
                         if best_tools:
-                            override_servers = self._build_server_configs_from_tools(agent, best_tools)
-                            if override_servers:
+                            recommended_servers = build_server_configs_from_tools(agent, best_tools)
+                            if recommended_servers:
+                                override_servers = recommended_servers
                                 self._logger.info(
                                     "Applying %d recommended tools from task search", len(best_tools)
                                 )
