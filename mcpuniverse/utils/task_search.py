@@ -203,14 +203,25 @@ def _semantic_search(
 ) -> List[TaskMatch]:
     """Query Qdrant for semantic matches."""
 
+    points: Sequence[Any]
     try:  # pragma: no cover - network request
-        points = client.search(
-            collection_name=collection,
-            query_vector=vector,
-            limit=limit,
-            with_payload=True,
-            with_vectors=False,
-        )
+        if hasattr(client, "query_points"):
+            response = client.query_points(  # type: ignore[attr-defined]
+                collection_name=collection,
+                query=list(vector),
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
+            points = getattr(response, "points", []) if response is not None else []
+        else:  # pragma: no cover - compatibility fallback
+            points = client.search(
+                collection_name=collection,
+                query_vector=vector,
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
     except Exception as exc:  # pragma: no cover - network failure
         warnings.warn(f"Vector DB search failed: {exc}")
         return []
@@ -292,22 +303,22 @@ def search_similar_tasks(
 
 
 def _coerce_datetime(value: Any) -> Optional[datetime]:
-    """Convert database timestamps to naive UTC datetimes."""
+    """Convert database timestamps to timezone-aware UTC datetimes."""
 
     if value is None:
         return None
     if isinstance(value, datetime):
-        if value.tzinfo is not None:
-            return value.astimezone(timezone.utc).replace(tzinfo=None)
-        return value
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
     if isinstance(value, str):
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             return None
-        if parsed.tzinfo is not None:
-            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
     return None
 
 
@@ -398,11 +409,14 @@ def compute_performance_score(
     if not records:
         return 0
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     numerator = 0.0
     denominator = 0.0
     for record in records:
-        age_days = (now - record.created_at).total_seconds() / (60 * 60 * 24)
+        created_at = record.created_at
+        if created_at.tzinfo is None:  # pragma: no cover - defensive fallback
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        age_days = (now - created_at).total_seconds() / (60 * 60 * 24)
         weight = decay ** max(age_days, 0)
         denominator += weight
         if record.is_success:
