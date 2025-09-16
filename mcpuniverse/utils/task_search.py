@@ -17,29 +17,29 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 import os
 import warnings
 from difflib import SequenceMatcher
+from qdrant_client import QdrantClient
+from openai import OpenAI
+import psycopg
+from dotenv import load_dotenv
+load_dotenv()
 
 # Optional imports – the workflow should remain usable when the
 # dependencies are not installed.  Each import is wrapped in ``try`` so we
 # can gracefully skip functionality if a module is unavailable.
-try:  # pragma: no cover - dependency may be missing in tests
-    from openai import OpenAI
-except Exception:  # pragma: no cover - optional dependency
-    OpenAI = None  # type: ignore
+# try:  # pragma: no cover - dependency may be missing in tests
+#     from openai import OpenAI
+# except Exception:  # pragma: no cover - optional dependency
+#     OpenAI = None  # type: ignore
 
-try:  # pragma: no cover - optional dependency
-    from qdrant_client import QdrantClient
-except Exception:  # pragma: no cover - optional dependency
-    QdrantClient = None  # type: ignore
+# try:  # pragma: no cover - optional dependency
+#     from qdrant_client import QdrantClient
+# except Exception:  # pragma: no cover - optional dependency
+#     QdrantClient = None  # type: ignore
 
-try:  # pragma: no cover - optional dependency
-    import psycopg
-except Exception:  # pragma: no cover - optional dependency
-    psycopg = None  # type: ignore
-
-try:  # pragma: no cover - optional dependency
-    from dotenv import load_dotenv
-except Exception:  # pragma: no cover - optional dependency
-    load_dotenv = None  # type: ignore
+# try:  # pragma: no cover - optional dependency
+#     import psycopg
+# except Exception:  # pragma: no cover - optional dependency
+#     psycopg = None  # type: ignore
 
 
 _DOTENV_LOADED = False
@@ -163,10 +163,11 @@ def _resolve_qdrant_url(value: Optional[str]) -> Optional[str]:
 
 def _get_qdrant_client(url: Optional[str]) -> Optional["QdrantClient"]:
     """Return a Qdrant client for ``url`` when available."""
-
-    if QdrantClient is None or url is None:  # pragma: no cover - optional dependency
-        return None
+    # print(f"Creating Qdrant client for URL: {url}")
+    # if QdrantClient is None or url is None:  # pragma: no cover - optional dependency
+    #     return None
     try:  # pragma: no cover - network setup
+        print(f"Creating Qdrant client for URL: {url}")
         return QdrantClient(url=url)
     except Exception as exc:  # pragma: no cover - connection failure
         warnings.warn(f"Failed to create Qdrant client: {exc}")
@@ -286,6 +287,7 @@ def search_similar_tasks(
         return TaskSearchResults(semantic=[], lexical=[])
 
     vector = _embed_text(description)
+
     if vector is None:
         return TaskSearchResults(semantic=[], lexical=[])
 
@@ -450,7 +452,7 @@ def filter_tools_by_similarity(
     task_ids: Optional[Sequence[str]] = None,
     search_results: Optional[TaskSearchResults] = None,
     search_fn: Optional[Callable[..., TaskSearchResults]] = None,
-    qdrant_url: Optional[str] = None,
+    qdrant_url: Optional[str] = "http://127.0.0.1:6333",
     semantic_limit: int = 5,
     lexical_limit: int = 5,
     collection: str = "tasks",
