@@ -303,6 +303,92 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
 
                     if task_search and find_best_tools_fn is not None:
                         best_tools = find_best_tools_fn(question, dry_run=dry_run)
+                        total_best_tool_count = len(best_tools)
+                        discarded_tool_count = 0
+                        filtered_tools: List[Any] = []
+                        if best_tools:
+                            manager_for_lookup = getattr(agent, "_mcp_manager", None) or mcp_manager
+                            manager_servers: set[str] = set()
+                            if manager_for_lookup is not None:
+                                try:
+                                    manager_servers = set(manager_for_lookup.list_server_names())
+                                except AttributeError:
+                                    try:
+                                        manager_servers = set(manager_for_lookup.get_configs().keys())
+                                    except Exception:  # pragma: no cover - defensive guard
+                                        manager_servers = set()
+                                except Exception:  # pragma: no cover - defensive guard
+                                    manager_servers = set()
+
+                            allowed_tools_from_config: Dict[str, set[str]] = {}
+                            for server in default_server_configs:
+                                if not isinstance(server, dict):
+                                    continue
+                                server_name = server.get("name")
+                                if not server_name:
+                                    continue
+                                tools_field = server.get("tools")
+                                if isinstance(tools_field, (list, tuple)):
+                                    allowed: set[str] = set()
+                                    for tool in tools_field:
+                                        value: Optional[str]
+                                        if isinstance(tool, str):
+                                            value = tool
+                                        elif isinstance(tool, bytes):
+                                            value = tool.decode("utf-8", errors="ignore")
+                                        elif tool is None:
+                                            value = None
+                                        else:
+                                            value = str(tool)
+                                        if value:
+                                            allowed.add(value)
+                                    allowed_tools_from_config[server_name] = allowed
+
+                            known_agent_tools: Dict[str, set[str]] = {}
+                            if isinstance(agent, BaseAgent):
+                                raw_tools = getattr(agent, "_tools", None)
+                                if isinstance(raw_tools, dict):
+                                    for server_name, tool_list in raw_tools.items():
+                                        names = {
+                                            getattr(tool, "name", "")
+                                            for tool in tool_list
+                                            if getattr(tool, "name", "")
+                                        }
+                                        if names:
+                                            known_agent_tools[server_name] = names
+
+                            for tool in best_tools:
+                                server_name = getattr(tool, "server", "")
+                                tool_name = getattr(tool, "name", "")
+                                if not server_name or not tool_name:
+                                    discarded_tool_count += 1
+                                    continue
+                                if manager_servers and server_name not in manager_servers:
+                                    discarded_tool_count += 1
+                                    continue
+                                allowed_from_config = allowed_tools_from_config.get(server_name)
+                                if allowed_from_config is not None and tool_name not in allowed_from_config:
+                                    discarded_tool_count += 1
+                                    continue
+                                known_tools = known_agent_tools.get(server_name)
+                                if known_tools is not None and tool_name not in known_tools:
+                                    discarded_tool_count += 1
+                                    continue
+                                filtered_tools.append(tool)
+
+                        best_tools = filtered_tools
+                        final_tool_display = (
+                            ", ".join(f"{tool.server}.{tool.name}" for tool in best_tools)
+                            if best_tools
+                            else "none"
+                        )
+                        self._logger.info(
+                            "Task-search recommendations: total=%d, discarded=%d, final=%d; LLM tools=%s",
+                            total_best_tool_count,
+                            discarded_tool_count,
+                            len(best_tools),
+                            final_tool_display,
+                        )
                         if dry_run:
                             self._logger.info("Dry run enabled; skipping execution for task: %s", task_path)
                             send_message(callbacks, message=CallbackMessage(
