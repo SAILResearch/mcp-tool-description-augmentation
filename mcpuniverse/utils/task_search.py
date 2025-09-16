@@ -116,12 +116,7 @@ class FilterResult:
     """Result returned by :func:`filter_tools_by_history`."""
 
     tools: List[ToolInfo]
-    task_ids: List[str]
     scores: Dict[str, int]
-    initial_tools: List[ToolInfo]
-    semantic_task_ids: List[str]
-    lexical_task_ids: List[str]
-    task_scores: Dict[str, float]
 
 
 @dataclass
@@ -452,7 +447,6 @@ def filter_tools_by_history(
     *,
     all_tools: Sequence[ToolInfo],
     db_url: Optional[str],
-    search_results: TaskSearchResults,
     records_to_check: int = 50,
     failure_threshold: float = 0.5,
     minimum_occurrence_threshold: int = 0,
@@ -460,21 +454,12 @@ def filter_tools_by_history(
 ) -> FilterResult:
     """Filter and score tools based on execution history."""
 
-    semantic_ids = [match.task_id for match in search_results.semantic]
-    lexical_ids = [match.task_id for match in search_results.lexical]
-    task_ids = search_results.unique_task_ids()
-
     initial = list(all_tools)
 
     if not initial:
         return FilterResult(
             tools=[],
-            task_ids=task_ids,
             scores={},
-            initial_tools=[],
-            semantic_task_ids=semantic_ids,
-            lexical_task_ids=lexical_ids,
-            task_scores=search_results.combined_scores(),
         )
 
     histories: Optional[Dict[str, List[_HistoryRecord]]] = None
@@ -518,12 +503,7 @@ def filter_tools_by_history(
 
     return FilterResult(
         tools=filtered,
-        task_ids=task_ids,
         scores=scores,
-        initial_tools=initial,
-        semantic_task_ids=semantic_ids,
-        lexical_task_ids=lexical_ids,
-        task_scores=search_results.combined_scores(),
     )
 
 
@@ -560,12 +540,17 @@ def find_best_tools(
     task_ids = results.unique_task_ids()
 
     if all_tools is None:
-        all_tools = fetch_tools_for_tasks(task_ids, db_url=resolved_db_url)
+        all_tools_iterable: Sequence[ToolInfo] = fetch_tools_for_tasks(
+            task_ids, db_url=resolved_db_url
+        )
+    else:
+        all_tools_iterable = all_tools
+
+    all_tools_list = list(all_tools_iterable)
 
     filter_result = filter_tools_by_history(
-        all_tools=list(all_tools),
+        all_tools=all_tools_list,
         db_url=resolved_db_url,
-        search_results=results,
         records_to_check=records_to_check,
         failure_threshold=failure_threshold,
         minimum_occurrence_threshold=minimum_occurrence_threshold,
@@ -573,15 +558,19 @@ def find_best_tools(
     )
 
     if dry_run:
-        semantic_display = ", ".join(filter_result.semantic_task_ids) or "none"
-        lexical_display = ", ".join(filter_result.lexical_task_ids) or "none"
+        semantic_display = ", ".join(
+            match.task_id for match in results.semantic if match.task_id
+        ) or "none"
+        lexical_display = ", ".join(
+            match.task_id for match in results.lexical if match.task_id
+        ) or "none"
         surviving = [
             f"{tool.name} ({tool.server}) [{filter_result.scores.get(tool.key, 0)}]"
             for tool in filter_result.tools
         ]
         print(f"Semantically similar task IDs: {semantic_display}")
         print(f"Lexicographically similar task IDs: {lexical_display}")
-        print(f"Initial tools fetched: {len(filter_result.initial_tools)}")
+        print(f"Initial tools fetched: {len(all_tools_list)}")
         print(
             "Tools after performance scoring: "
             + (", ".join(surviving) if surviving else "none")
