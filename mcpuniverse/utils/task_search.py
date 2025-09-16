@@ -1,130 +1,273 @@
-"""Utility functions for task search and tool recommendation.
+"""Task search and tool recommendation utilities.
 
-This module provides optional helper functions used for searching
-similar tasks in a vector database and recommending tools based on
-previous executions.  The implementation aims to mimic the behaviour of
-our JavaScript tooling while remaining optional; if the required
-services or libraries are not available the functions will gracefully
-fallback to returning empty results.
-
-The high level workflow is::
-
-    1. Embed an input query using OpenAI's ``text-embedding-3-large``
-       model.
-    2. Use the embedding to search a Qdrant vector database for semantic
-       matches and fall back to a simple lexical search for fuzzy
-       matches.
-    3. Gather tools previously used by the returned task identifiers
-       from a PostgreSQL database.
-    4. Apply a simple recency/frequency scoring function to prioritise
-       the tools.
-
-The functions are intentionally defensive – failures to contact external
-services will result in warnings and empty outputs so that callers can
-continue execution without breaking tests.
+This module mirrors the JavaScript workflow used in the main
+application for discovering previously executed tasks, gathering the
+associated tools and ranking them based on recent performance.  The
+helpers are defensive – missing optional dependencies or services result
+in warnings and empty results rather than hard failures so the caller can
+choose how to proceed.
 """
 from __future__ import annotations
 
-# pylint: disable=broad-exception-caught, invalid-name
-
 from dataclasses import dataclass
-from datetime import datetime
-import os
+from datetime import datetime, timezone
 from pathlib import Path
-import warnings
-from collections import defaultdict
-from difflib import SequenceMatcher
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
-# Optional imports; the modules may not exist in minimal environments.
-try:  # pragma: no cover - dependency may be missing
+import os
+import warnings
+from difflib import SequenceMatcher
+
+# Optional imports – the workflow should remain usable when the
+# dependencies are not installed.  Each import is wrapped in ``try`` so we
+# can gracefully skip functionality if a module is unavailable.
+try:  # pragma: no cover - dependency may be missing in tests
     from openai import OpenAI
-except Exception:  # pragma: no cover - we simply ignore missing deps
+except Exception:  # pragma: no cover - optional dependency
     OpenAI = None  # type: ignore
 
-try:  # pragma: no cover
+try:  # pragma: no cover - optional dependency
     from qdrant_client import QdrantClient
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover - optional dependency
     QdrantClient = None  # type: ignore
 
-try:  # pragma: no cover
+try:  # pragma: no cover - optional dependency
     import psycopg
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover - optional dependency
     psycopg = None  # type: ignore
 
 try:  # pragma: no cover - optional dependency
     from dotenv import load_dotenv
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover - optional dependency
     load_dotenv = None  # type: ignore
 
 
-def _embed_text(text: str) -> Optional[List[float]]:
-    """Return the embedding vector for ``text`` using OpenAI.
+_DOTENV_LOADED = False
+_OPENAI_CLIENT: Optional["OpenAI"] = None
 
-    ``None`` is returned when the OpenAI client is not configured or an
-    error occurs.  Errors are emitted as warnings so that the caller can
-    decide how to proceed.
-    """
+
+@dataclass(frozen=True)
+class ToolInfo:
+    """Representation of an MCP tool available to the agent."""
+
+    name: str
+    server: str
+    description: str = ""
+    metadata: Optional[Dict[str, Any]] = None
+
+    @property
+    def key(self) -> str:
+        """Return the unique key combining server and tool name."""
+
+        return f"{self.server}__{self.name}"
+
+
+@dataclass(frozen=True)
+class TaskMatch:
+    """Single task search match from either semantic or lexical lookup."""
+
+    task_id: str
+    score: float
+    source: str
+    payload: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class TaskSearchResults:
+    """Container holding semantic and lexical search matches."""
+
+    semantic: List[TaskMatch]
+    lexical: List[TaskMatch]
+
+    def unique_task_ids(self) -> List[str]:
+        """Return task identifiers preserving first-seen order."""
+
+        seen: set[str] = set()
+        ordered: List[str] = []
+        for match in self.semantic + self.lexical:
+            if match.task_id and match.task_id not in seen:
+                seen.add(match.task_id)
+                ordered.append(match.task_id)
+        return ordered
+
+    def combined_scores(self) -> Dict[str, float]:
+        """Aggregate semantic and lexical scores per task."""
+
+        aggregates: Dict[str, Dict[str, float]] = {}
+        for match in self.semantic:
+            entry = aggregates.setdefault(match.task_id, {"semantic": 0.0, "lexical": 0.0})
+            entry["semantic"] = max(entry["semantic"], match.score)
+        for match in self.lexical:
+            entry = aggregates.setdefault(match.task_id, {"semantic": 0.0, "lexical": 0.0})
+            entry["lexical"] = max(entry["lexical"], match.score)
+
+        combined: Dict[str, float] = {}
+        for task_id, parts in aggregates.items():
+            values = [v for v in (parts["semantic"], parts["lexical"]) if v > 0]
+            if not values:
+                combined[task_id] = 0.0
+                continue
+            combined[task_id] = sum(values) / len(values)
+        return combined
+
+
+@dataclass
+class FilterResult:
+    """Result returned by :func:`filter_tools_by_similarity`."""
+
+    tools: List[ToolInfo]
+    task_ids: List[str]
+    scores: Dict[str, int]
+    initial_tools: List[ToolInfo]
+    semantic_task_ids: List[str]
+    lexical_task_ids: List[str]
+    task_scores: Dict[str, float]
+
+
+@dataclass
+class _HistoryRecord:
+    """Internal representation of a tool execution record."""
+
+    is_success: bool
+    created_at: datetime
+
+
+def _load_environment() -> None:
+    """Load environment variables from the project ``.env`` file."""
+
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED or load_dotenv is None:  # pragma: no cover - trivial branch
+        return
+
+    root = Path(__file__).resolve().parents[2]
+    env_path = root / ".env"
+    if env_path.exists():  # pragma: no cover - simple IO
+        load_dotenv(env_path)
+    else:  # pragma: no cover - fallback to default behaviour
+        load_dotenv()
+    _DOTENV_LOADED = True
+
+
+def _resolve_qdrant_url(value: Optional[str]) -> Optional[str]:
+    """Normalise Qdrant URLs provided via configuration."""
+
+    if value is None:
+        return None
+    stripped = value.strip()
+    if not stripped:
+        return None
+    if "://" not in stripped:
+        stripped = f"http://{stripped}"
+    return stripped
+
+
+def _get_qdrant_client(url: Optional[str]) -> Optional["QdrantClient"]:
+    """Return a Qdrant client for ``url`` when available."""
+
+    if QdrantClient is None or url is None:  # pragma: no cover - optional dependency
+        return None
+    try:  # pragma: no cover - network setup
+        return QdrantClient(url=url)
+    except Exception as exc:  # pragma: no cover - connection failure
+        warnings.warn(f"Failed to create Qdrant client: {exc}")
+        return None
+
+
+def _embed_text(text: str) -> Optional[List[float]]:
+    """Return the embedding vector for ``text`` using OpenAI."""
+
     api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or OpenAI is None:  # pragma: no cover - configuration
-        warnings.warn("OpenAI client not available – returning None")
+    if not api_key or OpenAI is None:  # pragma: no cover - configuration missing
+        warnings.warn("OpenAI client not available – skipping embeddings")
         return None
-    try:  # pragma: no cover - network call
-        client = OpenAI(api_key=api_key)
-        res = client.embeddings.create(model="text-embedding-3-large", input=text)
-        return res.data[0].embedding  # type: ignore[index]
-    except Exception as exc:  # pragma: no cover - network call
-        warnings.warn(f"Embedding failed: {exc}")
+
+    global _OPENAI_CLIENT
+    if _OPENAI_CLIENT is None:  # pragma: no cover - network setup
+        try:
+            _OPENAI_CLIENT = OpenAI(api_key=api_key)
+        except Exception as exc:  # pragma: no cover - dependency misconfiguration
+            warnings.warn(f"Failed to initialise OpenAI client: {exc}")
+            return None
+
+    try:  # pragma: no cover - network request
+        response = _OPENAI_CLIENT.embeddings.create(
+            model="text-embedding-3-large", input=text
+        )
+    except Exception as exc:  # pragma: no cover - network request
+        warnings.warn(f"Embedding request failed: {exc}")
         return None
+
+    if not response.data:  # pragma: no cover - defensive
+        return None
+    return response.data[0].embedding  # type: ignore[index]
 
 
 def _semantic_search(
-    client: "QdrantClient", vector: Sequence[float], limit: int
-) -> List[str]:
-    """Query ``client`` for semantic matches.
+    client: "QdrantClient", vector: Sequence[float], *, limit: int, collection: str
+) -> List[TaskMatch]:
+    """Query Qdrant for semantic matches."""
 
-    Returns a list of task identifiers.  Errors result in an empty list
-    and are logged as warnings.
-    """
-    try:  # pragma: no cover - external service
-        res = client.search(
-            collection_name="tasks",
+    try:  # pragma: no cover - network request
+        points = client.search(
+            collection_name=collection,
             query_vector=vector,
             limit=limit,
             with_payload=True,
+            with_vectors=False,
         )
-        return [p.payload.get("task_id") for p in res if p.payload and p.payload.get("task_id")]
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:  # pragma: no cover - network failure
         warnings.warn(f"Vector DB search failed: {exc}")
         return []
 
+    results: List[TaskMatch] = []
+    for point in points or []:
+        payload = getattr(point, "payload", {}) or {}
+        task_id = payload.get("task_id")
+        if not task_id:
+            continue
+        score = float(getattr(point, "score", 0.0) or 0.0)
+        if score <= 0:
+            continue
+        results.append(TaskMatch(task_id=task_id, score=score, source="semantic", payload=payload))
+    return results
 
-def _lexical_search(client: "QdrantClient", text: str, limit: int) -> List[str]:
-    """Perform a naive lexical search over a subset of tasks.
 
-    We scroll a limited number of entries from the collection and score
-    them using :class:`difflib.SequenceMatcher`.
-    """
-    try:  # pragma: no cover - external service
+def _lexical_search(
+    client: "QdrantClient", text: str, *, limit: int, collection: str
+) -> List[TaskMatch]:
+    """Perform a naive lexical search using :mod:`difflib`."""
+
+    try:  # pragma: no cover - network request
         scroll_res = client.scroll(
-            collection_name="tasks", limit=100, with_payload=True, with_vectors=False
+            collection_name=collection,
+            limit=100,
+            with_payload=True,
+            with_vectors=False,
         )
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:  # pragma: no cover - network failure
         warnings.warn(f"Vector DB scroll failed: {exc}")
         return []
 
-    points = scroll_res[0] if isinstance(scroll_res, tuple) else scroll_res.points
-    scored: List[Tuple[float, str]] = []
-    for p in points or []:
-        payload = getattr(p, "payload", {}) or {}
+    points = []
+    if isinstance(scroll_res, tuple):  # pragma: no cover - API variation
+        points = scroll_res[0] or []
+    else:
+        points = getattr(scroll_res, "points", []) or []
+
+    scored: List[TaskMatch] = []
+    for point in points:
+        payload = getattr(point, "payload", {}) or {}
         task_id = payload.get("task_id")
-        desc = payload.get("task_description", "")
-        if not task_id:
+        description = payload.get("task_description", "")
+        if not task_id or not description:
             continue
-        score = SequenceMatcher(None, text, desc).ratio()
-        scored.append((score, task_id))
-    scored.sort(reverse=True)
-    return [task_id for _, task_id in scored[:limit]]
+        score = SequenceMatcher(None, text, description).ratio()
+        if score <= 0:
+            continue
+        scored.append(TaskMatch(task_id=task_id, score=score, source="lexical", payload=payload))
+
+    scored.sort(key=lambda match: match.score, reverse=True)
+    return scored[:limit]
 
 
 def search_similar_tasks(
@@ -133,72 +276,94 @@ def search_similar_tasks(
     qdrant_url: Optional[str] = None,
     semantic_limit: int = 5,
     lexical_limit: int = 5,
-) -> Tuple[List[str], List[str]]:
-    """Search Qdrant for tasks similar to ``description``.
+    collection: str = "tasks",
+) -> TaskSearchResults:
+    """Search Qdrant for tasks similar to ``description``."""
 
-    The function returns two lists containing the task identifiers found
-    via semantic and lexical search respectively.
-    """
-    if QdrantClient is None or qdrant_url is None:  # pragma: no cover - optional
-        return [], []
+    url = _resolve_qdrant_url(qdrant_url or os.getenv("QDRANT_URL"))
+    client = _get_qdrant_client(url)
+    if client is None:
+        return TaskSearchResults(semantic=[], lexical=[])
 
     vector = _embed_text(description)
     if vector is None:
-        return [], []
+        return TaskSearchResults(semantic=[], lexical=[])
 
-    client = QdrantClient(url=qdrant_url)
-    semantic = _semantic_search(client, vector, semantic_limit)
-    lexical = _lexical_search(client, description, lexical_limit)
-    return semantic, lexical
+    semantic = _semantic_search(client, vector, limit=semantic_limit, collection=collection)
+    lexical = _lexical_search(client, description, limit=lexical_limit, collection=collection)
+    return TaskSearchResults(semantic=semantic, lexical=lexical)
+
+
+def _coerce_datetime(value: Any) -> Optional[datetime]:
+    """Convert database timestamps to naive UTC datetimes."""
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    return None
 
 
 def fetch_tools_for_tasks(
     task_ids: Iterable[str], *, db_url: Optional[str] = None
-) -> List[str]:
-    """Return a list of tool names used by ``task_ids``.
+) -> List[ToolInfo]:
+    """Return distinct tools used by the provided ``task_ids``."""
 
-    The function expects a PostgreSQL database with a table named
-    ``task_tool_usage`` mapping ``task_id`` to ``tool_name``.  If the
-    database is unreachable the function returns an empty list.
-    """
-    ids = list(task_ids)
-    if not ids or psycopg is None or db_url is None:  # pragma: no cover - optional
+    ids = [task_id for task_id in task_ids if task_id]
+    if not ids or psycopg is None or db_url is None:
         return []
+
     try:  # pragma: no cover - external service
         with psycopg.connect(db_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT DISTINCT tool_name FROM task_tool_usage WHERE task_id = ANY(%s)",
+                    """
+                    SELECT DISTINCT tool_name, mcp_server
+                    FROM tool_call_history
+                    WHERE task_id = ANY(%s)
+                      AND tool_name IS NOT NULL
+                      AND mcp_server IS NOT NULL
+                    """,
                     (ids,),
                 )
                 rows = cur.fetchall()
-        return [r[0] for r in rows]
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:  # pragma: no cover - connection failure
         warnings.warn(f"Database query failed: {exc}")
         return []
 
-
-@dataclass
-class _HistoryRecord:
-    """A single tool execution record."""
-
-    is_success: bool
-    created_at: datetime
+    tools: List[ToolInfo] = []
+    seen: set[str] = set()
+    for tool_name, server in rows:
+        if not tool_name or not server:
+            continue
+        key = f"{server}__{tool_name}"
+        if key in seen:
+            continue
+        seen.add(key)
+        tools.append(ToolInfo(name=tool_name, server=server))
+    return tools
 
 
 def _fetch_tool_history(
-    tools: Sequence[str], db_url: Optional[str], limit: int = 50
+    tools: Sequence[ToolInfo], db_url: Optional[str], limit: int = 50
 ) -> Dict[str, List[_HistoryRecord]]:
-    """Return the most recent history records for each tool.
+    """Return recent execution history for each tool."""
 
-    The result is a mapping of ``tool_name`` to a list of
-    :class:`_HistoryRecord` objects sorted by ``created_at`` descending.
-    Only the ``limit`` most recent records are returned for each tool.
-    """
-    if not tools or psycopg is None or db_url is None:  # pragma: no cover
+    if not tools or psycopg is None or db_url is None:
         return {}
 
-    history: Dict[str, List[_HistoryRecord]] = defaultdict(list)
+    history: Dict[str, List[_HistoryRecord]] = {tool.key: [] for tool in tools}
+
     try:  # pragma: no cover - external service
         with psycopg.connect(db_url) as conn:
             with conn.cursor() as cur:
@@ -207,17 +372,21 @@ def _fetch_tool_history(
                         """
                         SELECT is_success, created_at
                         FROM tool_call_history
-                        WHERE tool_name = %s
+                        WHERE tool_name = %s AND mcp_server = %s
                         ORDER BY created_at DESC
                         LIMIT %s
                         """,
-                        (tool, limit),
+                        (tool.name, tool.server, limit),
                     )
                     rows = cur.fetchall()
-                    history[tool] = [
-                        _HistoryRecord(is_success=r[0], created_at=r[1]) for r in rows
-                    ]
-    except Exception as exc:  # pragma: no cover
+                    records: List[_HistoryRecord] = []
+                    for is_success, created_at in rows:
+                        created = _coerce_datetime(created_at)
+                        if created is None:
+                            continue
+                        records.append(_HistoryRecord(is_success=bool(is_success), created_at=created))
+                    history[tool.key] = records
+    except Exception as exc:  # pragma: no cover - connection failure
         warnings.warn(f"History fetch failed: {exc}")
         return {}
 
@@ -227,45 +396,161 @@ def _fetch_tool_history(
 def compute_performance_score(
     records: Sequence[_HistoryRecord], decay: float = 0.8
 ) -> int:
-    """Compute a recency-weighted success score for ``records``.
+    """Compute a recency weighted success score between 0 and 100."""
 
-    The algorithm mirrors the JavaScript implementation used in other
-    parts of the project.  ``decay`` represents the exponential decay per
-    day.  A score between 0 and 100 is returned.
-    """
     if not records:
         return 0
 
     now = datetime.utcnow()
-    num = 0.0
-    den = 0.0
-    for rec in records:
-        age_days = (now - rec.created_at).total_seconds() / (60 * 60 * 24)
-        weight = decay**age_days
-        den += weight
-        if rec.is_success:
-            num += weight
-    return int(round((num / den) * 100)) if den else 0
+    numerator = 0.0
+    denominator = 0.0
+    for record in records:
+        age_days = (now - record.created_at).total_seconds() / (60 * 60 * 24)
+        weight = decay ** max(age_days, 0)
+        denominator += weight
+        if record.is_success:
+            numerator += weight
+
+    if denominator == 0:
+        return 0
+    return int(round((numerator / denominator) * 100))
 
 
 def rank_tools_by_history(
-    tools: Sequence[str], *, db_url: Optional[str] = None, records_to_check: int = 50, decay: float = 0.8
-) -> List[str]:
-    """Rank ``tools`` by their computed performance score.
+    tools: Sequence[ToolInfo],
+    *,
+    db_url: Optional[str] = None,
+    records_to_check: int = 50,
+    decay: float = 0.8,
+) -> Tuple[List[ToolInfo], Dict[str, int]]:
+    """Rank ``tools`` by their performance score."""
 
-    ``records_to_check`` determines how many recent history entries are
-    considered for each tool.  ``decay`` controls the exponential decay
-    per day used by :func:`compute_performance_score`.
-    """
+    if not tools:
+        return [], {}
+
     histories = _fetch_tool_history(tools, db_url, limit=records_to_check)
     scores: Dict[str, int] = {}
     for tool in tools:
-        records = histories.get(tool, [])
-        scores[tool] = compute_performance_score(records, decay=decay)
+        records = histories.get(tool.key, [])
+        scores[tool.key] = compute_performance_score(records, decay=decay)
 
-    # Stable sort by score so tools with equal scores retain their
-    # original relative order.
-    return sorted(tools, key=lambda t: scores.get(t, -1), reverse=True)
+    ranked = sorted(
+        tools,
+        key=lambda tool: (scores.get(tool.key, -1), tool.server, tool.name),
+        reverse=True,
+    )
+    return ranked, scores
+
+
+def filter_tools_by_similarity(
+    *,
+    description: str,
+    all_tools: Sequence[ToolInfo],
+    db_url: Optional[str],
+    task_ids: Optional[Sequence[str]] = None,
+    search_results: Optional[TaskSearchResults] = None,
+    search_fn: Optional[Callable[..., TaskSearchResults]] = None,
+    qdrant_url: Optional[str] = None,
+    semantic_limit: int = 5,
+    lexical_limit: int = 5,
+    collection: str = "tasks",
+    records_to_check: int = 50,
+    failure_threshold: float = 0.5,
+    minimum_occurrence_threshold: int = 0,
+    decay: float = 0.8,
+) -> FilterResult:
+    """Filter and score tools based on similar task history."""
+
+    effective_results = search_results
+    if effective_results is None:
+        if search_fn is not None:
+            effective_results = search_fn(
+                description,
+                semantic_limit=semantic_limit,
+                lexical_limit=lexical_limit,
+                collection=collection,
+            )
+        else:
+            effective_results = search_similar_tasks(
+                description,
+                qdrant_url=qdrant_url,
+                semantic_limit=semantic_limit,
+                lexical_limit=lexical_limit,
+                collection=collection,
+            )
+
+    semantic_ids = [match.task_id for match in effective_results.semantic]
+    lexical_ids = [match.task_id for match in effective_results.lexical]
+
+    effective_task_ids = list(task_ids or effective_results.unique_task_ids())
+
+    if not effective_task_ids or db_url is None or psycopg is None:
+        initial = list(all_tools)
+        ranked, scores = rank_tools_by_history(
+            initial, db_url=db_url, records_to_check=records_to_check, decay=decay
+        )
+        return FilterResult(
+            tools=ranked,
+            task_ids=effective_task_ids,
+            scores=scores,
+            initial_tools=initial,
+            semantic_task_ids=semantic_ids,
+            lexical_task_ids=lexical_ids,
+            task_scores=effective_results.combined_scores(),
+        )
+
+    allowed = fetch_tools_for_tasks(effective_task_ids, db_url=db_url)
+    allowed_map = {tool.key: tool for tool in allowed}
+
+    if all_tools:
+        initial = [tool for tool in all_tools if tool.key in allowed_map]
+    else:
+        initial = allowed
+
+    if not initial:
+        initial = allowed
+
+    histories = _fetch_tool_history(initial, db_url, limit=records_to_check)
+
+    scores: Dict[str, int] = {}
+    filtered: List[ToolInfo] = []
+    for tool in initial:
+        records = histories.get(tool.key, [])
+        score = compute_performance_score(records, decay=decay)
+        scores[tool.key] = score
+        fail_rate = 1 - (score / 100)
+        if records and len(records) > minimum_occurrence_threshold and fail_rate > failure_threshold:
+            continue
+
+        description_lines = [
+            line
+            for line in (tool.description or "").splitlines()
+            if not line.startswith("TOOL PERFORMANCE SCORE")
+        ]
+        description_lines.append(f"TOOL PERFORMANCE SCORE: {score}")
+        filtered.append(
+            ToolInfo(
+                name=tool.name,
+                server=tool.server,
+                description="\n".join(line for line in description_lines if line).strip(),
+                metadata=tool.metadata,
+            )
+        )
+
+    filtered.sort(
+        key=lambda tool: (scores.get(tool.key, -1), tool.server, tool.name),
+        reverse=True,
+    )
+
+    return FilterResult(
+        tools=filtered,
+        task_ids=effective_task_ids,
+        scores=scores,
+        initial_tools=initial,
+        semantic_task_ids=semantic_ids,
+        lexical_task_ids=lexical_ids,
+        task_scores=effective_results.combined_scores(),
+    )
 
 
 def find_best_tools(
@@ -274,51 +559,74 @@ def find_best_tools(
     qdrant_url: Optional[str] = None,
     db_url: Optional[str] = None,
     dry_run: bool = False,
-) -> List[str]:
-    """Convenience wrapper executing the full task-search workflow.
+    all_tools: Optional[Sequence[ToolInfo]] = None,
+    semantic_limit: int = 5,
+    lexical_limit: int = 5,
+    collection: str = "tasks",
+    records_to_check: int = 50,
+    failure_threshold: float = 0.5,
+    minimum_occurrence_threshold: int = 0,
+    decay: float = 0.8,
+) -> List[ToolInfo]:
+    """Execute the full task-search workflow and return ranked tools."""
 
-    When ``dry_run`` is ``True`` the function prints intermediate
-    results and returns an empty list without performing any further
-    processing.
-    """
+    _load_environment()
 
-    if load_dotenv is not None:  # pragma: no cover - simple IO
-        env_path = Path(__file__).resolve().parents[2] / ".env"
-        if env_path.exists():
-            load_dotenv(env_path)  # type: ignore[arg-type]
-        else:
-            load_dotenv()  # type: ignore[call-arg]
+    resolved_qdrant_url = _resolve_qdrant_url(qdrant_url or os.getenv("QDRANT_URL"))
+    resolved_db_url = db_url or os.getenv("DB_URL") or os.getenv("DATABASE_URL")
 
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if not openai_key:
-        warnings.warn(
-            "OPENAI_API_KEY not set; embeddings will be skipped", RuntimeWarning
-        )
-
-    if qdrant_url is None:
-        qdrant_url = os.getenv("QDRANT_URL")
-    if db_url is None:
-        db_url = os.getenv("DB_URL")
-
-    semantic_ids, lexical_ids = search_similar_tasks(
-        description, qdrant_url=qdrant_url
+    results = search_similar_tasks(
+        description,
+        qdrant_url=resolved_qdrant_url,
+        semantic_limit=semantic_limit,
+        lexical_limit=lexical_limit,
+        collection=collection,
     )
-    task_ids = list(dict.fromkeys(semantic_ids + lexical_ids))
-    tools = fetch_tools_for_tasks(task_ids, db_url=db_url)
-    ranked = rank_tools_by_history(tools, db_url=db_url)
+
+    task_ids = results.unique_task_ids()
+
+    if all_tools is None:
+        all_tools = fetch_tools_for_tasks(task_ids, db_url=resolved_db_url)
+
+    filter_result = filter_tools_by_similarity(
+        description=description,
+        all_tools=list(all_tools),
+        db_url=resolved_db_url,
+        task_ids=task_ids,
+        search_results=results,
+        records_to_check=records_to_check,
+        failure_threshold=failure_threshold,
+        minimum_occurrence_threshold=minimum_occurrence_threshold,
+        decay=decay,
+    )
 
     if dry_run:
-        print(f"Semantic task ids: {semantic_ids}")
-        print(f"Lexical task ids: {lexical_ids}")
-        print(f"Initial tool count: {len(tools)}")
-        print(f"Ranked tools: {ranked}")
-        return []
-    return ranked
+        semantic_display = ", ".join(filter_result.semantic_task_ids) or "none"
+        lexical_display = ", ".join(filter_result.lexical_task_ids) or "none"
+        surviving = [
+            f"{tool.name} ({tool.server}) [{filter_result.scores.get(tool.key, 0)}]"
+            for tool in filter_result.tools
+        ]
+        print(f"Semantically similar task IDs: {semantic_display}")
+        print(f"Lexicographically similar task IDs: {lexical_display}")
+        print(f"Initial tools fetched: {len(filter_result.initial_tools)}")
+        print(
+            "Tools after performance scoring: "
+            + (", ".join(surviving) if surviving else "none")
+        )
+
+    return filter_result.tools
 
 
 __all__ = [
+    "ToolInfo",
+    "TaskMatch",
+    "TaskSearchResults",
+    "FilterResult",
     "find_best_tools",
     "search_similar_tasks",
     "fetch_tools_for_tasks",
     "rank_tools_by_history",
+    "compute_performance_score",
+    "filter_tools_by_similarity",
 ]
