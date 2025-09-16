@@ -235,6 +235,17 @@ Configure the following environment variables in your `.env` file. The required 
 | `NOTION_API_KEY` | Notion | Integration token for Notion workspace access | [Integration Setup](https://developers.notion.com/docs/authorization#obtaining-a-token) |
 | `NOTION_ROOT_PAGE` | Notion | Root page ID for your Notion workspace | See configuration example below |
 
+##### Task Search Infrastructure
+
+Place your `.env` file in the repository root (the same directory as this `README.md`) so the workflow helpers can discover it. Populate the following entries to enable the enhanced tool discovery flow:
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `QDRANT_URL` | Base URL for the Qdrant vector database used to look up similar tasks | `http://localhost:6334` |
+| `DB_URL` | PostgreSQL connection string containing historical tool executions | `postgresql://user:pass@localhost:5432/mcp` |
+
+The task similarity search also reuses `OPENAI_API_KEY` from the [core provider configuration](#core-llm-providers) to generate embeddings.
+
 ##### System Paths
 
 | Environment Variable | Description | Example |
@@ -322,6 +333,8 @@ python tests/benchmark/test_benchmark_browser_automation.py
 
 # Financial Analysis
 python tests/benchmark/test_benchmark_financial_analysis.py
+# Search previous tasks and report matching tools without running the benchmark
+python tests/benchmark/test_benchmark_financial_analysis.py --task-search 1 --dry-run 1
 
 # Repository Management
 python tests/benchmark/test_benchmark_repository_management.py
@@ -332,6 +345,11 @@ python tests/benchmark/test_benchmark_web_search.py
 # 3D Design
 python tests/benchmark/test_benchmark_3d_design.py
 ```
+
+The ``--task-search`` flag embeds the financial analysis description and
+retrieves similar tasks from the vector database.  Combine it with
+``--dry-run`` to print the matching task IDs and tool scores without
+running the benchmark.
 
 #### Batch Execution
 
