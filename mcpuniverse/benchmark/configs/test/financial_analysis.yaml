@@ -18,6 +18,8 @@ spec:
     servers:
       - name: yfinance
       - name: calculator
+      - name: investor
+      - name: financial-datasets
 
 ---
 kind: benchmark
