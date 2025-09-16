@@ -7,7 +7,7 @@ from .task_search import (
     ToolInfo,
     compute_performance_score,
     fetch_tools_for_tasks,
-    filter_tools_by_similarity,
+    filter_tools_by_history,
     find_best_tools,
     rank_tools_by_history,
     search_similar_tasks,
@@ -23,5 +23,5 @@ __all__ = [
     "fetch_tools_for_tasks",
     "rank_tools_by_history",
     "compute_performance_score",
-    "filter_tools_by_similarity",
+    "filter_tools_by_history",
 ]

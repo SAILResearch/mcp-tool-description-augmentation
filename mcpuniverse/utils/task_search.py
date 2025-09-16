@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import os
 import warnings
@@ -113,7 +113,7 @@ class TaskSearchResults:
 
 @dataclass
 class FilterResult:
-    """Result returned by :func:`filter_tools_by_similarity`."""
+    """Result returned by :func:`filter_tools_by_history`."""
 
     tools: List[ToolInfo]
     task_ids: List[str]
@@ -424,16 +424,20 @@ def rank_tools_by_history(
     db_url: Optional[str] = None,
     records_to_check: int = 50,
     decay: float = 0.8,
+    histories: Optional[Dict[str, List[_HistoryRecord]]] = None,
 ) -> Tuple[List[ToolInfo], Dict[str, int]]:
     """Rank ``tools`` by their performance score."""
 
     if not tools:
         return [], {}
 
-    histories = _fetch_tool_history(tools, db_url, limit=records_to_check)
+    effective_histories = histories
+    if effective_histories is None:
+        effective_histories = _fetch_tool_history(tools, db_url, limit=records_to_check)
+
     scores: Dict[str, int] = {}
     for tool in tools:
-        records = histories.get(tool.key, [])
+        records = effective_histories.get(tool.key, []) if effective_histories else []
         scores[tool.key] = compute_performance_score(records, decay=decay)
 
     ranked = sorted(
@@ -444,84 +448,57 @@ def rank_tools_by_history(
     return ranked, scores
 
 
-def filter_tools_by_similarity(
+def filter_tools_by_history(
     *,
-    description: str,
     all_tools: Sequence[ToolInfo],
     db_url: Optional[str],
-    task_ids: Optional[Sequence[str]] = None,
-    search_results: Optional[TaskSearchResults] = None,
-    search_fn: Optional[Callable[..., TaskSearchResults]] = None,
-    qdrant_url: Optional[str] = "http://127.0.0.1:6333",
-    semantic_limit: int = 5,
-    lexical_limit: int = 5,
-    collection: str = "tasks",
+    search_results: TaskSearchResults,
     records_to_check: int = 50,
     failure_threshold: float = 0.5,
     minimum_occurrence_threshold: int = 0,
     decay: float = 0.8,
 ) -> FilterResult:
-    """Filter and score tools based on similar task history."""
+    """Filter and score tools based on execution history."""
 
-    effective_results = search_results
-    if effective_results is None:
-        if search_fn is not None:
-            effective_results = search_fn(
-                description,
-                semantic_limit=semantic_limit,
-                lexical_limit=lexical_limit,
-                collection=collection,
-            )
-        else:
-            effective_results = search_similar_tasks(
-                description,
-                qdrant_url=qdrant_url,
-                semantic_limit=semantic_limit,
-                lexical_limit=lexical_limit,
-                collection=collection,
-            )
+    semantic_ids = [match.task_id for match in search_results.semantic]
+    lexical_ids = [match.task_id for match in search_results.lexical]
+    task_ids = search_results.unique_task_ids()
 
-    semantic_ids = [match.task_id for match in effective_results.semantic]
-    lexical_ids = [match.task_id for match in effective_results.lexical]
-
-    effective_task_ids = list(task_ids or effective_results.unique_task_ids())
-
-    if not effective_task_ids or db_url is None or psycopg is None:
-        initial = list(all_tools)
-        ranked, scores = rank_tools_by_history(
-            initial, db_url=db_url, records_to_check=records_to_check, decay=decay
-        )
-        return FilterResult(
-            tools=ranked,
-            task_ids=effective_task_ids,
-            scores=scores,
-            initial_tools=initial,
-            semantic_task_ids=semantic_ids,
-            lexical_task_ids=lexical_ids,
-            task_scores=effective_results.combined_scores(),
-        )
-
-    allowed = fetch_tools_for_tasks(effective_task_ids, db_url=db_url)
-    allowed_map = {tool.key: tool for tool in allowed}
-
-    if all_tools:
-        initial = [tool for tool in all_tools if tool.key in allowed_map]
-    else:
-        initial = allowed
+    initial = list(all_tools)
 
     if not initial:
-        initial = allowed
+        return FilterResult(
+            tools=[],
+            task_ids=task_ids,
+            scores={},
+            initial_tools=[],
+            semantic_task_ids=semantic_ids,
+            lexical_task_ids=lexical_ids,
+            task_scores=search_results.combined_scores(),
+        )
 
-    histories = _fetch_tool_history(initial, db_url, limit=records_to_check)
+    histories: Optional[Dict[str, List[_HistoryRecord]]] = None
+    if db_url is not None and psycopg is not None:
+        histories = _fetch_tool_history(initial, db_url, limit=records_to_check)
 
-    scores: Dict[str, int] = {}
+    ranked, scores = rank_tools_by_history(
+        initial,
+        db_url=db_url,
+        records_to_check=records_to_check,
+        decay=decay,
+        histories=histories,
+    )
+
     filtered: List[ToolInfo] = []
-    for tool in initial:
-        records = histories.get(tool.key, [])
-        score = compute_performance_score(records, decay=decay)
-        scores[tool.key] = score
+    for tool in ranked:
+        score = scores.get(tool.key, 0)
+        records = histories.get(tool.key, []) if histories is not None else []
         fail_rate = 1 - (score / 100)
-        if records and len(records) > minimum_occurrence_threshold and fail_rate > failure_threshold:
+        if (
+            records
+            and len(records) > minimum_occurrence_threshold
+            and fail_rate > failure_threshold
+        ):
             continue
 
         description_lines = [
@@ -539,19 +516,14 @@ def filter_tools_by_similarity(
             )
         )
 
-    filtered.sort(
-        key=lambda tool: (scores.get(tool.key, -1), tool.server, tool.name),
-        reverse=True,
-    )
-
     return FilterResult(
         tools=filtered,
-        task_ids=effective_task_ids,
+        task_ids=task_ids,
         scores=scores,
         initial_tools=initial,
         semantic_task_ids=semantic_ids,
         lexical_task_ids=lexical_ids,
-        task_scores=effective_results.combined_scores(),
+        task_scores=search_results.combined_scores(),
     )
 
 
@@ -590,11 +562,9 @@ def find_best_tools(
     if all_tools is None:
         all_tools = fetch_tools_for_tasks(task_ids, db_url=resolved_db_url)
 
-    filter_result = filter_tools_by_similarity(
-        description=description,
+    filter_result = filter_tools_by_history(
         all_tools=list(all_tools),
         db_url=resolved_db_url,
-        task_ids=task_ids,
         search_results=results,
         records_to_check=records_to_check,
         failure_threshold=failure_threshold,
@@ -630,5 +600,5 @@ __all__ = [
     "fetch_tools_for_tasks",
     "rank_tools_by_history",
     "compute_performance_score",
-    "filter_tools_by_similarity",
+    "filter_tools_by_history",
 ]
