@@ -171,7 +171,10 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             components: Optional[Dict[str, BaseLLM | Executor]] = None,
             store_folder: str = "",
             overwrite: bool = True,
-            callbacks: Optional[List[BaseCallback]] = None
+            callbacks: Optional[List[BaseCallback]] = None,
+            *,
+            task_search: bool = False,
+            dry_run: bool = False
     ) -> List[BenchmarkResult]:
         """
         Run specified benchmarks.
@@ -183,12 +186,22 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             store_folder (str): The folder path for storing evaluation results.
             overwrite (bool): Whether to overwrite existing evaluation results.
             callbacks (List[BaseCallback], optional): Callback functions.
+            task_search (bool): Whether to run task search for each task.
+            dry_run (bool): When used with ``task_search``, skip task execution and
+                evaluation while still performing the search.
         """
+        task_search = bool(task_search)
+        dry_run = bool(dry_run)
+
         if mcp_manager is None:
             mcp_manager = MCPManager(context=self._context)
         workflow = WorkflowBuilder(mcp_manager=mcp_manager, config=self._agent_configs)
         workflow.build(components)
         store = BenchmarkResultStore(folder=store_folder)
+
+        find_best_tools_fn = None
+        if task_search:
+            from mcpuniverse.utils.task_search import find_best_tools as find_best_tools_fn
 
         outputs = []
         used_agents = []
@@ -231,18 +244,33 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
 
                     # Execute the task and the corresponding evaluations
                     task = Task(task_filepath, context=self._context)
-                    if task.use_specified_server() and isinstance(agent, BaseAgent):
-                        await agent.change_servers(task.get_mcp_servers())
-                    agent.reset()
-                    tracer = Tracer(collector=trace_collector)
                     question = task.get_question()
                     output_format = task.get_output_format()
 
                     await send_message_async(callbacks, message=CallbackMessage(
                         source=__file__,
                         type=MessageType.LOG,
-                        metadata={"event": "task_description", "data": task}
+                        metadata={"event": "task_description", "data": task},
                     ))
+
+                    if task_search and find_best_tools_fn is not None:
+                        find_best_tools_fn(question, dry_run=dry_run)
+                        if dry_run:
+                            self._logger.info("Dry run enabled; skipping execution for task: %s", task_path)
+                            send_message(callbacks, message=CallbackMessage(
+                                source="benchmark_runner",
+                                type=MessageType.LOG,
+                                data=f"Skipping task execution due to dry-run: {task_path}",
+                            ))
+                            task_results[task_path] = {"evaluation_results": []}
+                            task_trace_ids[task_path] = ""
+                            continue
+
+                    if task.use_specified_server() and isinstance(agent, BaseAgent):
+                        await agent.change_servers(task.get_mcp_servers())
+                    agent.reset()
+                    tracer = Tracer(collector=trace_collector)
+
                     try:
                         response = await agent.execute(
                             question,
