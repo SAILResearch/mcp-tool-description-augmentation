@@ -205,7 +205,8 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             callbacks: Optional[List[BaseCallback]] = None,
             *,
             task_search: bool = False,
-            dry_run: bool = False
+            dry_run: bool = False,
+            truncate_tool_response: Optional[bool] = None,
     ) -> List[BenchmarkResult]:
         """
         Run specified benchmarks.
@@ -220,6 +221,9 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             task_search (bool): Whether to run task search for each task.
             dry_run (bool): When used with ``task_search``, skip task execution and
                 evaluation while still performing the search.
+            truncate_tool_response (Optional[bool]): Override for truncating MCP tool
+                responses before sending them to the LLM. ``True`` enables truncation,
+                ``False`` disables it, and ``None`` keeps the agent's default behaviour.
         """
         task_search = bool(task_search)
         dry_run = bool(dry_run)
@@ -228,6 +232,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             mcp_manager = MCPManager(context=self._context)
         workflow = WorkflowBuilder(mcp_manager=mcp_manager, config=self._agent_configs)
         workflow.build(components)
+        workflow.set_context(self._context)
         store = BenchmarkResultStore(folder=store_folder)
 
         find_best_tools_fn = None
@@ -238,6 +243,8 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
         used_agents = []
         for benchmark in self._benchmark_configs:
             agent: Executor = workflow.get_component(benchmark.agent)
+            if isinstance(agent, BaseAgent) and truncate_tool_response is not None:
+                agent.configure_tool_response_truncation(bool(truncate_tool_response))
             used_agents.append(agent)
             await agent.initialize()
             await send_message_async(callbacks, message=CallbackMessage(

@@ -2,6 +2,7 @@
 Base classes for agents
 """
 # pylint: disable=broad-exception-caught,unused-argument
+import logging
 import os
 import uuid
 import json
@@ -85,6 +86,8 @@ class BaseAgentConfig(BaseConfig):
     use_llm_tool_api: str = "no"
     # MCP gateway URL
     mcp_gateway_url: str = ""
+    # Whether to truncate tool responses before sending to the LLM
+    truncate_tool_response: bool = False
 
 
 class Executor:
@@ -165,6 +168,14 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         self._tools: Dict[str, Any] = {}
         self._logger = None
         self._initialized: bool = False
+        self._context: Optional[Context] = None
+        self._tool_response_truncation_requested: bool = bool(
+            getattr(self._config, "truncate_tool_response", False)
+        )
+        self._tool_response_truncation_enabled: bool = False
+        self._max_tool_response_tokens: Optional[int] = None
+        if self._tool_response_truncation_requested:
+            self.configure_tool_response_truncation(True)
 
     async def _initialize(self):
         """Initialize subclass."""
@@ -485,12 +496,80 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                 undefined_vars.extend([name.strip("{{").strip("}}").strip() for name in names])
         return undefined_vars
 
+    def _log_tool_truncation_warning(self, message: str, *args) -> None:
+        logger = self._logger
+        if logger is None:
+            logger = logging.getLogger(f"{self.__class__.__name__}:{self._name}")
+        logger.warning(message, *args)
+
+    def _resolve_max_tool_tokens(self) -> Optional[int]:
+        raw_value: str | None = None
+        if self._context is not None:
+            raw_value = self._context.get_env("MAX_TOKEN_LEN", "")
+        else:
+            raw_value = os.getenv("MAX_TOKEN_LEN", "")
+
+        value = str(raw_value).strip()
+        if not value:
+            self._log_tool_truncation_warning(
+                "MAX_TOKEN_LEN is not set; tool response truncation disabled"
+            )
+            return None
+
+        try:
+            tokens = int(value)
+        except (TypeError, ValueError):
+            self._log_tool_truncation_warning(
+                "Invalid MAX_TOKEN_LEN value %r; tool response truncation disabled", raw_value
+            )
+            return None
+
+        if tokens <= 0:
+            self._log_tool_truncation_warning(
+                "MAX_TOKEN_LEN must be a positive integer; received %r", raw_value
+            )
+            return None
+
+        return tokens
+
+    def configure_tool_response_truncation(
+            self,
+            enabled: bool,
+            max_tokens: Optional[int] = None,
+    ) -> None:
+        """Enable or disable tool response truncation for the attached LLM."""
+
+        self._tool_response_truncation_requested = bool(enabled)
+
+        if not self._tool_response_truncation_requested:
+            self._tool_response_truncation_enabled = False
+            self._max_tool_response_tokens = None
+            if self._llm is not None:
+                self._llm.set_tool_response_truncation(False, None)
+            return
+
+        resolved_tokens = max_tokens if max_tokens is not None else self._resolve_max_tool_tokens()
+        if resolved_tokens is None:
+            self._tool_response_truncation_enabled = False
+            self._max_tool_response_tokens = None
+            if self._llm is not None:
+                self._llm.set_tool_response_truncation(False, None)
+            return
+
+        self._tool_response_truncation_enabled = True
+        self._max_tool_response_tokens = resolved_tokens
+        if self._llm is not None:
+            self._llm.set_tool_response_truncation(True, resolved_tokens)
+
     def set_context(self, context: Context):
         """
         Set context, e.g., environment variables (API keys).
         """
+        self._context = context
         if context and self._llm:
             self._llm.set_context(context)
+        if self._tool_response_truncation_requested:
+            self.configure_tool_response_truncation(True)
 
     def get_children_ids(self) -> List[str]:
         """
