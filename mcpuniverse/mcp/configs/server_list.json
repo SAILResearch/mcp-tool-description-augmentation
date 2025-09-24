@@ -1,39 +1,51 @@
 {
+  "date": {
+    "stdio": {
+      "command": "python3",
+      "args": [
+        "-m", "mcpuniverse.mcp.servers.date"
+      ]
+    },
+    "sse": {
+      "command": "python3",
+      "args": [
+        "-m", "mcpuniverse.mcp.servers.date",
+        "--transport", "sse",
+        "--port", "{{PORT}}"
+      ]
+    }
+  },
+
+
+  "google-search": {
+    "stdio": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/Users/mohammedmehedihasan/personal/codes/mcp-tool-description-miner/Google-Search-MCP-Server/dist/google-search.js"
+      ]
+    },
+    "env": {
+      "GOOGLE_API_KEY": "{{GOOGLE_API_KEY}}",
+      "GOOGLE_SEARCH_ENGINE_ID": "{{GOOGLE_SEARCH_ENGINE_ID}}"
+    }
+  },
+
+  "fetch": {
+    "stdio": {
+      "command": "python3",
+      "args": [
+        "-m", "mcp_server_fetch",
+        "--ignore-robots-txt"
+      ]
+    }
+  },
+
+
   "calculator": {
     "stdio": {
       "command": "python3",
       "args": [
         "-m", "mcp_server_calculator"
-      ]
-    }
-  },
-
-  "yfinance": {
-    "stdio": {
-      "command": "/Users/mohammedmehedihasan/.local/bin/uv",
-      "args": [
-        "--directory",
-        "/Users/mohammedmehedihasan/personal/codes/mcp-tool-description-miner/yahoo-finance-mcp",
-        "run",
-        "server.py"
-      ]
-    }
-  },
-  "investor": {
-    "stdio": {
-      "command": "/Users/mohammedmehedihasan/.local/bin/uvx",
-      "args": ["investor-agent"]
-    }
-  },
-
-  "financial-datasets": {
-    "stdio": {
-      "command": "/Users/mohammedmehedihasan/.local/bin/uv",
-      "args": [
-        "--directory",
-        "/Users/mohammedmehedihasan/personal/codes/mcp-tool-description-miner/mcp-server",
-        "run",
-        "server.py"
       ]
     }
   }

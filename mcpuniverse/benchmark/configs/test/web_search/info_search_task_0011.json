@@ -4,15 +4,6 @@
     "output_format": {
         "answer": "[Your answer]"
     },
-    "use_specified_server": true,
-    "mcp_servers": [
-        {
-            "name": "google-search"
-        },
-        {
-            "name": "fetch"
-        }
-    ],
     "evaluators": [
         {
             "func": "raw",
