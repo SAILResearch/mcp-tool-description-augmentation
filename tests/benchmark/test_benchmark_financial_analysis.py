@@ -7,21 +7,11 @@ full description of the available switches.
 
 import sys
 import unittest
-from pathlib import Path
 
-
-# Ensure the repository root is importable when the script is executed
-# directly (e.g. ``python tests/...``).  ``sys.path`` normally points to the
-# test directory, so we prepend the project root to make ``mcpuniverse``
-# available without requiring ``PYTHONPATH`` tweaks.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:  # pragma: no cover - defensive
-    sys.path.insert(0, str(PROJECT_ROOT))
+from tests.benchmark.cli_support import CLI_CONFIG, CLI_REMAINING_ARGS
 
 import pytest
 from mcpuniverse.tracer.collectors.file import FileCollector
-
-from tests.benchmark.cli_support import CLI_CONFIG, CLI_REMAINING_ARGS
 
 
 class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
