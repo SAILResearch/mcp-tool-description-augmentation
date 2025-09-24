@@ -8,7 +8,7 @@ functions for generating content, handling messages, and managing configurations
 # pylint: disable=unused-argument,broad-exception-caught
 import asyncio
 from abc import abstractmethod
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from pydantic import BaseModel
 from mcpuniverse.common.misc import ComponentABCMeta, ExportConfigMixin
 from mcpuniverse.common.logger import get_logger
@@ -22,6 +22,7 @@ from mcpuniverse.callbacks.base import (
     send_message
 )
 from mcpuniverse.common.context import Context
+from mcpuniverse.llm.truncation import ToolResponseTruncator
 
 
 class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
@@ -42,6 +43,9 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
         self._project_id: str = ""
         self._name: str = ""
         self._context: Context = Context()
+        self._truncate_tool_responses: bool = False
+        self._max_tool_response_tokens: Optional[int] = None
+        self._tool_response_truncator: Optional[ToolResponseTruncator] = None
 
     @abstractmethod
     def _generate(self, messages: List[dict[str, str]], **kwargs) -> Any:
@@ -93,6 +97,7 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
         if not self.support_tool_call():
             kwargs.pop("callable_tools", None)
         tracer = tracer if tracer else Tracer()
+        prepared_messages = self._apply_tool_response_truncation(messages)
 
         with tracer.sprout() as t:
             send_message(callbacks, message=CallbackMessage(
@@ -102,7 +107,7 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
                 source=self.id, type=MessageType.STATUS, data=Status.RUNNING,
                 project_id=self.project_id))
             try:
-                response = self._generate(messages, **kwargs)
+                response = self._generate(prepared_messages, **kwargs)
                 # Handle different response types for tracing
                 if isinstance(response, BaseModel):
                     response_data = response.model_dump(mode="json")
@@ -126,7 +131,7 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
                     "type": "llm",
                     "class": self.__class__.__name__,
                     "config": self.config.to_dict(),
-                    "messages": messages,
+                    "messages": prepared_messages,
                     "response": response_data,
                     "error": ""
                 })
@@ -135,7 +140,7 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
                     "type": "llm",
                     "class": self.__class__.__name__,
                     "config": self.config.to_dict(),
-                    "messages": messages,
+                    "messages": prepared_messages,
                     "response": "",
                     "error": str(e)
                 })
@@ -368,3 +373,75 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
         Return a flag indicating if the model supports function/tool call API.
         """
         return False
+
+    def set_tool_response_truncation(
+            self,
+            enabled: bool,
+            max_tokens: Optional[int],
+    ) -> None:
+        """Enable or disable tool response truncation before LLM invocations."""
+
+        self._truncate_tool_responses = bool(enabled)
+        if not self._truncate_tool_responses:
+            self._max_tool_response_tokens = None
+            self._tool_response_truncator = None
+            return
+
+        if max_tokens is None or max_tokens <= 0:
+            self.logger.warning(
+                "Tool response truncation requested but max token limit is invalid: %s",
+                max_tokens,
+            )
+            self._truncate_tool_responses = False
+            self._max_tool_response_tokens = None
+            self._tool_response_truncator = None
+            return
+
+        self._max_tool_response_tokens = int(max_tokens)
+        self._tool_response_truncator = ToolResponseTruncator(self._max_tool_response_tokens)
+
+    def _apply_tool_response_truncation(self, messages: List[dict[str, Any]]) -> List[dict[str, Any]]:
+        """Return messages with lengthy tool outputs truncated when configured."""
+
+        if not self._truncate_tool_responses or not self._max_tool_response_tokens:
+            return messages
+        if not isinstance(messages, list):
+            return messages
+
+        truncator = self._tool_response_truncator or ToolResponseTruncator(self._max_tool_response_tokens)
+        self._tool_response_truncator = truncator
+
+        truncated_messages: List[dict[str, Any]] = []
+        truncated_any = False
+
+        for message in messages:
+            if not isinstance(message, dict):
+                truncated_messages.append(message)
+                continue
+
+            if message.get("role") != "tool":
+                truncated_messages.append(message)
+                continue
+
+            content = message.get("content")
+            if not isinstance(content, str):
+                truncated_messages.append(message)
+                continue
+
+            result = truncator.truncate(content)
+            if not result.truncated:
+                truncated_messages.append(message)
+                continue
+
+            truncated_any = True
+            new_message = dict(message)
+            new_message["content"] = result.text
+            truncated_messages.append(new_message)
+            self.logger.info(
+                "Truncated tool response from %d to %d tokens (limit %d)",
+                result.original_tokens,
+                result.final_tokens,
+                self._max_tool_response_tokens,
+            )
+
+        return truncated_messages if truncated_any else messages

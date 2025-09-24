@@ -535,6 +535,7 @@ def find_best_tools(
     failure_threshold: float = 0.5,
     minimum_occurrence_threshold: int = 0,
     decay: float = 0.8,
+    minimum_score: int = 80,
 ) -> List[ToolInfo]:
     """Execute the full task-search workflow and return ranked tools."""
 
@@ -571,6 +572,12 @@ def find_best_tools(
         decay=decay,
     )
 
+    shortlisted_tools: List[ToolInfo] = []
+    for tool in filter_result.tools:
+        score = filter_result.scores.get(tool.key, 0)
+        if score >= minimum_score:
+            shortlisted_tools.append(tool)
+
     if dry_run:
         semantic_display = ", ".join(
             match.task_id for match in results.semantic if match.task_id
@@ -580,7 +587,7 @@ def find_best_tools(
         ) or "none"
         surviving = [
             f"{tool.name} ({tool.server}) [{filter_result.scores.get(tool.key, 0)}]"
-            for tool in filter_result.tools
+            for tool in shortlisted_tools
         ]
         print(f"Semantically similar task IDs: {semantic_display}")
         print(f"Lexicographically similar task IDs: {lexical_display}")
@@ -590,7 +597,7 @@ def find_best_tools(
             + (", ".join(surviving) if surviving else "none")
         )
 
-    return filter_result.tools
+    return shortlisted_tools
 
 
 __all__ = [

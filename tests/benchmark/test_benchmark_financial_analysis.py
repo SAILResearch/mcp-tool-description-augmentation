@@ -16,6 +16,11 @@ the module directly:
     executed and diagnostic information is printed while the benchmark
     runner skips task execution and evaluation.
 
+``--truncate-tool-response``
+    Enables (``1``) or disables (``0``) truncation of MCP tool outputs
+    before forwarding them to the LLM.  When enabled the truncation limit
+    is read from the ``MAX_TOKEN_LEN`` environment variable.
+
 The arguments are parsed before invoking :func:`unittest.main` so that
 any remaining parameters continue to work with the standard unittest
 runner.
@@ -44,6 +49,7 @@ from mcpuniverse.tracer.collectors.file import FileCollector
 # the test harness.
 TASK_SEARCH = 0
 DRY_RUN = 0
+TRUNCATE_TOOL_RESPONSE = 0
 
 
 class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
@@ -61,6 +67,7 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
             callbacks=get_vprint_callbacks(),
             task_search=bool(TASK_SEARCH),
             dry_run=bool(DRY_RUN),
+            truncate_tool_response=bool(TRUNCATE_TOOL_RESPONSE),
         )
         print(results)
 
@@ -94,8 +101,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--task-search", type=int, default=0)
     parser.add_argument("--dry-run", type=int, default=0)
+    parser.add_argument("--truncate-tool-response", type=int, default=0)
     args, remaining = parser.parse_known_args()
     TASK_SEARCH = args.task_search
     DRY_RUN = args.dry_run
+    TRUNCATE_TOOL_RESPONSE = args.truncate_tool_response
     # Forward any remaining arguments to ``unittest``.
     unittest.main(argv=[sys.argv[0]] + remaining)

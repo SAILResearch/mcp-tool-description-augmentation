@@ -5,7 +5,7 @@ Benchmarks for evaluating agents and LLMs
 import json
 import os
 import hashlib
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Sequence, Tuple
 from contextlib import AsyncExitStack
 
 import yaml
@@ -14,6 +14,7 @@ from mcpuniverse.common.misc import AutodocABCMeta
 from mcpuniverse.llm.base import BaseLLM
 from mcpuniverse.agent.base import Executor, BaseAgent
 from mcpuniverse.mcp.manager import MCPManager
+from mcpuniverse.mcp.tools import build_server_configs_from_tools
 from mcpuniverse.workflows.builder import WorkflowBuilder
 from mcpuniverse.benchmark.task import Task
 from mcpuniverse.tracer.collectors.base import BaseCollector
@@ -25,8 +26,38 @@ from mcpuniverse.callbacks.base import (
     BaseCallback,
     CallbackMessage,
     MessageType,
-    send_message_async, send_message
+    send_message_async,
+    send_message,
 )
+
+
+def _normalise_server_configs(
+    configs: Optional[Sequence[Dict[str, Any]]],
+) -> Tuple[Tuple[str, str, Tuple[str, ...]], ...]:
+    """Create a hashable representation of server configurations."""
+
+    if not configs:
+        return tuple()
+
+    normalised: List[Tuple[str, str, Tuple[str, ...]]] = []
+    for config in configs:
+        if not isinstance(config, dict):
+            continue
+        name = config.get("name")
+        if not name:
+            continue
+        transport = str(config.get("transport", "stdio"))
+        tools_value = config.get("tools")
+        if isinstance(tools_value, (list, tuple)):
+            tools = tuple(str(tool) for tool in tools_value)
+        elif tools_value is None:
+            tools = tuple()
+        else:
+            tools = (str(tools_value),)
+        normalised.append((str(name), transport, tools))
+
+    normalised.sort(key=lambda item: item[0])
+    return tuple(normalised)
 
 
 class BenchmarkConfig(BaseModel):
@@ -174,7 +205,8 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             callbacks: Optional[List[BaseCallback]] = None,
             *,
             task_search: bool = False,
-            dry_run: bool = False
+            dry_run: bool = False,
+            truncate_tool_response: Optional[bool] = None,
     ) -> List[BenchmarkResult]:
         """
         Run specified benchmarks.
@@ -189,6 +221,9 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             task_search (bool): Whether to run task search for each task.
             dry_run (bool): When used with ``task_search``, skip task execution and
                 evaluation while still performing the search.
+            truncate_tool_response (Optional[bool]): Override for truncating MCP tool
+                responses before sending them to the LLM. ``True`` enables truncation,
+                ``False`` disables it, and ``None`` keeps the agent's default behaviour.
         """
         task_search = bool(task_search)
         dry_run = bool(dry_run)
@@ -197,6 +232,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             mcp_manager = MCPManager(context=self._context)
         workflow = WorkflowBuilder(mcp_manager=mcp_manager, config=self._agent_configs)
         workflow.build(components)
+        workflow.set_context(self._context)
         store = BenchmarkResultStore(folder=store_folder)
 
         find_best_tools_fn = None
@@ -207,6 +243,8 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
         used_agents = []
         for benchmark in self._benchmark_configs:
             agent: Executor = workflow.get_component(benchmark.agent)
+            if isinstance(agent, BaseAgent) and truncate_tool_response is not None:
+                agent.configure_tool_response_truncation(bool(truncate_tool_response))
             used_agents.append(agent)
             await agent.initialize()
             await send_message_async(callbacks, message=CallbackMessage(
@@ -214,6 +252,22 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                 type=MessageType.LOG,
                 metadata={"event": "list_tools", "data": agent}
             ))
+
+            default_server_configs: List[Dict[str, Any]] = []
+            default_server_state: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = tuple()
+            current_server_state: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = tuple()
+            if isinstance(agent, BaseAgent):
+                raw_servers = getattr(agent, "_config", None)
+                if raw_servers is not None:
+                    raw_list = getattr(raw_servers, "servers", [])
+                else:
+                    raw_list = []
+                if isinstance(raw_list, list):
+                    for server in raw_list:
+                        if isinstance(server, dict):
+                            default_server_configs.append(dict(server))
+                default_server_state = _normalise_server_configs(default_server_configs)
+                current_server_state = default_server_state
 
             task_results, task_trace_ids = {}, {}
             for idx, task_path in enumerate(benchmark.tasks):
@@ -247,6 +301,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                     question = task.get_question()
                     output_format = task.get_output_format()
 
+                    best_tools: List[Any] = []
                     await send_message_async(callbacks, message=CallbackMessage(
                         source=__file__,
                         type=MessageType.LOG,
@@ -254,7 +309,93 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                     ))
 
                     if task_search and find_best_tools_fn is not None:
-                        find_best_tools_fn(question, dry_run=dry_run)
+                        best_tools = find_best_tools_fn(question, dry_run=dry_run)
+                        total_best_tool_count = len(best_tools)
+                        discarded_tool_count = 0
+                        filtered_tools: List[Any] = []
+                        if best_tools:
+                            manager_for_lookup = getattr(agent, "_mcp_manager", None) or mcp_manager
+                            manager_servers: set[str] = set()
+                            if manager_for_lookup is not None:
+                                try:
+                                    manager_servers = set(manager_for_lookup.list_server_names())
+                                except AttributeError:
+                                    try:
+                                        manager_servers = set(manager_for_lookup.get_configs().keys())
+                                    except Exception:  # pragma: no cover - defensive guard
+                                        manager_servers = set()
+                                except Exception:  # pragma: no cover - defensive guard
+                                    manager_servers = set()
+
+                            allowed_tools_from_config: Dict[str, set[str]] = {}
+                            for server in default_server_configs:
+                                if not isinstance(server, dict):
+                                    continue
+                                server_name = server.get("name")
+                                if not server_name:
+                                    continue
+                                tools_field = server.get("tools")
+                                if isinstance(tools_field, (list, tuple)):
+                                    allowed: set[str] = set()
+                                    for tool in tools_field:
+                                        value: Optional[str]
+                                        if isinstance(tool, str):
+                                            value = tool
+                                        elif isinstance(tool, bytes):
+                                            value = tool.decode("utf-8", errors="ignore")
+                                        elif tool is None:
+                                            value = None
+                                        else:
+                                            value = str(tool)
+                                        if value:
+                                            allowed.add(value)
+                                    allowed_tools_from_config[server_name] = allowed
+
+                            known_agent_tools: Dict[str, set[str]] = {}
+                            if isinstance(agent, BaseAgent):
+                                raw_tools = getattr(agent, "_tools", None)
+                                if isinstance(raw_tools, dict):
+                                    for server_name, tool_list in raw_tools.items():
+                                        names = {
+                                            getattr(tool, "name", "")
+                                            for tool in tool_list
+                                            if getattr(tool, "name", "")
+                                        }
+                                        if names:
+                                            known_agent_tools[server_name] = names
+
+                            for tool in best_tools:
+                                server_name = getattr(tool, "server", "")
+                                tool_name = getattr(tool, "name", "")
+                                if not server_name or not tool_name:
+                                    discarded_tool_count += 1
+                                    continue
+                                if manager_servers and server_name not in manager_servers:
+                                    discarded_tool_count += 1
+                                    continue
+                                allowed_from_config = allowed_tools_from_config.get(server_name)
+                                if allowed_from_config is not None and tool_name not in allowed_from_config:
+                                    discarded_tool_count += 1
+                                    continue
+                                known_tools = known_agent_tools.get(server_name)
+                                if known_tools is not None and tool_name not in known_tools:
+                                    discarded_tool_count += 1
+                                    continue
+                                filtered_tools.append(tool)
+
+                        best_tools = filtered_tools
+                        final_tool_display = (
+                            ", ".join(f"{tool.server}.{tool.name}" for tool in best_tools)
+                            if best_tools
+                            else "none"
+                        )
+                        self._logger.info(
+                            "Task-search recommendations: total=%d, discarded=%d, final=%d; LLM tools=%s",
+                            total_best_tool_count,
+                            discarded_tool_count,
+                            len(best_tools),
+                            final_tool_display,
+                        )
                         if dry_run:
                             self._logger.info("Dry run enabled; skipping execution for task: %s", task_path)
                             send_message(callbacks, message=CallbackMessage(
@@ -266,8 +407,50 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                             task_trace_ids[task_path] = ""
                             continue
 
-                    if task.use_specified_server() and isinstance(agent, BaseAgent):
-                        await agent.change_servers(task.get_mcp_servers())
+                    if isinstance(agent, BaseAgent):
+                        target_servers: Optional[List[Dict[str, Any]]] = None
+                        target_source: Optional[str] = None
+                        if best_tools:
+                            recommended_servers = build_server_configs_from_tools(agent, best_tools)
+                            if recommended_servers:
+                                target_servers = recommended_servers
+                                target_source = "task_search"
+                            else:
+                                self._logger.warning(
+                                    "No matching server configuration found for recommended tools"
+                                )
+                        if target_servers is None and task.use_specified_server():
+                            task_servers = task.get_mcp_servers()
+                            if isinstance(task_servers, list) and task_servers:
+                                target_servers = [
+                                    dict(server) for server in task_servers if isinstance(server, dict)
+                                ]
+                                target_source = "task_config"
+                        if target_servers is None:
+                            target_servers = default_server_configs
+                            target_source = "default"
+
+                        normalised_target = (
+                            default_server_state
+                            if target_servers is default_server_configs
+                            else _normalise_server_configs(target_servers)
+                        )
+                        if normalised_target != current_server_state:
+                            await agent.change_servers(target_servers)
+                            current_server_state = normalised_target
+                            if target_source == "task_search":
+                                self._logger.info(
+                                    "Applying %d recommended tools from task search", len(best_tools)
+                                )
+                        elif target_source == "task_search":
+                            self._logger.info(
+                                "Recommended tools already active; keeping existing server configuration"
+                            )
+                    elif task.use_specified_server():
+                        self._logger.warning(
+                            "Task requires specified servers but agent %s cannot change servers",
+                            type(agent).__name__
+                        )
                     agent.reset()
                     tracer = Tracer(collector=trace_collector)
 
