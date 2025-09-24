@@ -133,7 +133,11 @@ class BenchmarkReport:
         self._add_trace_structure(task_details, trace_id)
 
         # Process evaluation results
-        eval_results = benchmark_result.task_results[task_name]["evaluation_results"]
+        task_result = benchmark_result.task_results.get(task_name, {})
+        error_message = task_result.get("error")
+        if error_message:
+            task_details.append(f"- Error: {error_message}")
+        eval_results = task_result.get("evaluation_results", [])
         task_passed, task_notpassed = self._process_evaluation_results(task_details, eval_results)
 
         return task_details, task_passed, task_notpassed, llm_call_count, total_turns
@@ -144,6 +148,9 @@ class BenchmarkReport:
         parent_ids = set()
         llm_call_count = 0
         total_turns = 0
+
+        if not trace_id:
+            return stats, parent_ids, llm_call_count, total_turns
 
         for task_trace in self.trace_collector.get(trace_id):
             if not task_trace.records:
@@ -174,6 +181,9 @@ class BenchmarkReport:
 
     def _add_performance_metrics(self, task_details, trace_id):
         """Add performance and resource usage statistics."""
+        if not trace_id:
+            return
+
         total_execution_time = sum(task_trace.running_time for task_trace in self.trace_collector.get(trace_id))
         total_records = sum(len(task_trace.records) for task_trace in self.trace_collector.get(trace_id))
         trace_list = list(self.trace_collector.get(trace_id))
@@ -185,6 +195,9 @@ class BenchmarkReport:
 
     def _add_resource_metrics(self, task_details, trace_id):
         """Add resource utilization metrics."""
+        if not trace_id:
+            return
+
         llm_traces = [t for t in self.trace_collector.get(trace_id)
                      if t.records and t.records[0].data.get('type') == 'llm']
 
@@ -214,6 +227,9 @@ class BenchmarkReport:
 
     def _add_trace_structure(self, task_details, trace_id):
         """Add detailed trace structure information."""
+        if not trace_id:
+            return
+
         task_details.append("- Trace Structure:")
         trace_structure = defaultdict(list)
 
