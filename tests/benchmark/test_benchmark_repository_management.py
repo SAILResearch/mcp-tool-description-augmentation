@@ -1,9 +1,12 @@
+import sys
 import unittest
 import pytest
 from mcpuniverse.tracer.collectors import FileCollector
 from mcpuniverse.benchmark.runner import BenchmarkRunner
 from mcpuniverse.benchmark.report import BenchmarkReport
 from mcpuniverse.callbacks.handlers.vprint import get_vprint_callbacks
+
+from tests.benchmark.cli_support import CLI_CONFIG, CLI_REMAINING_ARGS
 
 
 class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
@@ -12,10 +15,15 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
     async def test(self):
         trace_collector = FileCollector(log_file="log/repository_management.log")
         benchmark = BenchmarkRunner("test/repository_management.yaml")
-        results = await benchmark.run(
-            trace_collector=trace_collector,
-            # callbacks=get_vprint_callbacks()
-        )
+        run_kwargs = {
+            "trace_collector": trace_collector,
+            **CLI_CONFIG.runner_kwargs(),
+        }
+        # run_kwargs["callbacks"] = get_vprint_callbacks()
+        results = await benchmark.run(**run_kwargs)
+
+        if CLI_CONFIG.dry_run:
+            return
         report = BenchmarkReport(benchmark, trace_collector=trace_collector)
         report.dump()
 
@@ -36,4 +44,4 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(argv=[sys.argv[0]] + CLI_REMAINING_ARGS)
