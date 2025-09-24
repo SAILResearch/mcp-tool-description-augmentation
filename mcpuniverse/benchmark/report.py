@@ -146,20 +146,21 @@ class BenchmarkReport:
         total_turns = 0
 
         for task_trace in self.trace_collector.get(trace_id):
+            if not task_trace.records:
+                continue
+
             iter_type = task_trace.records[0].data['type']
             iter_name = iter_type
 
             if iter_type == 'llm':
                 summary_prompt = TOOL_RESPONSE_SUMMARIZER_PROMPT[:20]
                 is_summarized = task_trace.records[0].data['messages'][0]['content'].startswith(summary_prompt)
-                print(iter_type, is_summarized)
                 iter_name = f"llm_{'summary' if is_summarized else 'thought'}"
                 llm_call_count += 1
             elif iter_type == 'openai_agent_sdk':
                 # Extract turns information from OpenAI Agent SDK traces
                 turns = task_trace.records[0].data.get('turns', 1)
                 total_turns += turns
-                print(f"OpenAI Agent SDK: {turns} turns")
                 continue
             else:
                 continue
