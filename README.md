@@ -246,6 +246,12 @@ Place your `.env` file in the repository root (the same directory as this `READM
 
 The task similarity search also reuses `OPENAI_API_KEY` from the [core provider configuration](#core-llm-providers) to generate embeddings.
 
+##### Tool Response Truncation
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `MAX_TOKEN_LEN` | Maximum number of tokens from a tool response to keep before invoking the LLM | `16000` |
+
 ##### System Paths
 
 | Environment Variable | Description | Example |
@@ -335,6 +341,8 @@ python tests/benchmark/test_benchmark_browser_automation.py
 python tests/benchmark/test_benchmark_financial_analysis.py
 # Search previous tasks and report matching tools without running the benchmark
 python tests/benchmark/test_benchmark_financial_analysis.py --task-search 1 --dry-run 1
+# Enable tool-response truncation with a 16k token window defined in `.env`
+python tests/benchmark/test_benchmark_financial_analysis.py --truncate-tool-response 1
 
 # Repository Management
 python tests/benchmark/test_benchmark_repository_management.py
@@ -349,7 +357,10 @@ python tests/benchmark/test_benchmark_3d_design.py
 The ``--task-search`` flag embeds the financial analysis description and
 retrieves similar tasks from the vector database.  Combine it with
 ``--dry-run`` to print the matching task IDs and tool scores without
-running the benchmark.
+running the benchmark.  Use ``--truncate-tool-response 1`` to drop the
+oldest tokens from lengthy MCP tool outputs before they are forwarded to
+the LLM.  The truncation window is controlled by ``MAX_TOKEN_LEN`` in
+your environment configuration.
 
 #### Batch Execution
 
