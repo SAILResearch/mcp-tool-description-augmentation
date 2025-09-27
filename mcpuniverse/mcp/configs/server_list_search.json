@@ -1,0 +1,71 @@
+{
+  "date": {
+    "stdio": {
+      "command": "python3",
+      "args": [
+        "-m", "mcpuniverse.mcp.servers.date"
+      ]
+    },
+    "sse": {
+      "command": "python3",
+      "args": [
+        "-m", "mcpuniverse.mcp.servers.date",
+        "--transport", "sse",
+        "--port", "{{PORT}}"
+      ]
+    }
+  },
+
+   "google-search": {
+   "stdio": {
+     "command": "python3",
+     "args": [
+       "-m", "mcpuniverse.mcp.servers.google_search"
+     ]
+   },
+   "sse": {
+     "command": "python3",
+     "args": [
+       "-m", "mcpuniverse.mcp.servers.google_search",
+       "--transport", "sse",
+       "--port", "{{PORT}}"
+     ]
+   },
+   "env": {
+     "SERP_API_KEY": "{{SERP_API_KEY}}"
+   }
+ },
+
+
+  "brave-search": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y", "@brave/brave-search-mcp-server" 
+      ]
+    },
+    "env": {
+      "BRAVE_API_KEY": "{{BRAVE_API_KEY}}"
+    }
+  },
+
+  "fetch": {
+    "stdio": {
+      "command": "python3",
+      "args": [
+        "-m", "mcp_server_fetch",
+        "--ignore-robots-txt"
+      ]
+    }
+  },
+
+
+  "calculator": {
+    "stdio": {
+      "command": "/opt/homebrew/bin/npx",
+      "args": [
+        "-y", "@wrtnlabs/calculator-mcp@latest"
+      ]
+    }
+  }
+}

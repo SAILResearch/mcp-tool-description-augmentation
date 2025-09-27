@@ -18,6 +18,8 @@ spec:
     servers:
       - name: google-search
       - name: fetch
+      - name: brave-search
+      - name: date
     
 
 ---
@@ -26,9 +28,9 @@ spec:
   description: Test agent for google search tasks.
   agent: ReAct-agent
   tasks:
-    - test/web_search/info_search_task_0001.json
-    # - test/web_search/info_search_task_0002.json
-    - test/web_search/info_search_task_0003.json
+    # - test/web_search/info_search_task_0001.json --
+    # # - test/web_search/info_search_task_0002.json
+    # - test/web_search/info_search_task_0003.json --
     # - test/web_search/info_search_task_0004.json
     # - test/web_search/info_search_task_0005.json
     - test/web_search/info_search_task_0006.json
