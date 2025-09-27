@@ -51,7 +51,18 @@
      ]
    }
  },
-
+  "google-search-new": {
+    "stdio": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/Users/mohammedmehedihasan/personal/codes/mcp-tool-description-miner/Google-Search-MCP-Server/dist/google-search.js"
+      ]
+    },
+    "env": {
+      "GOOGLE_API_KEY": "{{GOOGLE_API_KEY}}",
+      "GOOGLE_SEARCH_ENGINE_ID": "{{GOOGLE_SEARCH_ENGINE_ID}}"
+    }
+  },
 
  "google-search": {
    "stdio": {

@@ -1,4 +1,7 @@
+import sys
 import unittest
+from tests.benchmark.cli_support import CLI_CONFIG, CLI_REMAINING_ARGS
+
 import pytest
 from mcpuniverse.tracer.collectors import FileCollector
 from mcpuniverse.benchmark.runner import BenchmarkRunner
@@ -12,7 +15,15 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
     async def test(self):
         trace_collector = FileCollector(log_file="log/browser_automation.log")
         benchmark = BenchmarkRunner("test/browser_automation.yaml")
-        benchmark_results = await benchmark.run(trace_collector=trace_collector, callbacks=get_vprint_callbacks())
+        run_kwargs = {
+            "trace_collector": trace_collector,
+            "callbacks": get_vprint_callbacks(),
+            **CLI_CONFIG.runner_kwargs(),
+        }
+        benchmark_results = await benchmark.run(**run_kwargs)
+
+        if CLI_CONFIG.dry_run:
+            return
         report = BenchmarkReport(benchmark, trace_collector=trace_collector)
         report.dump()
 
@@ -33,4 +44,4 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(argv=[sys.argv[0]] + CLI_REMAINING_ARGS)

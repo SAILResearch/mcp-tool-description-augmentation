@@ -1,55 +1,17 @@
 """Integration test for the financial analysis benchmark.
 
-This file doubles as a small command line utility for experimenting with
-tool selection.  Two optional arguments are recognised when executing
-the module directly:
-
-``--task-search``
-    When set to ``1`` the script will attempt to locate previously
-    executed tasks that are similar to the financial analysis benchmark
-    description.  The logic is implemented in
-    :mod:`mcpuniverse.utils.task_search` and mirrors the JavaScript
-    workflow used elsewhere in the project.
-
-``--dry-run``
-    Only meaningful in combination with ``--task-search``.  The search is
-    executed and diagnostic information is printed while the benchmark
-    runner skips task execution and evaluation.
-
-``--truncate-tool-response``
-    Enables (``1``) or disables (``0``) truncation of MCP tool outputs
-    before forwarding them to the LLM.  When enabled the truncation limit
-    is read from the ``MAX_TOKEN_LEN`` environment variable.
-
-The arguments are parsed before invoking :func:`unittest.main` so that
-any remaining parameters continue to work with the standard unittest
-runner.
+The heavy lifting for the custom command-line flags used by the benchmark
+scripts now lives in :mod:`tests.benchmark.cli_support`.  See that module for a
+full description of the available switches.
 """
 
-import argparse
 import sys
 import unittest
-from pathlib import Path
 
-
-# Ensure the repository root is importable when the script is executed
-# directly (e.g. ``python tests/...``).  ``sys.path`` normally points to the
-# test directory, so we prepend the project root to make ``mcpuniverse``
-# available without requiring ``PYTHONPATH`` tweaks.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:  # pragma: no cover - defensive
-    sys.path.insert(0, str(PROJECT_ROOT))
+from tests.benchmark.cli_support import CLI_CONFIG, CLI_REMAINING_ARGS
 
 import pytest
 from mcpuniverse.tracer.collectors.file import FileCollector
-
-
-# Global flags controlled by command line arguments.  Defaults are
-# chosen to preserve the original behaviour of the test when executed by
-# the test harness.
-TASK_SEARCH = 0
-DRY_RUN = 0
-TRUNCATE_TOOL_RESPONSE = 0
 
 
 class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
@@ -62,16 +24,15 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
         trace_collector = FileCollector(log_file="log/financial_analysis.log")
         benchmark = BenchmarkRunner("test/financial_analysis.yaml")
 
-        results = await benchmark.run(
-            trace_collector=trace_collector,
-            callbacks=get_vprint_callbacks(),
-            task_search=bool(TASK_SEARCH),
-            dry_run=bool(DRY_RUN),
-            truncate_tool_response=bool(TRUNCATE_TOOL_RESPONSE),
-        )
+        run_kwargs = {
+            "trace_collector": trace_collector,
+            "callbacks": get_vprint_callbacks(),
+            **CLI_CONFIG.runner_kwargs(),
+        }
+        results = await benchmark.run(**run_kwargs)
         print(results)
 
-        if DRY_RUN:
+        if CLI_CONFIG.dry_run:
             return
 
         from mcpuniverse.benchmark.report import BenchmarkReport
@@ -98,13 +59,4 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--task-search", type=int, default=0)
-    parser.add_argument("--dry-run", type=int, default=0)
-    parser.add_argument("--truncate-tool-response", type=int, default=0)
-    args, remaining = parser.parse_known_args()
-    TASK_SEARCH = args.task_search
-    DRY_RUN = args.dry_run
-    TRUNCATE_TOOL_RESPONSE = args.truncate_tool_response
-    # Forward any remaining arguments to ``unittest``.
-    unittest.main(argv=[sys.argv[0]] + remaining)
+    unittest.main(argv=[sys.argv[0]] + CLI_REMAINING_ARGS)

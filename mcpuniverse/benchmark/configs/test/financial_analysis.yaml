@@ -12,14 +12,15 @@ spec:
   type: function_call
   config:
     llm: llm-1
-    instruction: You are an agent for financial analysis. If you need to calculate the result, you can use the calculator tool.
+    instruction: You are an agent for financial analysis. You MUST use calculator for any math, including basic arithmetic operations, percentages, squaring, square roots, and comparisons. While fetching time range based data always use 1 day more than the end date and 1 day less than the start date to avoid data missing issue.
     max_iterations: 20
     summarize_tool_response: false
     servers:
       - name: yfinance
-      - name: calculator
       # - name: investor
       # - name: financial-datasets
+      - name: calculator
+      - name: date
 
 ---
 kind: benchmark

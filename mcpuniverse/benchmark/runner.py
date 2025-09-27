@@ -291,203 +291,284 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                     stored_result = store.load_task_result(
                         benchmark=benchmark, task_config_path=task_filepath)
                     if not overwrite and stored_result is not None:
-                        task_results[task_path] = stored_result["results"]
+                        task_results[task_path] = {
+                            "evaluation_results": stored_result["results"]
+                        }
                         task_trace_ids[task_path] = stored_result["trace_id"]
                         self._logger.info("Loaded stored results for task: %s", task_path)
                         continue
 
-                    # Execute the task and the corresponding evaluations
-                    task = Task(task_filepath, context=self._context)
-                    question = task.get_question()
-                    output_format = task.get_output_format()
+                    task: Optional[Task] = None
+                    tracer: Optional[Tracer] = None
+                    trace_id: str = ""
+                    evaluation_results: List[EvaluationResult] = []
+                    trace_records: List[Any] = []
+                    task_error: Optional[str] = None
+                    result_recorded = False
+                    task_initialized = False
+                    execution_started = False
 
-                    best_tools: List[Any] = []
-                    await send_message_async(callbacks, message=CallbackMessage(
-                        source=__file__,
-                        type=MessageType.LOG,
-                        metadata={"event": "task_description", "data": task},
-                    ))
+                    try:
+                        task = Task(task_filepath, context=self._context)
+                        task_initialized = True
+                        question = task.get_question()
+                        output_format = task.get_output_format()
 
-                    if task_search and find_best_tools_fn is not None:
-                        best_tools = find_best_tools_fn(question, dry_run=dry_run)
-                        total_best_tool_count = len(best_tools)
-                        discarded_tool_count = 0
-                        filtered_tools: List[Any] = []
-                        if best_tools:
-                            manager_for_lookup = getattr(agent, "_mcp_manager", None) or mcp_manager
-                            manager_servers: set[str] = set()
-                            if manager_for_lookup is not None:
-                                try:
-                                    manager_servers = set(manager_for_lookup.list_server_names())
-                                except AttributeError:
+                        best_tools: List[Any] = []
+                        await send_message_async(callbacks, message=CallbackMessage(
+                            source=__file__,
+                            type=MessageType.LOG,
+                            metadata={"event": "task_description", "data": task},
+                        ))
+
+                        if task_search and find_best_tools_fn is not None:
+                            best_tools = find_best_tools_fn(question, dry_run=dry_run)
+                            total_best_tool_count = len(best_tools)
+                            discarded_tool_count = 0
+                            filtered_tools: List[Any] = []
+                            if best_tools:
+                                manager_for_lookup = getattr(agent, "_mcp_manager", None) or mcp_manager
+                                manager_servers: set[str] = set()
+                                if manager_for_lookup is not None:
                                     try:
-                                        manager_servers = set(manager_for_lookup.get_configs().keys())
+                                        manager_servers = set(manager_for_lookup.list_server_names())
+                                    except AttributeError:
+                                        try:
+                                            manager_servers = set(manager_for_lookup.get_configs().keys())
+                                        except Exception:  # pragma: no cover - defensive guard
+                                            manager_servers = set()
                                     except Exception:  # pragma: no cover - defensive guard
                                         manager_servers = set()
-                                except Exception:  # pragma: no cover - defensive guard
-                                    manager_servers = set()
 
-                            allowed_tools_from_config: Dict[str, set[str]] = {}
-                            for server in default_server_configs:
-                                if not isinstance(server, dict):
-                                    continue
-                                server_name = server.get("name")
-                                if not server_name:
-                                    continue
-                                tools_field = server.get("tools")
-                                if isinstance(tools_field, (list, tuple)):
-                                    allowed: set[str] = set()
-                                    for tool in tools_field:
-                                        value: Optional[str]
-                                        if isinstance(tool, str):
-                                            value = tool
-                                        elif isinstance(tool, bytes):
-                                            value = tool.decode("utf-8", errors="ignore")
-                                        elif tool is None:
-                                            value = None
-                                        else:
-                                            value = str(tool)
-                                        if value:
-                                            allowed.add(value)
-                                    allowed_tools_from_config[server_name] = allowed
+                                allowed_tools_from_config: Dict[str, set[str]] = {}
+                                for server in default_server_configs:
+                                    if not isinstance(server, dict):
+                                        continue
+                                    server_name = server.get("name")
+                                    if not server_name:
+                                        continue
+                                    tools_field = server.get("tools")
+                                    if isinstance(tools_field, (list, tuple)):
+                                        allowed: set[str] = set()
+                                        for tool in tools_field:
+                                            value: Optional[str]
+                                            if isinstance(tool, str):
+                                                value = tool
+                                            elif isinstance(tool, dict):
+                                                value = tool.get("name")
+                                            else:
+                                                value = None
+                                            if value:
+                                                allowed.add(str(value))
+                                        allowed_tools_from_config[server_name] = allowed
+                                    elif isinstance(tools_field, str):
+                                        allowed_tools_from_config[server_name] = {tools_field}
 
-                            known_agent_tools: Dict[str, set[str]] = {}
-                            if isinstance(agent, BaseAgent):
-                                raw_tools = getattr(agent, "_tools", None)
-                                if isinstance(raw_tools, dict):
-                                    for server_name, tool_list in raw_tools.items():
-                                        names = {
-                                            getattr(tool, "name", "")
-                                            for tool in tool_list
-                                            if getattr(tool, "name", "")
-                                        }
-                                        if names:
-                                            known_agent_tools[server_name] = names
+                                known_agent_tools: Dict[str, set[str]] = {}
+                                if isinstance(agent, BaseAgent):
+                                    agent_tools = getattr(agent, "list_tools", None)
+                                    if callable(agent_tools):
+                                        try:
+                                            known_agent_tools = agent_tools()
+                                        except Exception:  # pragma: no cover - defensive guard
+                                            known_agent_tools = {}
 
-                            for tool in best_tools:
-                                server_name = getattr(tool, "server", "")
-                                tool_name = getattr(tool, "name", "")
-                                if not server_name or not tool_name:
-                                    discarded_tool_count += 1
-                                    continue
-                                if manager_servers and server_name not in manager_servers:
-                                    discarded_tool_count += 1
-                                    continue
-                                allowed_from_config = allowed_tools_from_config.get(server_name)
-                                if allowed_from_config is not None and tool_name not in allowed_from_config:
-                                    discarded_tool_count += 1
-                                    continue
-                                known_tools = known_agent_tools.get(server_name)
-                                if known_tools is not None and tool_name not in known_tools:
-                                    discarded_tool_count += 1
-                                    continue
-                                filtered_tools.append(tool)
+                                for tool in best_tools:
+                                    server_name = getattr(tool, "server", None)
+                                    tool_name = getattr(tool, "name", None)
+                                    if not server_name or not tool_name:
+                                        discarded_tool_count += 1
+                                        continue
 
-                        best_tools = filtered_tools
-                        final_tool_display = (
-                            ", ".join(f"{tool.server}.{tool.name}" for tool in best_tools)
-                            if best_tools
-                            else "none"
-                        )
-                        self._logger.info(
-                            "Task-search recommendations: total=%d, discarded=%d, final=%d; LLM tools=%s",
-                            total_best_tool_count,
-                            discarded_tool_count,
-                            len(best_tools),
-                            final_tool_display,
-                        )
-                        if dry_run:
-                            self._logger.info("Dry run enabled; skipping execution for task: %s", task_path)
+                                    server_name = str(server_name)
+                                    tool_name = str(tool_name)
+
+                                    if manager_servers and server_name not in manager_servers:
+                                        discarded_tool_count += 1
+                                        continue
+                                    allowed_from_config = allowed_tools_from_config.get(server_name)
+                                    if allowed_from_config is not None and tool_name not in allowed_from_config:
+                                        discarded_tool_count += 1
+                                        continue
+                                    known_tools = known_agent_tools.get(server_name)
+                                    if known_tools is not None and tool_name not in known_tools:
+                                        discarded_tool_count += 1
+                                        continue
+                                    filtered_tools.append(tool)
+
+                            best_tools = filtered_tools
+                            final_tool_display = (
+                                ", ".join(f"{tool.server}.{tool.name}" for tool in best_tools)
+                                if best_tools
+                                else "none"
+                            )
+                            self._logger.info(
+                                "Task-search recommendations: total=%d, discarded=%d, final=%d; LLM tools=%s",
+                                total_best_tool_count,
+                                discarded_tool_count,
+                                len(best_tools),
+                                final_tool_display,
+                            )
+                            if dry_run:
+                                self._logger.info("Dry run enabled; skipping execution for task: %s", task_path)
+                                send_message(callbacks, message=CallbackMessage(
+                                    source="benchmark_runner",
+                                    type=MessageType.LOG,
+                                    data=f"Skipping task execution due to dry-run: {task_path}",
+                                ))
+                                task_results[task_path] = {"evaluation_results": []}
+                                task_trace_ids[task_path] = ""
+                                result_recorded = True
+                                task_initialized = False
+                                continue
+
+                        if isinstance(agent, BaseAgent):
+                            target_servers: Optional[List[Dict[str, Any]]] = None
+                            target_source: Optional[str] = None
+                            if best_tools:
+                                recommended_servers = build_server_configs_from_tools(agent, best_tools)
+                                if recommended_servers:
+                                    target_servers = recommended_servers
+                                    target_source = "task_search"
+                                else:
+                                    self._logger.warning(
+                                        "No matching server configuration found for recommended tools"
+                                    )
+                            if target_servers is None and task.use_specified_server():
+                                task_servers = task.get_mcp_servers()
+                                if isinstance(task_servers, list) and task_servers:
+                                    target_servers = [
+                                        dict(server) for server in task_servers if isinstance(server, dict)
+                                    ]
+                                    target_source = "task_config"
+                            if target_servers is None:
+                                target_servers = default_server_configs
+                                target_source = "default"
+
+                            normalised_target = (
+                                default_server_state
+                                if target_servers is default_server_configs
+                                else _normalise_server_configs(target_servers)
+                            )
+                            if normalised_target != current_server_state:
+                                await agent.change_servers(target_servers)
+                                current_server_state = normalised_target
+                                if target_source == "task_search":
+                                    self._logger.info(
+                                        "Applying %d recommended tools from task search", len(best_tools)
+                                    )
+                            elif target_source == "task_search":
+                                self._logger.info(
+                                    "Recommended tools already active; keeping existing server configuration"
+                                )
+                        elif task.use_specified_server():
+                            self._logger.warning(
+                                "Task requires specified servers but agent %s cannot change servers",
+                                type(agent).__name__
+                            )
+
+                        agent.reset()
+                        tracer = Tracer(collector=trace_collector)
+                        trace_id = tracer.trace_id
+                        execution_started = True
+
+                        try:
+                            response = await agent.execute(
+                                question,
+                                output_format=output_format,
+                                tracer=tracer,
+                                callbacks=callbacks
+                            )
+                            result = response.get_response_str()
+                        except Exception as exc:
+                            task_error = f"Execution failed: {exc}"
+                            self._logger.exception(
+                                "Execution failed for task %s", task_path, exc_info=exc
+                            )
                             send_message(callbacks, message=CallbackMessage(
                                 source="benchmark_runner",
                                 type=MessageType.LOG,
-                                data=f"Skipping task execution due to dry-run: {task_path}",
+                                data=f"Execution failed for task {task_path}: {exc}",
                             ))
-                            task_results[task_path] = {"evaluation_results": []}
-                            task_trace_ids[task_path] = ""
-                            continue
-
-                    if isinstance(agent, BaseAgent):
-                        target_servers: Optional[List[Dict[str, Any]]] = None
-                        target_source: Optional[str] = None
-                        if best_tools:
-                            recommended_servers = build_server_configs_from_tools(agent, best_tools)
-                            if recommended_servers:
-                                target_servers = recommended_servers
-                                target_source = "task_search"
+                        else:
+                            try:
+                                evaluation_results = await task.evaluate(result)
+                            except Exception as exc:
+                                task_error = f"Evaluation failed: {exc}"
+                                self._logger.exception(
+                                    "Evaluation failed for task %s", task_path, exc_info=exc
+                                )
+                                send_message(callbacks, message=CallbackMessage(
+                                    source="benchmark_runner",
+                                    type=MessageType.LOG,
+                                    data=f"Evaluation failed for task {task_path}: {exc}",
+                                ))
                             else:
-                                self._logger.warning(
-                                    "No matching server configuration found for recommended tools"
+                                if trace_collector is not None:
+                                    try:
+                                        trace_records = list(trace_collector.get(tracer.trace_id))
+                                    except Exception:
+                                        trace_records = []
+                                try:
+                                    store.dump_task_result(
+                                        benchmark=benchmark,
+                                        task_config_path=task_filepath,
+                                        evaluation_results=evaluation_results,
+                                        trace_id=tracer.trace_id,
+                                        overwrite=True
+                                    )
+                                except Exception as exc:
+                                    self._logger.exception(
+                                        "Failed to store results for task %s", task_path, exc_info=exc
+                                    )
+
+                        if not trace_records and trace_collector is not None and tracer is not None:
+                            try:
+                                trace_records = list(trace_collector.get(tracer.trace_id))
+                            except Exception:
+                                trace_records = []
+
+                    except Exception as exc:  # pragma: no cover - defensive guard
+                        task_error = f"Task execution failed: {exc}"
+                        self._logger.exception(
+                            "Unexpected error while running task %s", task_path, exc_info=exc
+                        )
+                        send_message(callbacks, message=CallbackMessage(
+                            source="benchmark_runner",
+                            type=MessageType.LOG,
+                            data=f"Task failed due to unexpected error {task_path}: {exc}",
+                        ))
+                    finally:
+                        if not result_recorded:
+                            task_results[task_path] = {
+                                "evaluation_results": evaluation_results
+                            }
+                            if task_error:
+                                task_results[task_path]["error"] = task_error
+                            task_trace_ids[task_path] = trace_id
+
+                        if execution_started and task is not None:
+                            try:
+                                await task.reset(trace_records)
+                            except Exception as exc:
+                                self._logger.exception(
+                                    "Failed to reset task %s", task_path, exc_info=exc
                                 )
-                        if target_servers is None and task.use_specified_server():
-                            task_servers = task.get_mcp_servers()
-                            if isinstance(task_servers, list) and task_servers:
-                                target_servers = [
-                                    dict(server) for server in task_servers if isinstance(server, dict)
-                                ]
-                                target_source = "task_config"
-                        if target_servers is None:
-                            target_servers = default_server_configs
-                            target_source = "default"
 
-                        normalised_target = (
-                            default_server_state
-                            if target_servers is default_server_configs
-                            else _normalise_server_configs(target_servers)
-                        )
-                        if normalised_target != current_server_state:
-                            await agent.change_servers(target_servers)
-                            current_server_state = normalised_target
-                            if target_source == "task_search":
-                                self._logger.info(
-                                    "Applying %d recommended tools from task search", len(best_tools)
+                        if task_initialized and task is not None:
+                            try:
+                                await task.cleanup()
+                            except Exception as exc:
+                                self._logger.exception(
+                                    "Failed to cleanup task %s", task_path, exc_info=exc
                                 )
-                        elif target_source == "task_search":
-                            self._logger.info(
-                                "Recommended tools already active; keeping existing server configuration"
-                            )
-                    elif task.use_specified_server():
-                        self._logger.warning(
-                            "Task requires specified servers but agent %s cannot change servers",
-                            type(agent).__name__
-                        )
-                    agent.reset()
-                    tracer = Tracer(collector=trace_collector)
-
-                    try:
-                        response = await agent.execute(
-                            question,
-                            output_format=output_format,
-                            tracer=tracer,
-                            callbacks=callbacks
-                        )
-                        result = response.get_response_str()
-                    except Exception as e:
-                        result = str(e)
-                    evaluation_results = await task.evaluate(result)
-
-                    # Save the evaluation results
-                    task_results[task_path] = {
-                        "evaluation_results": evaluation_results
-                    }
-                    task_trace_ids[task_path] = tracer.trace_id
-                    trace_records = trace_collector.get(tracer.trace_id)
-                    store.dump_task_result(
-                        benchmark=benchmark,
-                        task_config_path=task_filepath,
-                        evaluation_results=evaluation_results,
-                        trace_id=tracer.trace_id,
-                        overwrite=True
-                    )
-
-                    # Reset task status/environment
-                    self._logger.info("Resetting task %s", task_path)
-                    await task.reset(trace_records)
-                    await task.cleanup()
-                    self._logger.info("Finished resetting task %s", task_path)
-                    if task.use_specified_server() and isinstance(agent, BaseAgent):
-                        await agent.cleanup()
-
+                            if task.use_specified_server() and isinstance(agent, BaseAgent):
+                                try:
+                                    await agent.cleanup()
+                                except Exception as exc:
+                                    self._logger.exception(
+                                        "Failed to cleanup agent after task %s", task_path, exc_info=exc
+                                    )
             outputs.append(BenchmarkResult(
                 benchmark=benchmark, task_results=task_results, task_trace_ids=task_trace_ids))
             self._logger.info("Finished benchmark: %s", benchmark.description)
