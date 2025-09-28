@@ -7,7 +7,7 @@ import os
 import uuid
 import json
 from abc import abstractmethod
-from typing import List, Any, Dict, Union, Optional, Literal
+from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from pydantic import BaseModel
@@ -27,11 +27,13 @@ from mcpuniverse.callbacks.base import (
     send_message
 )
 from mcpuniverse.common.context import Context
-from mcpuniverse.utils.task_search import ToolInfo, rank_tools_by_history
 from mcpuniverse.utils.tool_descriptions import (
     compose_tool_description,
     load_additional_tool_descriptions,
 )
+
+if TYPE_CHECKING:
+    from mcpuniverse.utils.task_search import ToolInfo
 
 DEFAULT_CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 OUTPUT_FORMAT_PROMPT = """
@@ -402,20 +404,33 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         if not self._tools:
             return
 
+        logger = self._logger or logging.getLogger(f"{self.__class__.__name__}:{self._name}")
         additional_descriptions = load_additional_tool_descriptions()
-        tool_infos: List[ToolInfo] = []
-        for server_name, tool_list in self._tools.items():
-            for tool in tool_list:
-                tool_infos.append(ToolInfo(name=tool.name, server=server_name))
-
         scores: Dict[str, int] = {}
-        if tool_infos:
-            try:
-                _, scores = rank_tools_by_history(tool_infos, db_url=self._resolve_db_url())
-            except Exception as exc:  # pragma: no cover - defensive guard
-                logger = self._logger or logging.getLogger(f"{self.__class__.__name__}:{self._name}")
-                logger.warning("Failed to compute tool performance scores: %s", exc)
-                scores = {}
+        tool_info_cls = None
+        ranker = None
+        try:  # pragma: no cover - optional dependency may be missing
+            from mcpuniverse.utils.task_search import ToolInfo as _ToolInfo, rank_tools_by_history as _rank
+        except ModuleNotFoundError:  # pragma: no cover - optional dependency
+            logger.debug(
+                "Task search utilities unavailable; skipping tool performance scoring"
+            )
+        else:
+            tool_info_cls = _ToolInfo
+            ranker = _rank
+
+        if tool_info_cls and ranker:
+            tool_infos: List["ToolInfo"] = []
+            for server_name, tool_list in self._tools.items():
+                for tool in tool_list:
+                    tool_infos.append(tool_info_cls(name=tool.name, server=server_name))
+
+            if tool_infos:
+                try:
+                    _, scores = ranker(tool_infos, db_url=self._resolve_db_url())
+                except Exception as exc:  # pragma: no cover - defensive guard
+                    logger.warning("Failed to compute tool performance scores: %s", exc)
+                    scores = {}
 
         for server_name, tool_list in self._tools.items():
             extras = additional_descriptions.get(server_name, {})
