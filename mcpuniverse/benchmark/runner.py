@@ -29,6 +29,7 @@ from mcpuniverse.callbacks.base import (
     send_message_async,
     send_message,
 )
+from mcpuniverse.utils.tool_history import record_tool_history, resolve_llm_model_name
 
 
 def _normalise_server_configs(
@@ -227,6 +228,8 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
         """
         task_search = bool(task_search)
         dry_run = bool(dry_run)
+        db_url = (self._context.get_env("DB_URL", "")
+                  or self._context.get_env("DATABASE_URL", ""))
 
         if mcp_manager is None:
             mcp_manager = MCPManager(context=self._context)
@@ -252,6 +255,9 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                 type=MessageType.LOG,
                 metadata={"event": "list_tools", "data": agent}
             ))
+            agent_llm_model = None
+            if isinstance(agent, BaseAgent):
+                agent_llm_model = resolve_llm_model_name(getattr(agent, "_llm", None))
 
             default_server_configs: List[Dict[str, Any]] = []
             default_server_state: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = tuple()
@@ -307,6 +313,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                     result_recorded = False
                     task_initialized = False
                     execution_started = False
+                    task_identifier = os.path.splitext(os.path.basename(task_path))[0] if task_path else None
 
                     try:
                         task = Task(task_filepath, context=self._context)
@@ -527,6 +534,14 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                 trace_records = list(trace_collector.get(tracer.trace_id))
                             except Exception:
                                 trace_records = []
+
+                        record_tool_history(
+                            trace_records,
+                            db_url=db_url,
+                            task_id=task_identifier,
+                            source_file=task_filepath,
+                            llm_model=agent_llm_model,
+                        )
 
                     except Exception as exc:  # pragma: no cover - defensive guard
                         task_error = f"Task execution failed: {exc}"

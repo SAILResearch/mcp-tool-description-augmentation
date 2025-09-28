@@ -27,6 +27,11 @@ from mcpuniverse.callbacks.base import (
     send_message
 )
 from mcpuniverse.common.context import Context
+from mcpuniverse.utils.task_search import ToolInfo, rank_tools_by_history
+from mcpuniverse.utils.tool_descriptions import (
+    compose_tool_description,
+    load_additional_tool_descriptions,
+)
 
 DEFAULT_CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 OUTPUT_FORMAT_PROMPT = """
@@ -166,6 +171,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         self._mcp_manager: MCPManager = mcp_manager
         self._mcp_clients: Dict[str, MCPClient] = OrderedDict()
         self._tools: Dict[str, Any] = {}
+        self._original_tool_descriptions: Dict[str, str] = {}
         self._logger = None
         self._initialized: bool = False
         self._context: Optional[Context] = None
@@ -206,6 +212,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             self._mcp_clients[server_name] = client
         # Get the tools information
         self._tools = {}
+        self._original_tool_descriptions = {}
         for server in mcp_servers:
             server_name = server["name"]
             tools = await self._mcp_clients[server_name].list_tools()
@@ -214,6 +221,11 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                 self._tools[server_name] = tools
             else:
                 self._tools[server_name] = [tool for tool in tools if tool.name in selected_tools]
+            for tool in self._tools.get(server_name, []):
+                key = f"{server_name}__{tool.name}"
+                self._original_tool_descriptions[key] = tool.description or ""
+
+        self._refresh_tool_metadata()
         await self._initialize()
         self._initialized = True
 
@@ -253,6 +265,8 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             Exception: Any exception that occurs during execution.
         """
         assert self._initialized, "The agent is not initialized."
+        self._refresh_tool_metadata()
+
         with kwargs.get("tracer", Tracer()).sprout() as tracer:
             if "tracer" in kwargs:
                 kwargs.pop("tracer")
@@ -366,6 +380,54 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             tracer=tracer
         )
         return tool_summary
+
+    def _resolve_db_url(self) -> Optional[str]:
+        candidates = []
+        if self._context is not None:
+            candidates.extend([
+                self._context.get_env("DB_URL", ""),
+                self._context.get_env("DATABASE_URL", ""),
+            ])
+        else:
+            candidates.extend([
+                os.getenv("DB_URL", ""),
+                os.getenv("DATABASE_URL", ""),
+            ])
+        for candidate in candidates:
+            if candidate and str(candidate).strip():
+                return str(candidate).strip()
+        return None
+
+    def _refresh_tool_metadata(self) -> None:
+        if not self._tools:
+            return
+
+        additional_descriptions = load_additional_tool_descriptions()
+        tool_infos: List[ToolInfo] = []
+        for server_name, tool_list in self._tools.items():
+            for tool in tool_list:
+                tool_infos.append(ToolInfo(name=tool.name, server=server_name))
+
+        scores: Dict[str, int] = {}
+        if tool_infos:
+            try:
+                _, scores = rank_tools_by_history(tool_infos, db_url=self._resolve_db_url())
+            except Exception as exc:  # pragma: no cover - defensive guard
+                logger = self._logger or logging.getLogger(f"{self.__class__.__name__}:{self._name}")
+                logger.warning("Failed to compute tool performance scores: %s", exc)
+                scores = {}
+
+        for server_name, tool_list in self._tools.items():
+            extras = additional_descriptions.get(server_name, {})
+            for tool in tool_list:
+                key = f"{server_name}__{tool.name}"
+                base_description = self._original_tool_descriptions.get(key)
+                if base_description is None:
+                    base_description = tool.description or ""
+                    self._original_tool_descriptions[key] = base_description
+                additional_text = extras.get(tool.name)
+                score = scores.get(key, 0)
+                tool.description = compose_tool_description(base_description, score, additional_text)
 
     async def call_tool(
             self,
