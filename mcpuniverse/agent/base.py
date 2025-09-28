@@ -442,7 +442,19 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                     self._original_tool_descriptions[key] = base_description
                 additional_text = extras.get(tool.name)
                 score = scores.get(key, 0)
-                tool.description = compose_tool_description(base_description, score, additional_text)
+                composed_description = compose_tool_description(
+                    base_description,
+                    score,
+                    additional_text,
+                )
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(
+                        "Composed description for %s.%s that will be sent to the LLM:\n%s",
+                        server_name,
+                        tool.name,
+                        composed_description,
+                    )
+                tool.description = composed_description
 
     async def call_tool(
             self,
@@ -494,9 +506,10 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                                 self._logger.info(
                                     "Executing tool %s of server %s", tool_call["tool"], tool_call["server"])
                                 self._logger.info("With arguments: %s", str(tool_call["arguments"]))
+                                final_description = (tool.description or "").rstrip()
                                 self._logger.info(
-                                    "Final tool description presented to the LLM: %s",
-                                    tool.description or "",
+                                    "Final tool description presented to the LLM:\n%s",
+                                    final_description,
                                 )
                             response = await self._mcp_clients[tool_call["server"]].execute_tool(
                                 tool_call["tool"], tool_call["arguments"], callbacks=callbacks)
