@@ -1,0 +1,17 @@
+[
+  {
+    "mcp_server_name": "filesystem",
+    "tool_name": "read_file",
+    "additional_description": "Provides quick access to project files; ideal for retrieving documentation and configuration snippets."
+  },
+  {
+    "mcp_server_name": "database",
+    "tool_name": "run_query",
+    "additional_description": "Supports parameterized SQL queries against the analytics replica. Prefer when the task calls for structured data extraction."
+  },
+  {
+    "mcp_server_name": "web_search",
+    "tool_name": "search",
+    "additional_description": "Queries a curated web index with up-to-date results. Best suited for gathering recent facts or external references."
+  }
+]

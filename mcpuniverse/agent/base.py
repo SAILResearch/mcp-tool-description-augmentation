@@ -7,7 +7,7 @@ import os
 import uuid
 import json
 from abc import abstractmethod
-from typing import List, Any, Dict, Union, Optional, Literal
+from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from pydantic import BaseModel
@@ -27,6 +27,13 @@ from mcpuniverse.callbacks.base import (
     send_message
 )
 from mcpuniverse.common.context import Context
+from mcpuniverse.utils.tool_descriptions import (
+    compose_tool_description,
+    load_additional_tool_descriptions,
+)
+
+if TYPE_CHECKING:
+    from mcpuniverse.utils.task_search import ToolInfo
 
 DEFAULT_CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 OUTPUT_FORMAT_PROMPT = """
@@ -166,6 +173,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         self._mcp_manager: MCPManager = mcp_manager
         self._mcp_clients: Dict[str, MCPClient] = OrderedDict()
         self._tools: Dict[str, Any] = {}
+        self._original_tool_descriptions: Dict[str, str] = {}
         self._logger = None
         self._initialized: bool = False
         self._context: Optional[Context] = None
@@ -206,6 +214,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             self._mcp_clients[server_name] = client
         # Get the tools information
         self._tools = {}
+        self._original_tool_descriptions = {}
         for server in mcp_servers:
             server_name = server["name"]
             tools = await self._mcp_clients[server_name].list_tools()
@@ -214,6 +223,11 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                 self._tools[server_name] = tools
             else:
                 self._tools[server_name] = [tool for tool in tools if tool.name in selected_tools]
+            for tool in self._tools.get(server_name, []):
+                key = f"{server_name}__{tool.name}"
+                self._original_tool_descriptions[key] = tool.description or ""
+
+        self._refresh_tool_metadata()
         await self._initialize()
         self._initialized = True
 
@@ -253,6 +267,8 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             Exception: Any exception that occurs during execution.
         """
         assert self._initialized, "The agent is not initialized."
+        self._refresh_tool_metadata()
+
         with kwargs.get("tracer", Tracer()).sprout() as tracer:
             if "tracer" in kwargs:
                 kwargs.pop("tracer")
@@ -367,6 +383,79 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         )
         return tool_summary
 
+    def _resolve_db_url(self) -> Optional[str]:
+        candidates = []
+        if self._context is not None:
+            candidates.extend([
+                self._context.get_env("DB_URL", ""),
+                self._context.get_env("DATABASE_URL", ""),
+            ])
+        else:
+            candidates.extend([
+                os.getenv("DB_URL", ""),
+                os.getenv("DATABASE_URL", ""),
+            ])
+        for candidate in candidates:
+            if candidate and str(candidate).strip():
+                return str(candidate).strip()
+        return None
+
+    def _refresh_tool_metadata(self) -> None:
+        if not self._tools:
+            return
+
+        logger = self._logger or logging.getLogger(f"{self.__class__.__name__}:{self._name}")
+        additional_descriptions = load_additional_tool_descriptions()
+        scores: Dict[str, int] = {}
+        tool_info_cls = None
+        ranker = None
+        try:  # pragma: no cover - optional dependency may be missing
+            from mcpuniverse.utils.task_search import ToolInfo as _ToolInfo, rank_tools_by_history as _rank
+        except ModuleNotFoundError:  # pragma: no cover - optional dependency
+            logger.debug(
+                "Task search utilities unavailable; skipping tool performance scoring"
+            )
+        else:
+            tool_info_cls = _ToolInfo
+            ranker = _rank
+
+        if tool_info_cls and ranker:
+            tool_infos: List["ToolInfo"] = []
+            for server_name, tool_list in self._tools.items():
+                for tool in tool_list:
+                    tool_infos.append(tool_info_cls(name=tool.name, server=server_name))
+
+            if tool_infos:
+                try:
+                    _, scores = ranker(tool_infos, db_url=self._resolve_db_url())
+                except Exception as exc:  # pragma: no cover - defensive guard
+                    logger.warning("Failed to compute tool performance scores: %s", exc)
+                    scores = {}
+
+        for server_name, tool_list in self._tools.items():
+            extras = additional_descriptions.get(server_name, {})
+            for tool in tool_list:
+                key = f"{server_name}__{tool.name}"
+                base_description = self._original_tool_descriptions.get(key)
+                if base_description is None:
+                    base_description = tool.description or ""
+                    self._original_tool_descriptions[key] = base_description
+                additional_text = extras.get(tool.name)
+                score = scores.get(key, 0)
+                composed_description = compose_tool_description(
+                    base_description,
+                    score,
+                    additional_text,
+                )
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(
+                        "Composed description for %s.%s that will be sent to the LLM:\n%s",
+                        server_name,
+                        tool.name,
+                        composed_description,
+                    )
+                tool.description = composed_description
+
     async def call_tool(
             self,
             llm_response: Union[str, Dict],
@@ -417,6 +506,11 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                                 self._logger.info(
                                     "Executing tool %s of server %s", tool_call["tool"], tool_call["server"])
                                 self._logger.info("With arguments: %s", str(tool_call["arguments"]))
+                                final_description = (tool.description or "").rstrip()
+                                self._logger.info(
+                                    "Final tool description presented to the LLM:\n%s",
+                                    final_description,
+                                )
                             response = await self._mcp_clients[tool_call["server"]].execute_tool(
                                 tool_call["tool"], tool_call["arguments"], callbacks=callbacks)
                             t.add({

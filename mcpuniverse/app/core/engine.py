@@ -19,6 +19,7 @@ from mcpuniverse.benchmark.task import Task
 from mcpuniverse.tracer.tracer import Tracer
 from mcpuniverse.tracer.collectors.memory import MemoryCollector
 from mcpuniverse.evaluator.evaluator import EvaluationResult
+from mcpuniverse.utils.tool_history import record_tool_history, resolve_llm_model_name
 from mcpuniverse.app.db.database import sessionmanager
 from mcpuniverse.app.db.sqlc.benchmark_job import AsyncQuerier, UpdateBenchmarkJobParams
 
@@ -164,6 +165,13 @@ class AppEngine:
                     agent_name = workflow.get_entrypoint()
                 agent = workflow.get_component(agent_name)
                 await agent.initialize()
+                agent_llm_model = resolve_llm_model_name(
+                    getattr(agent, "_llm", None),
+                    agent_name=agent_name,
+                    workflow_config=workflow.dump_config(),
+                )
+                db_url = (context.get_env("DB_URL", "") or context.get_env("DATABASE_URL", "")
+                          or os.getenv("DB_URL", "") or os.getenv("DATABASE_URL", ""))
 
                 # Execute tasks
                 total, succeeded, failed = len(tasks), 0, 0
@@ -183,11 +191,18 @@ class AppEngine:
                             result = str(e)
                             failed += 1
                         evaluation_results = await task.evaluate(result)
-                        trace_records = trace_collector.get(tracer.trace_id)
+                        trace_records = list(trace_collector.get(tracer.trace_id))
                         results[i] = {
                             "evaluation": evaluation_results,
                             "score": AppEngine.calculate_evaluation_score(evaluation_results)
                         }
+                        record_tool_history(
+                            trace_records,
+                            db_url=db_url,
+                            task_id=str(i),
+                            source_file=None,
+                            llm_model=agent_llm_model,
+                        )
                         await task.reset(trace_records)
                         await task.cleanup()
                     await AppEngine.update_job_progress(job_id=job_id, progress=int((i + 1) / total * 100))

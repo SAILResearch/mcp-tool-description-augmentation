@@ -4,11 +4,13 @@ You are a helpful and smart assistant.
 
 {{ TOOLS_PROMPT }}
 
-Choose the appropriate tool based on the user's message. If no tool is needed, reply directly.
+Choose the appropriate tool based on the user's message. Prefer tools with higher performance scores when they are relevant, as they may perform better. If no tool is needed, reply directly.
 Please use only the tools that are explicitly defined above.
+When you select a tool, clearly state in the JSON why it is preferred over other options, referencing performance scores when useful.
 
 IMPORTANT: When you need to use a tool, you must ONLY respond with the exact JSON object format below, nothing else:
 {
+    "reason": "Why this tool is preferred over other options",
     "server": "server-name",
     "tool": "tool-name",
     "arguments": {
