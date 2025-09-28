@@ -257,7 +257,11 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             ))
             agent_llm_model = None
             if isinstance(agent, BaseAgent):
-                agent_llm_model = resolve_llm_model_name(getattr(agent, "_llm", None))
+                agent_llm_model = resolve_llm_model_name(
+                    getattr(agent, "_llm", None),
+                    agent_name=benchmark.agent,
+                    workflow_config=workflow.dump_config(),
+                )
 
             default_server_configs: List[Dict[str, Any]] = []
             default_server_state: Tuple[Tuple[str, str, Tuple[str, ...]], ...] = tuple()

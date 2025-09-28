@@ -165,7 +165,11 @@ class AppEngine:
                     agent_name = workflow.get_entrypoint()
                 agent = workflow.get_component(agent_name)
                 await agent.initialize()
-                agent_llm_model = resolve_llm_model_name(getattr(agent, "_llm", None))
+                agent_llm_model = resolve_llm_model_name(
+                    getattr(agent, "_llm", None),
+                    agent_name=agent_name,
+                    workflow_config=workflow.dump_config(),
+                )
                 db_url = (context.get_env("DB_URL", "") or context.get_env("DATABASE_URL", "")
                           or os.getenv("DB_URL", "") or os.getenv("DATABASE_URL", ""))
 

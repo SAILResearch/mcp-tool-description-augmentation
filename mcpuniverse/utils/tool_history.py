@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Iterable, List, Optional
+from pathlib import Path
+from typing import Any, Iterable, List, Optional, Sequence
+
+import yaml
 
 try:  # pragma: no cover - optional dependency
     import psycopg
@@ -29,26 +32,145 @@ def _serialise(value: Any) -> Optional[str]:
         return str(value)
 
 
-def resolve_llm_model_name(llm: Any) -> Optional[str]:
-    """Best-effort extraction of the underlying LLM model name."""
+def _to_mapping(value: Any) -> dict[str, Any]:
+    """Best-effort conversion of config-like objects to dictionaries."""
 
-    if llm is None:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "model_dump"):
+        try:
+            dumped = value.model_dump()
+        except TypeError:
+            dumped = value.model_dump(mode="json")
+        if isinstance(dumped, dict):
+            return dumped
+    if hasattr(value, "dict"):
+        dumped = value.dict()
+        if isinstance(dumped, dict):
+            return dumped
+    if hasattr(value, "to_dict"):
+        dumped = value.to_dict()
+        if isinstance(dumped, dict):
+            return dumped
+    return {}
+
+
+def _normalise_workflow_configs(
+    workflow_config: Any,
+) -> List[dict[str, Any]]:
+    """Return a list of workflow config dictionaries from diverse inputs."""
+
+    if workflow_config is None:
+        return []
+
+    raw_entries: List[Any] = []
+    if isinstance(workflow_config, str):
+        path = Path(workflow_config)
+        if path.exists():
+            try:
+                with path.open("r", encoding="utf-8") as handle:
+                    raw_entries = list(yaml.safe_load_all(handle))
+            except (OSError, yaml.YAMLError) as exc:
+                LOGGER.debug("Failed to load workflow config from %s: %s", path, exc)
+                raw_entries = []
+    elif isinstance(workflow_config, dict):
+        raw_entries = [workflow_config]
+    elif isinstance(workflow_config, Sequence):
+        raw_entries = list(workflow_config)
+
+    normalised: List[dict[str, Any]] = []
+    for entry in raw_entries:
+        if isinstance(entry, dict):
+            kind = entry.get("kind")
+            spec = _to_mapping(entry.get("spec"))
+            if not spec:
+                continue
+            normalised.append({"kind": kind, "spec": spec})
+        else:
+            spec = _to_mapping(getattr(entry, "spec", None))
+            if not spec:
+                continue
+            kind = getattr(entry, "kind", None)
+            normalised.append({"kind": kind, "spec": spec})
+    return normalised
+
+
+def _resolve_model_name_from_configs(
+    configs: Sequence[dict[str, Any]],
+    agent_name: Optional[str],
+) -> Optional[str]:
+    """Extract the configured LLM model name from workflow configs."""
+
+    if not agent_name:
         return None
 
-    candidate = getattr(llm, "_name", None)
-    if isinstance(candidate, str) and candidate.strip():
-        return candidate.strip()
+    llm_identifier: Optional[str] = None
+    for entry in configs:
+        if str(entry.get("kind", "")).lower() != "agent":
+            continue
+        spec = _to_mapping(entry.get("spec"))
+        if spec.get("name") != agent_name:
+            continue
+        agent_config = _to_mapping(spec.get("config"))
+        llm_identifier = agent_config.get("llm") or agent_config.get("llm_name")
+        if isinstance(llm_identifier, str) and llm_identifier.strip():
+            llm_identifier = llm_identifier.strip()
+            break
+        llm_identifier = None
 
-    config = getattr(llm, "config", None)
-    model_name = getattr(config, "model_name", None)
-    if isinstance(model_name, str) and model_name.strip():
-        return model_name.strip()
+    if not llm_identifier:
+        return None
 
-    candidate = getattr(llm, "model", None)
-    if isinstance(candidate, str) and candidate.strip():
-        return candidate.strip()
+    for entry in configs:
+        if str(entry.get("kind", "")).lower() != "llm":
+            continue
+        spec = _to_mapping(entry.get("spec"))
+        if spec.get("name") != llm_identifier:
+            continue
+        llm_config = _to_mapping(spec.get("config"))
+        model_name = llm_config.get("model_name") or llm_config.get("model")
+        if isinstance(model_name, str) and model_name.strip():
+            return model_name.strip()
+    return None
 
-    return llm.__class__.__name__ if hasattr(llm, "__class__") else None
+
+def resolve_llm_model_name(
+    llm: Any,
+    *,
+    agent_name: Optional[str] = None,
+    workflow_config: Any = None,
+) -> Optional[str]:
+    """Best-effort extraction of the underlying LLM model name."""
+
+    if llm is not None:
+        candidate = getattr(llm, "_name", None)
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+        config = getattr(llm, "config", None)
+        model_name = getattr(config, "model_name", None)
+        if isinstance(model_name, str) and model_name.strip():
+            return model_name.strip()
+
+        candidate = getattr(llm, "model", None)
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+        if hasattr(llm, "__class__"):
+            class_name = llm.__class__.__name__
+        else:
+            class_name = None
+    else:
+        class_name = None
+
+    configs = _normalise_workflow_configs(workflow_config)
+    model_name_from_config = _resolve_model_name_from_configs(configs, agent_name)
+    if model_name_from_config:
+        return model_name_from_config
+
+    return class_name
 
 
 def _extract_tool_calls(trace_records: Iterable[Any]) -> List[dict]:
