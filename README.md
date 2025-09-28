@@ -56,6 +56,8 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
 - [Creating Custom Benchmarks](#creating-custom-benchmarks)
     - [Task definition](#task-definition)
     - [Benchmark definition](#benchmark-definition)
+- [Utility Scripts](#utility-scripts)
+    - [List tool performance scores](#list-tool-performance-scores)
 - [Citation](#citation)
 
 ## Architecture Overview
@@ -590,6 +592,36 @@ spec:
   tasks:
     - dummy/tasks/weather.json
 ```
+
+## Utility Scripts
+
+### List tool performance scores
+
+The repository ships with a CLI that enumerates the tools exposed by your configured
+MCP servers and prints their recency-weighted performance scores. The script reads
+server definitions from `mcpuniverse/mcp/configs/server_list.json` by default and can
+be executed with:
+
+```bash
+python -m mcpuniverse.scripts.list_tool_performance
+```
+
+The command outputs one comma-separated line per tool in the format
+`<server_name>,<tool_name>,<performance_score>`.
+
+Key options:
+
+| Flag | Description |
+|------|-------------|
+| `--config PATH` | Path to an alternative MCP server configuration file. |
+| `--transport {stdio,sse,auto}` | Transport preference when connecting to servers (`auto` falls back from stdio to SSE). |
+| `--db-url URL` | Database URL that stores tool execution history. If omitted, the script looks for `DB_URL` or `DATABASE_URL`. |
+| `--records-to-check N` | Number of historical executions inspected per tool (default: 50). |
+| `--decay VALUE` | Exponential decay factor applied to historical records (default: 0.8). |
+
+When a database URL is provided, ensure the referenced instance contains the
+`tool_execution_records` table produced by MCP-Universe benchmarks so the CLI can
+evaluate tool performance accurately.
 
 ## Citation
 
