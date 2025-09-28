@@ -494,6 +494,10 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                                 self._logger.info(
                                     "Executing tool %s of server %s", tool_call["tool"], tool_call["server"])
                                 self._logger.info("With arguments: %s", str(tool_call["arguments"]))
+                                self._logger.info(
+                                    "Final tool description presented to the LLM: %s",
+                                    tool.description or "",
+                                )
                             response = await self._mcp_clients[tool_call["server"]].execute_tool(
                                 tool_call["tool"], tool_call["arguments"], callbacks=callbacks)
                             t.add({
