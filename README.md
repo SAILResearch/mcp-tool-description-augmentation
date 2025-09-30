@@ -634,7 +634,7 @@ can track how wording evolves over time.
 
 ```bash
 python -m mcpuniverse.scripts.optimize_tool_descriptions \
-  --model <MODEL_ALIAS> \
+  --model <MODEL_ALIAS_OR_ALIAS:MODEL_NAME> \
   [--config path/to/server_list.json] \
   [--transport stdio|sse|auto] \
   [--rubric-file path/to/custom_rubric.txt] \
@@ -643,9 +643,12 @@ python -m mcpuniverse.scripts.optimize_tool_descriptions \
 
 Key notes:
 
-- The `--model` (`-m`) flag is required and must match a model alias supported
-  by `ModelManager`. Any API keys needed for that model (for example
-  `OPENAI_API_KEY`) are read from the environment.
+- The `--model` (`-m`) flag accepts either a registered alias (for example
+  `openai`) or a combination in the form `alias:model_name` such as
+  `openai:gpt-4.1-mini`. When only a provider-specific model name is supplied,
+  the CLI attempts to infer the correct alias (e.g. `gpt-` models map to the
+  OpenAI client). Any API keys needed for that provider are read from the
+  environment.
 - Database connectivity defaults to the `DB_URL` or `DATABASE_URL` environment
   variables. Use `--db-url` to override them explicitly.
 - Server definitions default to `mcpuniverse/mcp/configs/server_list.json`.

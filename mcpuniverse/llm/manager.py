@@ -40,3 +40,8 @@ class ModelManager(BaseBuilder):
         """
         assert name in self._classes, f"Model {name} is not found. Please choose models from {self._classes.keys()}"
         return self._classes[name](config)
+
+    def available_models(self):
+        """Return the set of registered model aliases."""
+
+        return set(self._classes.keys())

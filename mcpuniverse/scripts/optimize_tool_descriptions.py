@@ -85,6 +85,24 @@ DEFAULT_RUBRIC = textwrap.dedent(
 )
 
 
+_MODEL_PREFIX_ALIASES: tuple[tuple[str, str], ...] = (
+    ("gpt-", "openai"),
+    ("o1-", "openai"),
+    ("o3-", "openai"),
+    ("o4-", "openai"),
+    ("claude-", "claude"),
+    ("sonnet", "claude"),
+    ("haiku", "claude"),
+    ("opus", "claude"),
+    ("mistral", "mistral"),
+    ("ministral", "mistral"),
+    ("codestral", "mistral"),
+    ("deepseek", "deepseek"),
+    ("grok-", "grok"),
+    ("gemini", "gemini"),
+)
+
+
 @dataclass
 class ToolRecord:
     """Information required to optimise a tool description."""
@@ -144,6 +162,65 @@ def _metadata_to_dict(metadata: Any) -> dict[str, Any] | None:
         except Exception:  # pragma: no cover - defensive
             return metadata.model_dump()  # type: ignore[attr-defined]
     return None
+
+
+def _guess_model_alias(model_spec: str) -> str | None:
+    """Best-effort guess of the model alias given a provider-specific model name."""
+
+    lowered = model_spec.lower()
+    for prefix, alias in _MODEL_PREFIX_ALIASES:
+        if lowered.startswith(prefix):
+            return alias
+    return None
+
+
+def _override_model_name(llm: Any, model_name: str) -> None:
+    """Update ``llm`` to use ``model_name`` when possible."""
+
+    config = getattr(llm, "config", None)
+    if config is None or not hasattr(config, "model_name"):
+        LOGGER.warning(
+            "Unable to set requested model '%s' for %s because its configuration does not expose 'model_name'.",
+            model_name,
+            llm.__class__.__name__,
+        )
+        return
+    setattr(config, "model_name", model_name)
+    LOGGER.info(
+        "Using %s provider with requested model '%s'.",
+        llm.__class__.__name__,
+        model_name,
+    )
+
+
+def _build_llm(model_manager: ModelManager, model_spec: str):
+    """Instantiate an LLM from ``model_spec`` supporting alias:model overrides."""
+
+    try:
+        return model_manager.build_model(model_spec)
+    except AssertionError:
+        pass
+
+    available = model_manager.available_models()
+    alias: str | None
+    requested_model: str | None
+    if ":" in model_spec:
+        alias, _, requested_model = model_spec.partition(":")
+    else:
+        alias = _guess_model_alias(model_spec)
+        requested_model = model_spec
+
+    if alias and alias in available:
+        llm = model_manager.build_model(alias)
+        if requested_model and requested_model != alias:
+            _override_model_name(llm, requested_model)
+        return llm
+
+    available_str = ", ".join(sorted(available))
+    raise AssertionError(
+        "Model "
+        f"{model_spec} is not found. Provide one of the registered aliases ({available_str}) or use the 'alias:model_name' format."
+    ) from None
 
 
 def _format_json(data: Any) -> str:
@@ -455,7 +532,7 @@ async def async_main(args: argparse.Namespace) -> int:
 
     model_manager = ModelManager()
     try:
-        llm = model_manager.build_model(args.model)
+        llm = _build_llm(model_manager, args.model)
     except AssertionError as exc:
         LOGGER.error("%s", exc)
         return 1
@@ -529,7 +606,10 @@ def build_parser() -> argparse.ArgumentParser:
         "-m",
         "--model",
         required=True,
-        help="Name of the LLM model to use (matches ModelManager aliases).",
+        help=(
+            "Model alias registered with ModelManager (e.g. 'openai') or an alias:model_name "
+            "pair such as 'openai:gpt-4.1-mini'."
+        ),
     )
     parser.add_argument(
         "--config",
