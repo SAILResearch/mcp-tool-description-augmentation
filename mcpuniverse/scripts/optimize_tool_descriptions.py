@@ -40,16 +40,6 @@ DEFAULT_RUBRIC = textwrap.dedent(
       purpose, parameters, outputs, and restrictions. Add examples only after the
       description is fully fleshed out and only if they enhance clarity.
 
-    Rubric for an excellent tool description:
-    - Start with a concise summary of the tool's core capability using active voice.
-    - Mention any authentication, rate limits, preconditions, or notable side effects
-      the caller must understand.
-    - Highlight the most important input parameters. Clarify which are required vs.
-      optional, how values should be formatted, and default behaviour if omitted.
-    - Describe the response structure or side effects so the caller knows what to
-      expect, including common failure modes or error messages to handle.
-    - Call out any guardrails, restrictions, or usage guidelines that prevent misuse.
-
     Example of a high-quality tool description:
     {
       "name": "get_stock_price",
@@ -86,9 +76,6 @@ DEFAULT_RUBRIC = textwrap.dedent(
     too brief and leaves open questions about behaviour and usage.
 
     Writing guidelines:
-    - Keep the description between three and six sentences, combining short
-      paragraphs with bullet lists only when they clarify parameter or output
-      structure.
     - Use precise, concrete language. Avoid marketing tone, repetition of the tool
       name, placeholder text, or quoting the rubric back.
     - Respond with only the optimised description text. Do not add headers, metadata,
