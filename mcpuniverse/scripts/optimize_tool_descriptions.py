@@ -29,6 +29,17 @@ DEFAULT_RUBRIC = textwrap.dedent(
     descriptions so that downstream language models can quickly understand how and
     when to call each tool.
 
+    Best practices for tool definitions:
+    - Provide extremely detailed descriptions. Explain every detail about the tool,
+      including what it does, when it should be used (and when it should not), what
+      each parameter means, how the parameters affect behaviour, and any important
+      caveats or limitations such as information the tool does not return. Offer
+      enough context for the LLM to decide when and how to call the tool effectively.
+    - Prioritise descriptions over examples. Examples may help clarify use, but the
+      primary goal is to deliver a clear, comprehensive explanation of the tool's
+      purpose, parameters, outputs, and restrictions. Add examples only after the
+      description is fully fleshed out and only if they enhance clarity.
+
     Rubric for an excellent tool description:
     - Start with a concise summary of the tool's core capability using active voice.
     - Mention any authentication, rate limits, preconditions, or notable side effects
@@ -39,14 +50,49 @@ DEFAULT_RUBRIC = textwrap.dedent(
       expect, including common failure modes or error messages to handle.
     - Call out any guardrails, restrictions, or usage guidelines that prevent misuse.
 
+    Example of a high-quality tool description:
+    {
+      "name": "get_stock_price",
+      "description": "Retrieves the current stock price for a given ticker symbol. The ticker symbol must be a valid symbol for a publicly traded company on a major US stock exchange like NYSE or NASDAQ. The tool will return the latest trade price in USD. It should be used when the user asks about the current or most recent price of a specific stock. It will not provide any other information about the stock or company.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+          }
+        },
+        "required": ["ticker"]
+      }
+    }
+
+    Example of a poor tool description:
+    {
+      "name": "get_stock_price",
+      "description": "Gets the stock price for a ticker.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string"
+          }
+        },
+        "required": ["ticker"]
+      }
+    }
+
+    The excellent description clearly explains what the tool does, when to use it,
+    what the tool returns, and what the parameters represent. The poor description is
+    too brief and leaves open questions about behaviour and usage.
+
     Writing guidelines:
     - Keep the description between three and six sentences, combining short
       paragraphs with bullet lists only when they clarify parameter or output
       structure.
     - Use precise, concrete language. Avoid marketing tone, repetition of the tool
       name, placeholder text, or quoting the rubric back.
-    - Respond with only the optimized description. Do not add headers, metadata, or
-      extra commentary.
+    - Respond with only the optimised description text. Do not add headers, metadata,
+      JSON, or extra commentary.
     """
 )
 
@@ -210,7 +256,7 @@ def _build_prompt(record: ToolRecord) -> str:
 
     return textwrap.dedent(
         f"""
-        Optimise the MCP tool description according to the rubric.
+        Optimise the MCP tool description according to the rubric and examples.
 
         Server name: {record.server_name}
         Tool name: {record.tool_name}
