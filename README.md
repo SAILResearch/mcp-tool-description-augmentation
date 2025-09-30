@@ -58,6 +58,7 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
     - [Benchmark definition](#benchmark-definition)
 - [Utility Scripts](#utility-scripts)
     - [List tool performance scores](#list-tool-performance-scores)
+    - [Optimize MCP tool descriptions](#optimize-mcp-tool-descriptions)
 - [Citation](#citation)
 
 ## Architecture Overview
@@ -622,6 +623,40 @@ Key options:
 When a database URL is provided, ensure the referenced instance contains the
 `tool_execution_records` table produced by MCP-Universe benchmarks so the CLI can
 evaluate tool performance accurately.
+
+### Optimize MCP tool descriptions
+
+The `optimize_tool_descriptions` CLI connects to every MCP server defined in a
+JSON configuration file, retrieves their tools, and rewrites each tool's
+description with the help of an LLM following a built-in rubric. Optimized
+descriptions are versioned and stored in the `mcp_servers` database table so you
+can track how wording evolves over time.
+
+```bash
+python -m mcpuniverse.scripts.optimize_tool_descriptions \
+  --model <MODEL_ALIAS> \
+  [--config path/to/server_list.json] \
+  [--transport stdio|sse|auto] \
+  [--rubric-file path/to/custom_rubric.txt] \
+  [--db-url postgres://user:pass@host:port/db]
+```
+
+Key notes:
+
+- The `--model` (`-m`) flag is required and must match a model alias supported
+  by `ModelManager`. Any API keys needed for that model (for example
+  `OPENAI_API_KEY`) are read from the environment.
+- Database connectivity defaults to the `DB_URL` or `DATABASE_URL` environment
+  variables. Use `--db-url` to override them explicitly.
+- Server definitions default to `mcpuniverse/mcp/configs/server_list.json`.
+  Provide `--config` when you want to point at a different configuration file.
+- Supply `--rubric-file` to replace the built-in rubric with custom guidance for
+  the LLM.
+
+Before running the CLI, ensure the destination database contains the
+`mcp_servers` table with the schema expected by the script. The tool logs which
+server/tool pairs were updated and exits with a non-zero status if no
+descriptions could be stored.
 
 ## Citation
 
