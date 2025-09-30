@@ -13,6 +13,7 @@ from typing import Any, Sequence
 
 import psycopg
 from psycopg import Connection, Cursor
+from urllib.parse import quote_plus
 
 from mcpuniverse.common.context import Context
 from mcpuniverse.llm.manager import ModelManager
@@ -310,7 +311,25 @@ def _get_db_url(args: argparse.Namespace) -> str | None:
 
     if args.db_url:
         return args.db_url
-    return os.getenv("DB_URL") or os.getenv("DATABASE_URL")
+
+    env_url = os.getenv("DB_URL") or os.getenv("DATABASE_URL")
+    if env_url:
+        return env_url
+
+    host = os.getenv("DB_HOST")
+    user = os.getenv("DB_USER")
+    name = os.getenv("DB_NAME")
+    if not host or not user or not name:
+        return None
+
+    port = os.getenv("DB_PORT", "5432")
+    password = os.getenv("DB_PASSWORD")
+
+    user_part = quote_plus(user)
+    if password:
+        user_part = f"{user_part}:{quote_plus(password)}"
+
+    return f"postgresql://{user_part}@{host}:{port}/{name}"
 
 
 def _ensure_connection(db_url: str) -> Connection[Any]:
@@ -445,7 +464,10 @@ async def async_main(args: argparse.Namespace) -> int:
 
     db_url = _get_db_url(args)
     if not db_url:
-        LOGGER.error("Database URL not provided. Set DB_URL/DATABASE_URL or use --db-url.")
+        LOGGER.error(
+            "Database URL not provided. Set DB_URL/DATABASE_URL, configure DB_HOST/DB_PORT/"
+            "DB_USER/DB_PASSWORD/DB_NAME, or use --db-url."
+        )
         return 1
 
     try:
