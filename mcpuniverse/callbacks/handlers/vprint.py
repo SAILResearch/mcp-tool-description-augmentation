@@ -3,6 +3,7 @@ import builtins
 import json
 import time
 from functools import partial
+from types import SimpleNamespace
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Sequence
 
 from mcpuniverse.agent.base import BaseAgent
@@ -51,6 +52,10 @@ class VPrintListToolsCallback(BaseCallback):
                     server_tools = {}
                     for server_name, tools in agent._tools.items():  # pylint: disable=protected-access
                         overrides = {tool.name: tool.description for tool in tools or []}
+                        schema_overrides = {
+                            tool.name: getattr(tool, "input_schema", None)
+                            for tool in tools or []
+                        }
                         enriched_tools: List = []
                         client = agent._mcp_clients.get(server_name)  # pylint: disable=protected-access
                         original_tools: Sequence = []
@@ -62,12 +67,33 @@ class VPrintListToolsCallback(BaseCallback):
                         if not original_tools:
                             original_tools = tools or []
                         for tool in original_tools:
-                            override_description = overrides.get(getattr(tool, "name", None))
+                            tool_name = getattr(tool, "name", None)
+                            if not tool_name:
+                                enriched_tools.append(tool)
+                                continue
+
+                            override_description = overrides.get(tool_name)
                             if override_description:
                                 try:
                                     tool.description = override_description
                                 except Exception:  # pragma: no cover - defensive guard
                                     pass
+
+                            schema = getattr(tool, "input_schema", None)
+                            if schema is None:
+                                fallback_schema = schema_overrides.get(tool_name)
+                                if fallback_schema is not None:
+                                    try:
+                                        setattr(tool, "input_schema", fallback_schema)
+                                        schema = fallback_schema
+                                    except Exception:  # pragma: no cover - defensive guard
+                                        enriched_tools.append(SimpleNamespace(
+                                            name=tool_name,
+                                            description=getattr(tool, "description", ""),
+                                            input_schema=fallback_schema,
+                                        ))
+                                        continue
+
                             enriched_tools.append(tool)
                         server_tools[server_name] = enriched_tools
                 else:
