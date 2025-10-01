@@ -278,7 +278,11 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             await send_message_async(callbacks, message=CallbackMessage(
                 source=__file__,
                 type=MessageType.LOG,
-                metadata={"event": "list_tools", "data": agent}
+                metadata={
+                    "event": "list_tools",
+                    "data": agent,
+                    "tool_description_type": tool_description_type,
+                }
             ))
             agent_llm_model = None
             if isinstance(agent, BaseAgent):
