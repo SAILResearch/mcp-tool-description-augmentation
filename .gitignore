@@ -198,3 +198,5 @@ mcpuniverse/evaluator/blender/check_functions/evaluated_results/
 mcpuniverse/evaluator/blender/blend_files/
 tests/cursor/
 tests/benchmark/*_run_many_llms*.py
+credentials.json
+token.json
