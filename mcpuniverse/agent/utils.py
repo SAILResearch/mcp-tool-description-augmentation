@@ -29,12 +29,15 @@ def get_tools_description(tools: Dict[str, List[Tool]]) -> str:
     for server_name, tool_list in tools.items():
         for tool in tool_list:
             args = []
-            if "properties" in tool.inputSchema:
-                for param_name, param_info in tool.inputSchema["properties"].items():
+            schema = getattr(tool, "inputSchema", None)
+            if schema is None:
+                schema = getattr(tool, "input_schema", None)
+            if isinstance(schema, dict) and "properties" in schema:
+                for param_name, param_info in schema["properties"].items():
                     info = "\n".join(["    " + line for line in
                                       yaml.dump(param_info, sort_keys=False, indent=2).split("\n")])
                     arg = f"- {param_name}:\n{info}".strip()
-                    if param_name in tool.inputSchema.get("required", []):
+                    if param_name in schema.get("required", []):
                         arg += "\n    required: true"
                     args.append(arg.strip())
             lines = [line for line in tool.description.split("\n") if line.strip()]
