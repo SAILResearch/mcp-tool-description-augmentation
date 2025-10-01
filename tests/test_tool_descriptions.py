@@ -41,3 +41,16 @@ def test_get_tools_description_preserves_composed_text():
     assert "Multiply two numbers." in normalised
     assert "Ideal for integer multiplication." in normalised
     assert "TOOL PERFORMANCE SCORE: 42" in normalised
+
+
+def test_compose_tool_description_omits_performance_when_disabled():
+    description = compose_tool_description(
+        base_description="Multiply two numbers.",
+        score=13,
+        additional_description="Use this when needed.",
+        include_performance=False,
+    )
+
+    assert "Multiply two numbers." in description
+    assert "Use this when needed." in description
+    assert "TOOL PERFORMANCE SCORE" not in description

@@ -257,6 +257,8 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                 agent.configure_tool_response_truncation(bool(truncate_tool_response))
             used_agents.append(agent)
             await agent.initialize()
+            if isinstance(agent, BaseAgent):
+                agent.configure_tool_performance_scores(task_search)
             if (
                 isinstance(agent, BaseAgent)
                 and tool_description_type == 1

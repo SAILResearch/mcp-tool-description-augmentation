@@ -70,8 +70,10 @@ def load_additional_tool_descriptions(path: Optional[str] = None) -> Dict[str, D
 
 def compose_tool_description(
     base_description: Optional[str],
-    score: int,
+    score: Optional[int] = None,
     additional_description: Optional[str] = None,
+    *,
+    include_performance: bool = True,
 ) -> str:
     """Combine base, additional and performance metadata into one description."""
 
@@ -90,10 +92,11 @@ def compose_tool_description(
         if cleaned_additional:
             sections.append(cleaned_additional)
 
-    sections.append(f"TOOL PERFORMANCE SCORE: {score}")
-    sections.append(
-        "Tools with higher performance scores may perform better and can be preferred when appropriate."
-    )
+    if include_performance and score is not None:
+        sections.append(f"TOOL PERFORMANCE SCORE: {score}")
+        sections.append(
+            "Tools with higher performance scores may perform better and can be preferred when appropriate."
+        )
 
     return "\n\n".join(section for section in sections if section).strip()
 

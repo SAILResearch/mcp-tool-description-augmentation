@@ -48,7 +48,28 @@ class VPrintListToolsCallback(BaseCallback):
                         and isinstance(agent, BaseAgent)
                         and getattr(agent, '_tools', None)
                 ):
-                    server_tools: Mapping[str, Sequence] = agent._tools
+                    server_tools = {}
+                    for server_name, tools in agent._tools.items():  # pylint: disable=protected-access
+                        overrides = {tool.name: tool.description for tool in tools or []}
+                        enriched_tools: List = []
+                        client = agent._mcp_clients.get(server_name)  # pylint: disable=protected-access
+                        original_tools: Sequence = []
+                        if client is not None:
+                            try:
+                                original_tools = await client.list_tools()
+                            except Exception:  # pragma: no cover - defensive logging handled elsewhere
+                                original_tools = []
+                        if not original_tools:
+                            original_tools = tools or []
+                        for tool in original_tools:
+                            override_description = overrides.get(getattr(tool, "name", None))
+                            if override_description:
+                                try:
+                                    tool.description = override_description
+                                except Exception:  # pragma: no cover - defensive guard
+                                    pass
+                            enriched_tools.append(tool)
+                        server_tools[server_name] = enriched_tools
                 else:
                     server_tools = {}
                     for server_name, client in agent._mcp_clients.items():

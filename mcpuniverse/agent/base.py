@@ -184,6 +184,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         self._max_tool_response_tokens: Optional[int] = None
         if self._tool_response_truncation_requested:
             self.configure_tool_response_truncation(True)
+        self._tool_performance_scores_enabled: bool = False
 
     async def _initialize(self):
         """Initialize subclass."""
@@ -419,7 +420,9 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             tool_info_cls = _ToolInfo
             ranker = _rank
 
-        if tool_info_cls and ranker:
+        include_performance = bool(self._tool_performance_scores_enabled)
+
+        if include_performance and tool_info_cls and ranker:
             tool_infos: List["ToolInfo"] = []
             for server_name, tool_list in self._tools.items():
                 for tool in tool_list:
@@ -441,11 +444,12 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                     base_description = tool.description or ""
                     self._original_tool_descriptions[key] = base_description
                 additional_text = extras.get(tool.name)
-                score = scores.get(key, 0)
+                score = scores.get(key, 0) if include_performance else None
                 composed_description = compose_tool_description(
                     base_description,
                     score,
                     additional_text,
+                    include_performance=include_performance,
                 )
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug(
@@ -481,6 +485,15 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                 self._original_tool_descriptions[key] = new_description
                 tool.description = new_description
 
+        self._refresh_tool_metadata()
+
+    def configure_tool_performance_scores(self, enabled: bool) -> None:
+        """Enable or disable tool performance metadata in descriptions."""
+
+        if bool(enabled) == self._tool_performance_scores_enabled:
+            return
+
+        self._tool_performance_scores_enabled = bool(enabled)
         self._refresh_tool_metadata()
 
     async def call_tool(
