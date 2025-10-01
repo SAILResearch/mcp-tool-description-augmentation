@@ -5,7 +5,7 @@ Benchmarks for evaluating agents and LLMs
 import json
 import os
 import hashlib
-from typing import List, Dict, Optional, Any, Sequence, Tuple
+from typing import List, Dict, Optional, Any, Sequence, Tuple, Mapping
 from contextlib import AsyncExitStack
 
 import yaml
@@ -251,6 +251,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
 
         outputs = []
         used_agents = []
+        agent_tool_overrides: Dict[BaseAgent, Mapping[str, Mapping[str, str]]] = {}
         for benchmark in self._benchmark_configs:
             agent: Executor = workflow.get_component(benchmark.agent)
             if isinstance(agent, BaseAgent) and truncate_tool_response is not None:
@@ -259,24 +260,26 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             await agent.initialize()
             if isinstance(agent, BaseAgent):
                 agent.configure_tool_performance_scores(task_search)
-            if (
-                isinstance(agent, BaseAgent)
-                and tool_description_type == 1
-                and agent._tools  # pylint: disable=protected-access
-            ):
-                server_tools = {
-                    server_name: [tool.name for tool in tool_list]
-                    for server_name, tool_list in agent._tools.items()  # pylint: disable=protected-access
-                }
-                overrides = load_optimized_tool_descriptions(
-                    server_tools,
-                    db_url=db_url or None,
-                )
-                if overrides:
-                    self._logger.info(
-                        "Applying optimised tool descriptions for agent %s", benchmark.agent
-                    )
-                    agent.override_tool_descriptions(overrides)
+                if tool_description_type == 1:
+                    if agent._tools:  # pylint: disable=protected-access
+                        server_tools = {
+                            server_name: [tool.name for tool in tool_list]
+                            for server_name, tool_list in agent._tools.items()  # pylint: disable=protected-access
+                        }
+                        overrides = load_optimized_tool_descriptions(
+                            server_tools,
+                            db_url=db_url or None,
+                        )
+                        if overrides:
+                            self._logger.info(
+                                "Applying optimised tool descriptions for agent %s", benchmark.agent
+                            )
+                            agent.override_tool_descriptions(overrides)
+                            agent_tool_overrides[agent] = overrides
+                        else:
+                            agent_tool_overrides.pop(agent, None)
+                else:
+                    agent_tool_overrides.pop(agent, None)
             await send_message_async(callbacks, message=CallbackMessage(
                 source=__file__,
                 type=MessageType.LOG,
@@ -476,6 +479,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                     self._logger.warning(
                                         "No matching server configuration found for recommended tools"
                                     )
+                            overrides_for_agent = agent_tool_overrides.get(agent)
                             if target_servers is None and task.use_specified_server():
                                 task_servers = task.get_mcp_servers()
                                 if isinstance(task_servers, list) and task_servers:
@@ -499,10 +503,20 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                     self._logger.info(
                                         "Applying %d recommended tools from task search", len(best_tools)
                                     )
+                                overrides_for_agent = agent_tool_overrides.get(agent)
+                                if overrides_for_agent:
+                                    agent.override_tool_descriptions(overrides_for_agent)
                             elif target_source == "task_search":
                                 self._logger.info(
                                     "Recommended tools already active; keeping existing server configuration"
                                 )
+                            if not agent.initialized:
+                                init_servers = target_servers or default_server_configs
+                                await agent.initialize(mcp_servers=init_servers)
+                                current_server_state = normalised_target
+                                overrides_for_agent = agent_tool_overrides.get(agent)
+                                if overrides_for_agent:
+                                    agent.override_tool_descriptions(overrides_for_agent)
                         elif task.use_specified_server():
                             self._logger.warning(
                                 "Task requires specified servers but agent %s cannot change servers",
