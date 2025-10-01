@@ -7,7 +7,7 @@ import os
 import uuid
 import json
 from abc import abstractmethod
-from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal
+from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal, Mapping
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from pydantic import BaseModel
@@ -455,6 +455,33 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                         composed_description,
                     )
                 tool.description = composed_description
+
+    def override_tool_descriptions(self, overrides: Mapping[str, Mapping[str, str]]) -> None:
+        """Replace base tool descriptions with external overrides.
+
+        Parameters
+        ----------
+        overrides:
+            Nested mapping of ``server -> tool -> description``. Only entries
+            present in ``overrides`` are updated.
+        """
+
+        if not overrides:
+            return
+
+        for server_name, tool_list in self._tools.items():
+            server_overrides = overrides.get(server_name)
+            if not server_overrides:
+                continue
+            for tool in tool_list:
+                new_description = server_overrides.get(tool.name)
+                if not new_description:
+                    continue
+                key = f"{server_name}__{tool.name}"
+                self._original_tool_descriptions[key] = new_description
+                tool.description = new_description
+
+        self._refresh_tool_metadata()
 
     async def call_tool(
             self,

@@ -29,6 +29,7 @@ from mcpuniverse.callbacks.base import (
     send_message_async,
     send_message,
 )
+from mcpuniverse.utils.tool_descriptions import load_optimized_tool_descriptions
 from mcpuniverse.utils.tool_history import record_tool_history, resolve_llm_model_name
 
 
@@ -208,6 +209,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             task_search: bool = False,
             dry_run: bool = False,
             truncate_tool_response: Optional[bool] = None,
+            tool_description_type: int = 0,
     ) -> List[BenchmarkResult]:
         """
         Run specified benchmarks.
@@ -225,9 +227,14 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             truncate_tool_response (Optional[bool]): Override for truncating MCP tool
                 responses before sending them to the LLM. ``True`` enables truncation,
                 ``False`` disables it, and ``None`` keeps the agent's default behaviour.
+            tool_description_type (int): Selects which tool descriptions are
+                provided to the LLM. ``0`` keeps the descriptions returned by the
+                MCP servers, while ``1`` replaces them with entries stored in the
+                ``mcp_servers`` table when available.
         """
         task_search = bool(task_search)
         dry_run = bool(dry_run)
+        tool_description_type = int(tool_description_type or 0)
         db_url = (self._context.get_env("DB_URL", "")
                   or self._context.get_env("DATABASE_URL", ""))
 
@@ -250,6 +257,24 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                 agent.configure_tool_response_truncation(bool(truncate_tool_response))
             used_agents.append(agent)
             await agent.initialize()
+            if (
+                isinstance(agent, BaseAgent)
+                and tool_description_type == 1
+                and agent._tools  # pylint: disable=protected-access
+            ):
+                server_tools = {
+                    server_name: [tool.name for tool in tool_list]
+                    for server_name, tool_list in agent._tools.items()  # pylint: disable=protected-access
+                }
+                overrides = load_optimized_tool_descriptions(
+                    server_tools,
+                    db_url=db_url or None,
+                )
+                if overrides:
+                    self._logger.info(
+                        "Applying optimised tool descriptions for agent %s", benchmark.agent
+                    )
+                    agent.override_tool_descriptions(overrides)
             await send_message_async(callbacks, message=CallbackMessage(
                 source=__file__,
                 type=MessageType.LOG,

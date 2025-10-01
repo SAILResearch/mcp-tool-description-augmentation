@@ -5,7 +5,12 @@ import json
 import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Iterable, Mapping, Optional
+
+try:  # pragma: no cover - optional dependency
+    import psycopg
+except ModuleNotFoundError:  # pragma: no cover - optional dependency absent
+    psycopg = None
 
 LOGGER = logging.getLogger(__name__)
 
@@ -93,7 +98,52 @@ def compose_tool_description(
     return "\n\n".join(section for section in sections if section).strip()
 
 
+def load_optimized_tool_descriptions(
+    server_tools: Mapping[str, Iterable[str]],
+    *,
+    db_url: Optional[str] = None,
+) -> Dict[str, Dict[str, str]]:
+    """Return optimised tool descriptions stored in the ``mcp_servers`` table."""
+
+    if not server_tools or db_url is None or psycopg is None:
+        return {}
+
+    overrides: Dict[str, Dict[str, str]] = {}
+
+    try:  # pragma: no cover - depends on optional external service
+        with psycopg.connect(db_url) as conn:
+            with conn.cursor() as cur:
+                for server_name, tools in server_tools.items():
+                    tool_list = [tool for tool in tools if tool]
+                    if not server_name or not tool_list:
+                        continue
+                    cur.execute(
+                        """
+                        SELECT DISTINCT ON (tool_name)
+                               tool_name,
+                               tool_optimized_description
+                          FROM mcp_servers
+                         WHERE mcp_server_name = %s
+                           AND tool_name = ANY(%s)
+                           AND tool_optimized_description IS NOT NULL
+                         ORDER BY tool_name, version DESC
+                        """,
+                        (server_name, tool_list),
+                    )
+                    rows = cur.fetchall()
+                    for tool_name, description in rows:
+                        if not description:
+                            continue
+                        overrides.setdefault(server_name, {})[tool_name] = str(description)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        LOGGER.warning("Failed to load optimised tool descriptions: %s", exc)
+        return {}
+
+    return overrides
+
+
 __all__ = [
     "compose_tool_description",
     "load_additional_tool_descriptions",
+    "load_optimized_tool_descriptions",
 ]
