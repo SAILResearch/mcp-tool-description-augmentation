@@ -7,7 +7,7 @@ import os
 import uuid
 import json
 from abc import abstractmethod
-from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal
+from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal, Mapping
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from pydantic import BaseModel
@@ -174,6 +174,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         self._mcp_clients: Dict[str, MCPClient] = OrderedDict()
         self._tools: Dict[str, Any] = {}
         self._original_tool_descriptions: Dict[str, str] = {}
+        self._tool_input_schemas: Dict[str, Any] = {}
         self._logger = None
         self._initialized: bool = False
         self._context: Optional[Context] = None
@@ -184,6 +185,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         self._max_tool_response_tokens: Optional[int] = None
         if self._tool_response_truncation_requested:
             self.configure_tool_response_truncation(True)
+        self._tool_performance_scores_enabled: bool = False
 
     async def _initialize(self):
         """Initialize subclass."""
@@ -215,6 +217,7 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         # Get the tools information
         self._tools = {}
         self._original_tool_descriptions = {}
+        self._tool_input_schemas = {}
         for server in mcp_servers:
             server_name = server["name"]
             tools = await self._mcp_clients[server_name].list_tools()
@@ -226,6 +229,8 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             for tool in self._tools.get(server_name, []):
                 key = f"{server_name}__{tool.name}"
                 self._original_tool_descriptions[key] = tool.description or ""
+                self._capture_tool_schema(tool, key)
+                self._restore_tool_schema(tool, key)
 
         self._refresh_tool_metadata()
         await self._initialize()
@@ -419,7 +424,9 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             tool_info_cls = _ToolInfo
             ranker = _rank
 
-        if tool_info_cls and ranker:
+        include_performance = bool(self._tool_performance_scores_enabled)
+
+        if include_performance and tool_info_cls and ranker:
             tool_infos: List["ToolInfo"] = []
             for server_name, tool_list in self._tools.items():
                 for tool in tool_list:
@@ -436,16 +443,18 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             extras = additional_descriptions.get(server_name, {})
             for tool in tool_list:
                 key = f"{server_name}__{tool.name}"
+                self._capture_tool_schema(tool, key)
                 base_description = self._original_tool_descriptions.get(key)
                 if base_description is None:
                     base_description = tool.description or ""
                     self._original_tool_descriptions[key] = base_description
                 additional_text = extras.get(tool.name)
-                score = scores.get(key, 0)
+                score = scores.get(key, 0) if include_performance else None
                 composed_description = compose_tool_description(
                     base_description,
                     score,
                     additional_text,
+                    include_performance=include_performance,
                 )
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug(
@@ -455,6 +464,72 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                         composed_description,
                     )
                 tool.description = composed_description
+                self._restore_tool_schema(tool, key)
+
+    def override_tool_descriptions(self, overrides: Mapping[str, Mapping[str, str]]) -> None:
+        """Replace base tool descriptions with external overrides.
+
+        Parameters
+        ----------
+        overrides:
+            Nested mapping of ``server -> tool -> description``. Only entries
+            present in ``overrides`` are updated.
+        """
+
+        if not overrides:
+            return
+
+        for server_name, tool_list in self._tools.items():
+            server_overrides = overrides.get(server_name)
+            if not server_overrides:
+                continue
+            for tool in tool_list:
+                new_description = server_overrides.get(tool.name)
+                if not new_description:
+                    continue
+                key = f"{server_name}__{tool.name}"
+                self._original_tool_descriptions[key] = new_description
+                tool.description = new_description
+                self._restore_tool_schema(tool, key)
+
+        self._refresh_tool_metadata()
+
+    def _capture_tool_schema(self, tool: Any, key: str) -> None:
+        """Record the original input schema for a tool if available."""
+
+        schema = getattr(tool, "inputSchema", None)
+        if schema is None:
+            schema = getattr(tool, "input_schema", None)
+        if schema is not None:
+            self._tool_input_schemas[key] = schema
+
+    def _restore_tool_schema(self, tool: Any, key: str) -> None:
+        """Ensure a tool retains its captured input schema attributes."""
+
+        schema = self._tool_input_schemas.get(key)
+        if schema is None:
+            return
+
+        if getattr(tool, "inputSchema", None) is None:
+            try:
+                setattr(tool, "inputSchema", schema)
+            except Exception:  # pragma: no cover - defensive
+                pass
+
+        if getattr(tool, "input_schema", None) is None:
+            try:
+                setattr(tool, "input_schema", schema)
+            except Exception:  # pragma: no cover - defensive
+                pass
+
+    def configure_tool_performance_scores(self, enabled: bool) -> None:
+        """Enable or disable tool performance metadata in descriptions."""
+
+        if bool(enabled) == self._tool_performance_scores_enabled:
+            return
+
+        self._tool_performance_scores_enabled = bool(enabled)
+        self._refresh_tool_metadata()
 
     async def call_tool(
             self,

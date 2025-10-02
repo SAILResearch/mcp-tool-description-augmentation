@@ -15,6 +15,11 @@ the same switches:
 ``--truncate-tool-response``
     Enable truncation of MCP tool responses before they are forwarded to the
     LLM.  The limit is driven by the ``MAX_TOKEN_LEN`` environment variable.
+
+``--tool-description-type``
+    Select the strategy for providing tool descriptions to the LLM.  ``0`` keeps
+    the descriptions returned by the MCP servers, while ``1`` replaces them
+    with optimised entries stored in the ``mcp_servers`` database table.
 """
 
 from __future__ import annotations
@@ -42,14 +47,16 @@ class BenchmarkCLIConfig:
     task_search: bool = False
     dry_run: bool = False
     truncate_tool_response: bool = False
+    tool_description_type: int = 0
 
-    def runner_kwargs(self) -> dict[str, bool]:
+    def runner_kwargs(self) -> dict[str, bool | int]:
         """Return keyword arguments compatible with ``BenchmarkRunner.run``."""
 
         return {
             "task_search": self.task_search,
             "dry_run": self.dry_run,
             "truncate_tool_response": self.truncate_tool_response,
+            "tool_description_type": self.tool_description_type,
         }
 
 
@@ -67,11 +74,13 @@ def _parse_cli_args(argv: Sequence[str] | None = None) -> tuple[BenchmarkCLIConf
     parser.add_argument("--task-search", type=int, default=0)
     parser.add_argument("--dry-run", type=int, default=0)
     parser.add_argument("--truncate-tool-response", type=int, default=0)
+    parser.add_argument("--tool-description-type", type=int, default=0)
     parsed, remaining = parser.parse_known_args(argv)
     config = BenchmarkCLIConfig(
         task_search=bool(parsed.task_search),
         dry_run=bool(parsed.dry_run),
         truncate_tool_response=bool(parsed.truncate_tool_response),
+        tool_description_type=int(parsed.tool_description_type),
     )
     return config, remaining
 

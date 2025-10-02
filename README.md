@@ -346,6 +346,8 @@ python tests/benchmark/test_benchmark_financial_analysis.py
 python tests/benchmark/test_benchmark_financial_analysis.py --task-search 1 --dry-run 1
 # Enable tool-response truncation with a 16k token window defined in `.env`
 python tests/benchmark/test_benchmark_financial_analysis.py --truncate-tool-response 1
+# Use optimised tool descriptions from the database when calling the LLM
+python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1
 
 # Repository Management
 python tests/benchmark/test_benchmark_repository_management.py
@@ -363,7 +365,9 @@ retrieves similar tasks from the vector database.  Combine it with
 running the benchmark.  Use ``--truncate-tool-response 1`` to drop the
 oldest tokens from lengthy MCP tool outputs before they are forwarded to
 the LLM.  The truncation window is controlled by ``MAX_TOKEN_LEN`` in
-your environment configuration.
+your environment configuration.  Pass ``--tool-description-type 1`` to
+replace MCP-supplied tool descriptions with optimised entries stored in
+the ``mcp_servers`` database table whenever they are available.
 
 #### Batch Execution
 

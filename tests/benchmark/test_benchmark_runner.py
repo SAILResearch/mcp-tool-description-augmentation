@@ -1,7 +1,13 @@
+import asyncio
 import os
+import textwrap
 import unittest
+from types import SimpleNamespace
+from typing import Any
+
 import pytest
 import pprint
+import mcpuniverse.benchmark.runner as runner_module
 from mcpuniverse.tracer.collectors import MemoryCollector
 from mcpuniverse.benchmark.runner import (
     BenchmarkRunner,
@@ -10,6 +16,9 @@ from mcpuniverse.benchmark.runner import (
     EvaluationResult
 )
 from mcpuniverse.evaluator.evaluator import EvaluatorConfig
+from mcpuniverse.agent.base import BaseAgent, BaseAgentConfig
+from mcpuniverse.agent.types import AgentResponse
+from mcpuniverse.llm.base import BaseLLM
 
 class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
 
@@ -60,6 +69,161 @@ class TestBenchmarkRunner(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(r["trace_id"], "12345")
         self.assertEqual(r["results"][0].config.func, "get(key1) -> foreach -> get(key2)")
         self.assertEqual(r["results"][0].reason, "testing")
+
+
+class DummyLLM(BaseLLM):
+    __module__ = "mcpuniverse.llm.tests"
+
+    def _generate(self, messages: list[dict[str, str]], **kwargs: Any) -> Any:  # pragma: no cover - unused
+        return {"messages": messages, **kwargs}
+
+    def dump_config(self) -> dict[str, Any]:  # pragma: no cover - trivial in test
+        return {"config": {}, "class": self.__class__.__name__}
+
+
+class StubAgent(BaseAgent):
+    config_class = BaseAgentConfig
+
+    def __init__(self) -> None:
+        super().__init__(mcp_manager=None, llm=DummyLLM(), config={})
+        self.initialize_calls = 0
+        self.execute_calls = 0
+        self.description_history: list[str] = []
+
+    async def _initialize(self) -> None:  # pragma: no cover - not used directly
+        return None
+
+    async def _cleanup(self) -> None:  # pragma: no cover - not used directly
+        return None
+
+    async def _execute(self, message, **kwargs) -> AgentResponse:
+        tool = self._tools["demo"][0]
+        self.description_history.append(tool.description)
+        self.execute_calls += 1
+        return AgentResponse(name=self.name, class_name=self.__class__.__name__, response="ok")
+
+    async def initialize(self, mcp_servers: list[dict[str, Any]] | None = None):
+        self.initialize_calls += 1
+        tool = SimpleNamespace(
+            name="dummy_tool",
+            description="Original description",
+            inputSchema={},
+            input_schema={},
+        )
+        self._tools = {"demo": [tool]}
+        self._original_tool_descriptions = {"demo__dummy_tool": tool.description}
+        self._tool_input_schemas = {}
+        self._capture_tool_schema(tool, "demo__dummy_tool")
+        self._restore_tool_schema(tool, "demo__dummy_tool")
+        self._refresh_tool_metadata()
+        self._initialized = True
+        return None
+
+
+def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path):
+    config_path = tmp_path / "benchmark.yaml"
+    config_path.write_text(textwrap.dedent(
+        """
+        kind: benchmark
+        spec:
+          description: Stub benchmark
+          agent: stub-agent
+          tasks:
+            - task-one.json
+            - task-two.json
+        """
+    ))
+
+    stub_agent = StubAgent()
+
+    class DummyWorkflow:
+        def __init__(self, *args, **kwargs):
+            self._agent = stub_agent
+
+        def build(self, components):  # pragma: no cover - behaviour is trivial
+            return None
+
+        def set_context(self, context):  # pragma: no cover - behaviour is trivial
+            self._context = context
+
+        def get_component(self, name):
+            assert name == "stub-agent"
+            return self._agent
+
+        def dump_config(self):  # pragma: no cover - behaviour is trivial
+            return {}
+
+    class DummyTask:
+        def __init__(self, path, context=None):
+            self._path = path
+
+        def get_question(self):
+            return "What is the task?"
+
+        def get_output_format(self):
+            return None
+
+        def use_specified_server(self):
+            return True
+
+        def get_mcp_servers(self):
+            return []
+
+        async def evaluate(self, result):
+            return []
+
+        async def reset(self, trace_records):  # pragma: no cover - trivial in test
+            return None
+
+        async def cleanup(self):  # pragma: no cover - trivial in test
+            return None
+
+    class DummyTracer:
+        def __init__(self, collector=None):
+            self.trace_id = "trace-id"
+
+        def sprout(self):
+            return self
+
+        def __enter__(self):  # pragma: no cover - trivial in test
+            return self
+
+        def __exit__(self, exc_type, exc, tb):  # pragma: no cover - trivial in test
+            return False
+
+        def add(self, data):  # pragma: no cover - trivial in test
+            return None
+
+    async def _send_message_async(*args, **kwargs):  # pragma: no cover - trivial in test
+        return None
+
+    def _send_message(*args, **kwargs):  # pragma: no cover - trivial in test
+        return None
+
+    def _load_overrides(server_tools, db_url=None):
+        return {"demo": {"dummy_tool": "Optimized tool description"}}
+
+    monkeypatch.setattr(runner_module, "WorkflowBuilder", DummyWorkflow)
+    monkeypatch.setattr(runner_module, "Task", DummyTask)
+    monkeypatch.setattr(runner_module, "Tracer", DummyTracer)
+    monkeypatch.setattr(runner_module, "send_message_async", _send_message_async)
+    monkeypatch.setattr(runner_module, "send_message", _send_message)
+    monkeypatch.setattr(runner_module, "record_tool_history", lambda *_, **__: None)
+    monkeypatch.setattr(runner_module, "resolve_llm_model_name", lambda *_, **__: "model")
+    monkeypatch.setattr(runner_module, "load_optimized_tool_descriptions", _load_overrides)
+
+    async def _run():
+        runner = BenchmarkRunner(str(config_path))
+        await runner.run(tool_description_type=1)
+
+    asyncio.run(_run())
+
+    assert stub_agent.initialize_calls == 2
+    assert stub_agent.execute_calls == 2
+    assert stub_agent.description_history == [
+        "Optimized tool description",
+        "Optimized tool description",
+    ]
 
 
 if __name__ == "__main__":

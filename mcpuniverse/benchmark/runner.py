@@ -5,7 +5,7 @@ Benchmarks for evaluating agents and LLMs
 import json
 import os
 import hashlib
-from typing import List, Dict, Optional, Any, Sequence, Tuple
+from typing import List, Dict, Optional, Any, Sequence, Tuple, Mapping
 from contextlib import AsyncExitStack
 
 import yaml
@@ -29,6 +29,7 @@ from mcpuniverse.callbacks.base import (
     send_message_async,
     send_message,
 )
+from mcpuniverse.utils.tool_descriptions import load_optimized_tool_descriptions
 from mcpuniverse.utils.tool_history import record_tool_history, resolve_llm_model_name
 
 
@@ -208,6 +209,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             task_search: bool = False,
             dry_run: bool = False,
             truncate_tool_response: Optional[bool] = None,
+            tool_description_type: int = 0,
     ) -> List[BenchmarkResult]:
         """
         Run specified benchmarks.
@@ -225,9 +227,14 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             truncate_tool_response (Optional[bool]): Override for truncating MCP tool
                 responses before sending them to the LLM. ``True`` enables truncation,
                 ``False`` disables it, and ``None`` keeps the agent's default behaviour.
+            tool_description_type (int): Selects which tool descriptions are
+                provided to the LLM. ``0`` keeps the descriptions returned by the
+                MCP servers, while ``1`` replaces them with entries stored in the
+                ``mcp_servers`` table when available.
         """
         task_search = bool(task_search)
         dry_run = bool(dry_run)
+        tool_description_type = int(tool_description_type or 0)
         db_url = (self._context.get_env("DB_URL", "")
                   or self._context.get_env("DATABASE_URL", ""))
 
@@ -244,16 +251,43 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
 
         outputs = []
         used_agents = []
+        agent_tool_overrides: Dict[BaseAgent, Mapping[str, Mapping[str, str]]] = {}
         for benchmark in self._benchmark_configs:
             agent: Executor = workflow.get_component(benchmark.agent)
             if isinstance(agent, BaseAgent) and truncate_tool_response is not None:
                 agent.configure_tool_response_truncation(bool(truncate_tool_response))
             used_agents.append(agent)
             await agent.initialize()
+            if isinstance(agent, BaseAgent):
+                agent.configure_tool_performance_scores(task_search)
+                if tool_description_type == 1:
+                    if agent._tools:  # pylint: disable=protected-access
+                        server_tools = {
+                            server_name: [tool.name for tool in tool_list]
+                            for server_name, tool_list in agent._tools.items()  # pylint: disable=protected-access
+                        }
+                        overrides = load_optimized_tool_descriptions(
+                            server_tools,
+                            db_url=db_url or None,
+                        )
+                        if overrides:
+                            self._logger.info(
+                                "Applying optimised tool descriptions for agent %s", benchmark.agent
+                            )
+                            agent.override_tool_descriptions(overrides)
+                            agent_tool_overrides[agent] = overrides
+                        else:
+                            agent_tool_overrides.pop(agent, None)
+                else:
+                    agent_tool_overrides.pop(agent, None)
             await send_message_async(callbacks, message=CallbackMessage(
                 source=__file__,
                 type=MessageType.LOG,
-                metadata={"event": "list_tools", "data": agent}
+                metadata={
+                    "event": "list_tools",
+                    "data": agent,
+                    "tool_description_type": tool_description_type,
+                }
             ))
             agent_llm_model = None
             if isinstance(agent, BaseAgent):
@@ -445,6 +479,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                     self._logger.warning(
                                         "No matching server configuration found for recommended tools"
                                     )
+                            overrides_for_agent = agent_tool_overrides.get(agent)
                             if target_servers is None and task.use_specified_server():
                                 task_servers = task.get_mcp_servers()
                                 if isinstance(task_servers, list) and task_servers:
@@ -468,10 +503,20 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                     self._logger.info(
                                         "Applying %d recommended tools from task search", len(best_tools)
                                     )
+                                overrides_for_agent = agent_tool_overrides.get(agent)
+                                if overrides_for_agent:
+                                    agent.override_tool_descriptions(overrides_for_agent)
                             elif target_source == "task_search":
                                 self._logger.info(
                                     "Recommended tools already active; keeping existing server configuration"
                                 )
+                            if not agent.initialized:
+                                init_servers = target_servers or default_server_configs
+                                await agent.initialize(mcp_servers=init_servers)
+                                current_server_state = normalised_target
+                                overrides_for_agent = agent_tool_overrides.get(agent)
+                                if overrides_for_agent:
+                                    agent.override_tool_descriptions(overrides_for_agent)
                         elif task.use_specified_server():
                             self._logger.warning(
                                 "Task requires specified servers but agent %s cannot change servers",
