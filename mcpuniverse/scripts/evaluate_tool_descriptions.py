@@ -19,16 +19,14 @@ import logging
 import os
 import re
 import sys
-from contextlib import AsyncExitStack
-from dataclasses import dataclass
-from datetime import timedelta
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 
 from openai import OpenAI
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcpuniverse.mcp.manager import MCPManager
+from mcpuniverse.scripts.list_tool_performance import _list_server_tools, _select_transport
+from mcpuniverse.utils.task_search import ToolInfo
 
 
 LOGGER = logging.getLogger(__name__)
@@ -45,16 +43,6 @@ CSV_COLUMNS = [
     "description_reason",
     "description_missing_points",
 ]
-
-
-@dataclass
-class ToolInfo:
-    """Minimal representation of a tool exposed by an MCP server."""
-
-    server_name: str
-    server_path: str
-    tool_name: str
-    description: str
 
 
 class ChatLLM:
@@ -204,8 +192,8 @@ Best practices for complete tool descriptions:
 - Provide at least 3-4 sentences covering what the tool does, when it should or should not be used, what each parameter means, what data it returns, and any limitations or caveats.
 - Focus on clear, comprehensive explanation before examples; call out missing or vague information if present.
 Given the following MCP tool, decide if it is a consolidated workflow and rate the description quality:
-- MCP server name: {tool.server_name}
-- Tool name: {tool.tool_name}
+- MCP server name: {tool.server}
+- Tool name: {tool.name}
 - Original description: {desc}
 Respond ONLY with a minified JSON object using this schema:
 {{
@@ -219,8 +207,8 @@ Respond ONLY with a minified JSON object using this schema:
 def create_description_quality_prompt(tool: ToolInfo) -> str:
     tool_payload = json.dumps(
         {
-            "name": tool.tool_name,
-            "server_name": tool.server_name,
+            "name": tool.name,
+            "server_name": tool.server,
             "description": tool.description.strip(),
         },
         indent=2,
@@ -418,85 +406,6 @@ def evaluate_description_quality(llm: ChatLLM, tool: ToolInfo) -> dict:
     }
 
 
-async def connect_mcp_server(server_path: str, exit_stack: AsyncExitStack):
-    """Launch an MCP server as a subprocess and return a client session."""
-
-    server = Path(server_path)
-    if not server.exists():
-        raise FileNotFoundError(f"Server script not found: {server}")
-
-    repo_root = Path(__file__).resolve().parents[2]
-    module_path = ".".join(server.parent.relative_to(repo_root).parts)
-    env = dict(os.environ)
-    pythonpath = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = (
-        f"{repo_root}{os.pathsep}{pythonpath}" if pythonpath else str(repo_root)
-    )
-
-    server_params = StdioServerParameters(
-        command=sys.executable,
-        args=["-m", module_path, "--transport", "stdio"],
-        env=env,
-    )
-
-    transport = await exit_stack.enter_async_context(stdio_client(server_params))
-    read, write = transport
-    session = await exit_stack.enter_async_context(
-        ClientSession(read, write, read_timeout_seconds=timedelta(seconds=60))
-    )
-    await session.initialize()
-    return session, transport, write
-
-
-async def _list_tools_for_server(server_path: Path) -> Sequence[ToolInfo]:
-    LOGGER.info("Connecting to MCP server: %s", server_path)
-    exit_stack = AsyncExitStack()
-    try:
-        session, _transport, _write = await connect_mcp_server(
-            str(server_path), exit_stack
-        )
-        try:
-            response = await session.list_tools()
-        except Exception as exc:  # pragma: no cover - depends on server state
-            LOGGER.error(
-                "Failed to list tools for server '%s': %s", server_path, exc
-            )
-            return []
-
-        server_name = server_path.parent.name or server_path.stem
-        collected: List[ToolInfo] = []
-        for tool in getattr(response, "tools", []) or []:
-            description = getattr(tool, "description", "") or ""
-            collected.append(
-                ToolInfo(
-                    server_name=server_name,
-                    server_path=str(server_path),
-                    tool_name=getattr(tool, "name", ""),
-                    description=description,
-                )
-            )
-        return collected
-    except Exception as exc:  # pragma: no cover - depends on server availability
-        LOGGER.error("Failed to connect to server '%s': %s", server_path, exc)
-        return []
-    finally:
-        await exit_stack.aclose()
-
-
-async def collect_tools(server_paths: Sequence[Path]) -> List[ToolInfo]:
-    aggregated: List[ToolInfo] = []
-    for server_path in server_paths:
-        aggregated.extend(await _list_tools_for_server(server_path))
-    return aggregated
-
-
-def discover_server_scripts(root: Path, pattern: str = "server.py") -> List[Path]:
-    if not root.exists():
-        LOGGER.warning("Server root '%s' does not exist", root)
-        return []
-    return sorted(root.rglob(pattern))
-
-
 def resolve_explicit_server_paths(
     raw_paths: Sequence[str], pattern: str
 ) -> List[Path]:
@@ -523,6 +432,120 @@ def resolve_explicit_server_paths(
             continue
         LOGGER.warning("Server path '%s' does not exist", candidate)
     return resolved
+
+
+def _build_dynamic_configs(server_paths: Sequence[Path]) -> dict[str, dict]:
+    configs: dict[str, dict] = {}
+    if not server_paths:
+        return configs
+
+    repo_root = Path(__file__).resolve().parents[2]
+    pythonpath = os.environ.get("PYTHONPATH", "")
+    path_value = f"{repo_root}{os.pathsep}{pythonpath}" if pythonpath else str(repo_root)
+
+    for path in server_paths:
+        if not path.exists():
+            LOGGER.warning("Skipping missing server script %s", path)
+            continue
+        if not path.is_file():
+            LOGGER.warning("Skipping non-file server path %s", path)
+            continue
+
+        base_name = path.stem or "server"
+        candidate_name = base_name
+        suffix = 1
+        while candidate_name in configs:
+            suffix += 1
+            candidate_name = f"{base_name}_{suffix}"
+
+        configs[candidate_name] = {
+            "env": {"PYTHONPATH": path_value},
+            "stdio": {
+                "command": sys.executable,
+                "args": [str(path), "--transport", "stdio"],
+            },
+        }
+        LOGGER.info("Registered temporary MCP server '%s' from %s", candidate_name, path)
+
+    return configs
+
+
+def _merge_configs(base: dict[str, dict], additions: dict[str, dict]) -> dict[str, dict]:
+    combined: dict[str, dict] = dict(base)
+    for name, config in additions.items():
+        candidate = name
+        counter = 1
+        while candidate in combined:
+            counter += 1
+            candidate = f"{name}_{counter}"
+        combined[candidate] = config
+    return combined
+
+
+def _load_manager(config_path: Optional[str], server_paths: Optional[Sequence[str]], *, pattern: str) -> MCPManager | None:
+    base_config: dict[str, dict] = {}
+    if config_path:
+        config_file = Path(config_path).expanduser().resolve()
+        if not config_file.exists():
+            LOGGER.error("MCP config file not found: %s", config_file)
+            return None
+        try:
+            base_config = MCPManager._open_config(str(config_file))  # type: ignore[attr-defined]
+        except Exception as exc:  # pragma: no cover - config parsing
+            LOGGER.error("Failed to load MCP config %s: %s", config_file, exc)
+            return None
+
+    dynamic_paths: List[Path] = []
+    if server_paths:
+        dynamic_paths = resolve_explicit_server_paths(server_paths, pattern)
+        if not dynamic_paths:
+            LOGGER.warning("No MCP server scripts found from provided --server-path arguments")
+            if not base_config:
+                return None
+        dynamic_config = _build_dynamic_configs(dynamic_paths)
+        base_config = _merge_configs(base_config, dynamic_config)
+
+    try:
+        return MCPManager(config=base_config or config_path)
+    except AssertionError as exc:  # pragma: no cover - invalid configuration
+        LOGGER.error("Failed to initialise MCP manager: %s", exc)
+        return None
+
+
+async def collect_tools(
+    manager: MCPManager,
+    *,
+    transport_mode: str,
+    server_filters: Optional[Sequence[str]] = None,
+) -> List[ToolInfo]:
+    collected: List[ToolInfo] = []
+    filters = set(server_filters or [])
+    missing_filters: set[str] = set()
+
+    for server_name, config in manager.get_configs().items():
+        if filters and server_name not in filters:
+            continue
+        transport = _select_transport(config, transport_mode)
+        if transport is None:
+            mode = "any" if transport_mode == "auto" else transport_mode
+            LOGGER.warning(
+                "Skipping server '%s' because no %s transport is available.",
+                server_name,
+                mode,
+            )
+            continue
+        server_tools = await _list_server_tools(manager, server_name, transport=transport)
+        collected.extend(server_tools)
+
+    if filters:
+        missing_filters = filters - {tool.server for tool in collected}
+        if missing_filters:
+            LOGGER.warning(
+                "Requested servers %s were not found or returned no tools.",
+                ", ".join(sorted(missing_filters)),
+            )
+
+    return collected
 
 
 def write_csv(path: Path, rows: List[dict]) -> None:
@@ -573,24 +596,49 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Limit the number of tools to analyze (processes all tools by default).",
     )
     parser.add_argument(
+        "--config",
+        default=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "..",
+            "mcp",
+            "configs",
+            "server_list.json",
+        ),
+        help="Path to the MCP server configuration file (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--transport",
+        default="stdio",
+        choices=["stdio", "sse", "auto"],
+        help=(
+            "Transport preference when connecting to servers. "
+            "Use 'auto' to fall back to SSE when stdio is unavailable."
+        ),
+    )
+    parser.add_argument(
+        "--server",
+        action="append",
+        dest="servers",
+        default=None,
+        help=(
+            "Restrict evaluation to specific server names. "
+            "May be passed multiple times."
+        ),
+    )
+    parser.add_argument(
         "--server-path",
         action="append",
         dest="server_paths",
         default=None,
         help=(
             "Explicit path to an MCP server script or directory. "
-            "May be passed multiple times. When provided, discovery via --server-root is skipped."
+            "Paths are converted into temporary MCP configs and merged with --config."
         ),
-    )
-    parser.add_argument(
-        "--server-root",
-        default="mcpuniverse/mcp/servers",
-        help="Directory containing MCP server implementations (default: mcpuniverse/mcp/servers).",
     )
     parser.add_argument(
         "--pattern",
         default="server.py",
-        help="Filename pattern used to discover MCP servers (default: server.py).",
+        help="Filename pattern used to discover MCP server scripts inside provided directories (default: server.py).",
     )
     parser.add_argument(
         "--dry-run",
@@ -608,29 +656,23 @@ def build_arg_parser() -> argparse.ArgumentParser:
 async def async_main(args: argparse.Namespace) -> int:
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
 
-    server_paths: List[Path]
-    if args.server_paths:
-        LOGGER.info("Loading MCP servers from explicit paths")
-        server_paths = resolve_explicit_server_paths(args.server_paths, args.pattern)
-        if not server_paths:
-            LOGGER.warning(
-                "No MCP server scripts found from provided --server-path arguments"
-            )
-            return 1
-    else:
-        server_root = Path(args.server_root).expanduser().resolve()
-        LOGGER.info("Discovering MCP servers in %s", server_root)
-        server_paths = discover_server_scripts(server_root, args.pattern)
-        if not server_paths:
-            LOGGER.warning("No MCP server scripts found under %s", server_root)
-            return 1
+    manager = _load_manager(args.config, args.server_paths, pattern=args.pattern)
+    if manager is None:
+        return 1
+    if not manager.get_configs():
+        LOGGER.warning("No MCP server configurations were loaded.")
+        return 1
 
-    tools = await collect_tools(server_paths)
+    tools = await collect_tools(
+        manager,
+        transport_mode=args.transport,
+        server_filters=args.servers,
+    )
     if not tools:
         LOGGER.warning("No tools discovered across MCP servers.")
         return 1
 
-    unique_servers = sorted({tool.server_name for tool in tools})
+    unique_servers = sorted({tool.server for tool in tools})
     LOGGER.info(
         "Discovered %d tools across %d servers", len(tools), len(unique_servers)
     )
@@ -657,13 +699,13 @@ async def async_main(args: argparse.Namespace) -> int:
 
     for index, tool in enumerate(tools, start=1):
         prefix = f"[{index}/{len(tools)}]"
-        LOGGER.info("%s Evaluating %s :: %s", prefix, tool.server_name, tool.tool_name)
+        LOGGER.info("%s Evaluating %s :: %s", prefix, tool.server, tool.name)
 
         if args.dry_run or llm is None:
             rows.append(
                 {
-                    "mcp_server_name": tool.server_name,
-                    "tool_name": tool.tool_name,
+                    "mcp_server_name": tool.server,
+                    "tool_name": tool.name,
                     "is_consolidated": "",
                     "consolidation_reason": "Dry run",
                     "quality_score": "",
@@ -683,14 +725,14 @@ async def async_main(args: argparse.Namespace) -> int:
             LOGGER.warning(
                 "%s Failed to analyze %s :: %s: %s",
                 prefix,
-                tool.server_name,
-                tool.tool_name,
+                tool.server,
+                tool.name,
                 exc,
             )
             rows.append(
                 {
-                    "mcp_server_name": tool.server_name,
-                    "tool_name": tool.tool_name,
+                    "mcp_server_name": tool.server,
+                    "tool_name": tool.name,
                     "is_consolidated": "",
                     "consolidation_reason": f"Error: {exc}",
                     "quality_score": "",
@@ -704,8 +746,8 @@ async def async_main(args: argparse.Namespace) -> int:
             continue
 
         row = {
-            "mcp_server_name": tool.server_name,
-            "tool_name": tool.tool_name,
+            "mcp_server_name": tool.server,
+            "tool_name": tool.name,
             "is_consolidated": consolidation["is_consolidated"],
             "consolidation_reason": consolidation["consolidation_reason"],
             "quality_score": consolidation["quality_score"],

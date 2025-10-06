@@ -667,13 +667,14 @@ descriptions could be stored.
 
 ### Evaluate MCP tool description quality
 
-The `evaluate_tool_descriptions` CLI enumerates every MCP server located in
-`mcpuniverse/mcp/servers`, inspects the tools they expose, and evaluates each
-tool description with two dedicated LLM prompts: one that scores whether the
-tool represents a consolidated workflow and another that audits the description
-for missing best-practice elements. Results are saved to a CSV file that uses
-the schema of our internal Node.js tooling, allowing easy comparison across
-implementations.
+The `evaluate_tool_descriptions` CLI loads server definitions from an MCP
+configuration file (defaulting to `mcpuniverse/mcp/configs/server_list.json`),
+launches each server through the configured transport, and evaluates every
+exposed tool description using two dedicated LLM prompts. One prompt determines
+whether the tool is a consolidated workflow, while the other audits the
+description for missing best-practice elements. Results are saved to a CSV file
+compatible with our internal Node.js tooling, making it easy to compare outputs
+across implementations.
 
 ```bash
 export OPENAI_API_KEY=sk-...  # or pass --api-key explicitly
@@ -682,9 +683,18 @@ python -m mcpuniverse.scripts.evaluate_tool_descriptions \
   --output /tmp/mcp_tool_audit.csv
 ```
 
-To evaluate a specific server (or a subset of servers) without scanning the
-default directory, pass one or more `--server-path` flags pointing at the
-desired entrypoints:
+To target a subset of configured servers, pass one or more `--server` flags.
+
+```bash
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv \
+  --server github --server date
+```
+
+You can also add ad-hoc server scripts (not yet present in the config file) by
+supplying `--server-path` values; each path is converted into a temporary MCP
+configuration entry before evaluation.
 
 ```bash
 python -m mcpuniverse.scripts.evaluate_tool_descriptions \
@@ -699,9 +709,11 @@ Key flags:
 |------|-------------|
 | `--model MODEL_NAME` | Required. Target OpenAI model used for both evaluations. |
 | `--output PATH` | Required. Destination CSV path for the combined scores. |
-| `--server-path PATH` | Optional. Explicit path to a server script or directory. Repeat to audit multiple specific servers; skips auto-discovery. |
-| `--server-root DIR` | Optional. Override the root directory scanned for MCP servers (default: `mcpuniverse/mcp/servers`). |
-| `--pattern GLOB` | Optional. Filename pattern for server discovery (default: `server.py`). |
+| `--config PATH` | Optional. Alternate MCP server configuration file (default: `mcpuniverse/mcp/configs/server_list.json`). |
+| `--transport {stdio,sse,auto}` | Optional. Preferred transport; `auto` falls back to SSE when stdio is unavailable. |
+| `--server NAME` | Optional. Limit evaluation to specific servers (repeatable). |
+| `--server-path PATH` | Optional. Explicit path to a server script or directory. Paths are merged into the loaded MCP configuration. |
+| `--pattern GLOB` | Optional. Filename pattern for locating scripts inside provided `--server-path` directories (default: `server.py`). |
 | `--limit N` | Optional. Evaluate only the first `N` discovered tools. |
 | `--dry-run` | Skip LLM calls and emit placeholder rows (useful for connectivity tests). |
 
