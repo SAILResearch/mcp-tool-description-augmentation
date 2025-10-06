@@ -665,6 +665,40 @@ Before running the CLI, ensure the destination database contains the
 server/tool pairs were updated and exits with a non-zero status if no
 descriptions could be stored.
 
+### Evaluate MCP tool description quality
+
+The `evaluate_tool_descriptions` CLI enumerates every MCP server located in
+`mcpuniverse/mcp/servers`, inspects the tools they expose, and evaluates each
+tool description with two dedicated LLM prompts: one that scores whether the
+tool represents a consolidated workflow and another that audits the description
+for missing best-practice elements. Results are saved to a CSV file that uses
+the schema of our internal Node.js tooling, allowing easy comparison across
+implementations.
+
+```bash
+export OPENAI_API_KEY=sk-...  # or pass --api-key explicitly
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--model MODEL_NAME` | Required. Target OpenAI model used for both evaluations. |
+| `--output PATH` | Required. Destination CSV path for the combined scores. |
+| `--server-root DIR` | Optional. Override the root directory scanned for MCP servers (default: `mcpuniverse/mcp/servers`). |
+| `--pattern GLOB` | Optional. Filename pattern for server discovery (default: `server.py`). |
+| `--limit N` | Optional. Evaluate only the first `N` discovered tools. |
+| `--dry-run` | Skip LLM calls and emit placeholder rows (useful for connectivity tests). |
+
+The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
+`OPENAI_API_KEY`, the `--api-key` flag, or a custom `--base-url` if you are
+using a compatible proxy. Each tool evaluation spawns the corresponding MCP
+server through its stdio transport, lists available tools, and records both LLM
+assessments in the output CSV.
+
 ## Citation
 
 If you use MCP-Universe in your research, please cite our paper:
