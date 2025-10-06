@@ -665,6 +665,64 @@ Before running the CLI, ensure the destination database contains the
 server/tool pairs were updated and exits with a non-zero status if no
 descriptions could be stored.
 
+### Evaluate MCP tool description quality
+
+The `evaluate_tool_descriptions` CLI loads server definitions from an MCP
+configuration file (defaulting to `mcpuniverse/mcp/configs/server_list.json`),
+launches each server through the configured transport, and evaluates every
+exposed tool description using two dedicated LLM prompts. One prompt determines
+whether the tool is a consolidated workflow, while the other audits the
+description for missing best-practice elements. Results are saved to a CSV file
+compatible with our internal Node.js tooling, making it easy to compare outputs
+across implementations.
+
+```bash
+export OPENAI_API_KEY=sk-...  # or pass --api-key explicitly
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv
+```
+
+To target a subset of configured servers, pass one or more `--server` flags.
+
+```bash
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv \
+  --server github --server date
+```
+
+You can also add ad-hoc server scripts (not yet present in the config file) by
+supplying `--server-path` values; each path is converted into a temporary MCP
+configuration entry before evaluation.
+
+```bash
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv \
+  --server-path mcpuniverse/mcp/servers/github/server.py
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--model MODEL_NAME` | Required. Target OpenAI model used for both evaluations. |
+| `--output PATH` | Required. Destination CSV path for the combined scores. |
+| `--config PATH` | Optional. Alternate MCP server configuration file (default: `mcpuniverse/mcp/configs/server_list.json`). |
+| `--transport {stdio,sse,auto}` | Optional. Preferred transport; `auto` falls back to SSE when stdio is unavailable. |
+| `--server NAME` | Optional. Limit evaluation to specific servers (repeatable). |
+| `--server-path PATH` | Optional. Explicit path to a server script or directory. Paths are merged into the loaded MCP configuration. |
+| `--pattern GLOB` | Optional. Filename pattern for locating scripts inside provided `--server-path` directories (default: `server.py`). |
+| `--limit N` | Optional. Evaluate only the first `N` discovered tools. |
+| `--dry-run` | Skip LLM calls and emit placeholder rows (useful for connectivity tests). |
+
+The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
+`OPENAI_API_KEY`, the `--api-key` flag, or a custom `--base-url` if you are
+using a compatible proxy. Each tool evaluation spawns the corresponding MCP
+server through its stdio transport, lists available tools, and records both LLM
+assessments in the output CSV.
+
 ## Citation
 
 If you use MCP-Universe in your research, please cite our paper:
