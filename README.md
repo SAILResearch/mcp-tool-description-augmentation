@@ -682,12 +682,24 @@ python -m mcpuniverse.scripts.evaluate_tool_descriptions \
   --output /tmp/mcp_tool_audit.csv
 ```
 
+To evaluate a specific server (or a subset of servers) without scanning the
+default directory, pass one or more `--server-path` flags pointing at the
+desired entrypoints:
+
+```bash
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv \
+  --server-path mcpuniverse/mcp/servers/github/server.py
+```
+
 Key flags:
 
 | Flag | Description |
 |------|-------------|
 | `--model MODEL_NAME` | Required. Target OpenAI model used for both evaluations. |
 | `--output PATH` | Required. Destination CSV path for the combined scores. |
+| `--server-path PATH` | Optional. Explicit path to a server script or directory. Repeat to audit multiple specific servers; skips auto-discovery. |
 | `--server-root DIR` | Optional. Override the root directory scanned for MCP servers (default: `mcpuniverse/mcp/servers`). |
 | `--pattern GLOB` | Optional. Filename pattern for server discovery (default: `server.py`). |
 | `--limit N` | Optional. Evaluate only the first `N` discovered tools. |

@@ -497,6 +497,34 @@ def discover_server_scripts(root: Path, pattern: str = "server.py") -> List[Path
     return sorted(root.rglob(pattern))
 
 
+def resolve_explicit_server_paths(
+    raw_paths: Sequence[str], pattern: str
+) -> List[Path]:
+    resolved: List[Path] = []
+    seen: set[Path] = set()
+    for raw_path in raw_paths:
+        candidate = Path(raw_path).expanduser().resolve()
+        if candidate.is_file():
+            if candidate not in seen:
+                resolved.append(candidate)
+                seen.add(candidate)
+            continue
+        if candidate.is_dir():
+            matches = sorted(candidate.rglob(pattern))
+            if not matches:
+                LOGGER.warning(
+                    "No server scripts matching '%s' found under %s", pattern, candidate
+                )
+            else:
+                for match in matches:
+                    if match not in seen:
+                        resolved.append(match)
+                        seen.add(match)
+            continue
+        LOGGER.warning("Server path '%s' does not exist", candidate)
+    return resolved
+
+
 def write_csv(path: Path, rows: List[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
@@ -545,6 +573,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Limit the number of tools to analyze (processes all tools by default).",
     )
     parser.add_argument(
+        "--server-path",
+        action="append",
+        dest="server_paths",
+        default=None,
+        help=(
+            "Explicit path to an MCP server script or directory. "
+            "May be passed multiple times. When provided, discovery via --server-root is skipped."
+        ),
+    )
+    parser.add_argument(
         "--server-root",
         default="mcpuniverse/mcp/servers",
         help="Directory containing MCP server implementations (default: mcpuniverse/mcp/servers).",
@@ -570,12 +608,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
 async def async_main(args: argparse.Namespace) -> int:
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
 
-    server_root = Path(args.server_root).expanduser().resolve()
-    LOGGER.info("Discovering MCP servers in %s", server_root)
-    server_paths = discover_server_scripts(server_root, args.pattern)
-    if not server_paths:
-        LOGGER.warning("No MCP server scripts found under %s", server_root)
-        return 1
+    server_paths: List[Path]
+    if args.server_paths:
+        LOGGER.info("Loading MCP servers from explicit paths")
+        server_paths = resolve_explicit_server_paths(args.server_paths, args.pattern)
+        if not server_paths:
+            LOGGER.warning(
+                "No MCP server scripts found from provided --server-path arguments"
+            )
+            return 1
+    else:
+        server_root = Path(args.server_root).expanduser().resolve()
+        LOGGER.info("Discovering MCP servers in %s", server_root)
+        server_paths = discover_server_scripts(server_root, args.pattern)
+        if not server_paths:
+            LOGGER.warning("No MCP server scripts found under %s", server_root)
+            return 1
 
     tools = await collect_tools(server_paths)
     if not tools:
