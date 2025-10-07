@@ -1,0 +1,60 @@
+{
+ "calculator": {
+   "stdio": {
+     "command": "/opt/homebrew/bin/npx",
+     "args": [
+       "-y", "@wrtnlabs/calculator-mcp@latest"
+     ]
+   }
+ },
+
+  "date": {
+    "stdio": {
+      "command": "python3",
+      "args": [
+        "-m", "mcpuniverse.mcp.servers.date"
+      ]
+    },
+    "sse": {
+      "command": "python3",
+      "args": [
+        "-m", "mcpuniverse.mcp.servers.date",
+        "--transport", "sse",
+        "--port", "{{PORT}}"
+      ]
+    }
+  },
+  "yfinance": {
+   "stdio": {
+     "command": "python3",
+     "args": [
+       "-m", "mcpuniverse.mcp.servers.yahoo_finance"
+     ]
+   },
+   "sse": {
+     "command": "python3",
+     "args": [
+       "-m", "mcpuniverse.mcp.servers.yahoo_finance",
+       "--transport", "sse",
+       "--port", "{{PORT}}"
+     ]
+   }
+ }, 
+ "financial-datasets": {
+   "stdio": {
+     "command": "/Users/mohammedmehedihasan/.local/bin/uv",
+     "args": [
+        "--directory",
+        "/Users/mohammedmehedihasan/personal/codes/mcp-tool-description-miner/mcp-server",
+        "run",
+        "server.py"
+     ]
+   }
+ },
+ "investor": {
+   "stdio": {
+     "command": "/Users/mohammedmehedihasan/.local/bin/uvx",
+     "args": ["investor-agent"]
+   }
+ }
+}

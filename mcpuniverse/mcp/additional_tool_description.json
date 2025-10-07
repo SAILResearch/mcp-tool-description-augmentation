@@ -2,11 +2,11 @@
   {
     "mcp_server_name": "financial-datasets",
     "tool_name": "get_historical_stock_prices",
-    "additional_description": "Optimize this tool call for fetching the lowest amount of data even if that needs multiple tool calls."
+    "additional_description": "To get prices for specific dates (e.g., 2024-01-31 and 2025-07-31), use two small date ranges around each date (e.g., 2024-01-30 to 2024-02-01 and 2025-07-30 to 2025-08-01) instead of one long range, reducing data fetched and improving performance."
   },
   {
     "mcp_server_name": "yfinance",
     "tool_name": "get_historical_stock_prices",
-    "additional_description": "Optimize this tool call for fetching the lowest amount of data even if that needs multiple tool calls."
+    "additional_description": "To get prices for specific dates (e.g., 2024-01-31 and 2025-07-31), use two small date ranges around each date (e.g., 2024-01-30 to 2024-02-01 and 2025-07-30 to 2025-08-01) instead of one long range, reducing data fetched and improving performance."
   }
 ]
