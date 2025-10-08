@@ -1,6 +1,9 @@
 import os
 import json
 import unittest
+from unittest.mock import AsyncMock
+
+from mcpuniverse.benchmark.cleanups import CLEANUP_FUNCTIONS
 from mcpuniverse.benchmark.task import Task, TaskCleanupConfig, TaskConfig
 from mcpuniverse.tracer.types import TraceRecord, DataRecord
 
@@ -155,7 +158,47 @@ class TestTask(unittest.IsolatedAsyncioTestCase):
             "response": {"content": [{"annotations": None, "text": "San Francisco", "type": "text"}]},
             "type": "tool"
         })
-        self.assertDictEqual(res, {"name": {"content": "San Francisco"}})
+        self.assertEqual(res["name"], {"content": "San Francisco"})
+        self.assertIs(res["context"], task._context)
+
+    async def test_execute_reset_injects_context_into_cleanup_function(self):
+        config = {
+            "question": "",
+            "cleanups": [
+                {
+                    "server": "github",
+                    "tool": "create_repository",
+                    "cleanup_func": "delete_repository",
+                    "cleanup_args": {"repo": "$name"},
+                }
+            ],
+        }
+        task = Task(config)
+        cleanup_config = task._config.cleanups[0]
+
+        cleanup_key = ("github", "delete_repository")
+        original_cleanup = CLEANUP_FUNCTIONS.get(cleanup_key)
+        mock_cleanup = AsyncMock(return_value="ok")
+        CLEANUP_FUNCTIONS[cleanup_key] = mock_cleanup
+        try:
+            tool_call = {
+                "server": "github",
+                "tool_name": "create_repository",
+                "arguments": {"name": "demo-repo"},
+                "response": {}
+            }
+            result = await task._execute_reset(cleanup_config, tool_call)
+        finally:
+            if original_cleanup is None:
+                CLEANUP_FUNCTIONS.pop(cleanup_key, None)
+            else:
+                CLEANUP_FUNCTIONS[cleanup_key] = original_cleanup
+
+        mock_cleanup.assert_awaited_once()
+        kwargs = mock_cleanup.await_args.kwargs
+        self.assertEqual(kwargs["repo"], "demo-repo")
+        self.assertIs(kwargs["context"], task._context)
+        self.assertEqual(result, "ok")
 
     async def test_set_environ_variables(self):
         config = TaskConfig(
