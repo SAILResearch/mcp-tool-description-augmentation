@@ -99,50 +99,88 @@ BASE_SYSTEM_PROMPT = dedent(
 CODE_TEMPLATE = """
 import asyncio
 import json
+import logging
+from collections.abc import MutableMapping
+from typing import Any, Iterator
 
 from mcpuniverse.mcp.manager import MCPManager
 
 
-class ClientRegistry(dict):
-    '''Mapping of MCP clients with attribute-style access.'''
+logger = logging.getLogger(__name__)
 
-    def __getattr__(self, item):
+
+class ClientRegistry(MutableMapping[str, Any]):
+    '''Mapping wrapper exposing MCP clients via both key and attribute access.'''
+
+    def __init__(self) -> None:
+        self._clients: dict[str, Any] = {{}}
+
+    def __getattr__(self, name: str) -> Any:  # pragma: no cover - passthrough helper
         try:
-            return self[item]
-        except KeyError as exc:  # pragma: no cover - defensive guard
-            raise AttributeError(item) from exc
+            return self._clients[name]
+        except KeyError as exc:  # pragma: no cover - aligns AttributeError semantics
+            raise AttributeError(name) from exc
 
-    def __setattr__(self, key, value):  # pragma: no cover - read-only helper
-        raise AttributeError("ClientRegistry is read-only")
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+        else:
+            self._clients[name] = value
 
-    def __delattr__(self, item):  # pragma: no cover - read-only helper
-        raise AttributeError("ClientRegistry is read-only")
+    def __delattr__(self, name: str) -> None:  # pragma: no cover - defensive guard
+        try:
+            del self._clients[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+    # MutableMapping interface -------------------------------------------------
+    def __getitem__(self, key: str) -> Any:
+        return self._clients[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self._clients[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self._clients[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._clients)
+
+    def __len__(self) -> int:
+        return len(self._clients)
+
+    # Convenience helpers ------------------------------------------------------
+    def register(self, name: str, client: Any) -> None:
+        self._clients[name] = client
+
+    async def cleanup(self) -> None:
+        for name, client in list(self._clients.items()):
+            try:
+                await client.cleanup()
+            except Exception as exc:  # pragma: no cover - runtime safeguard
+                logger.warning("Error cleaning up client %s: %s", name, exc)
 
 
 {generated_code}
 
 
-async def _run():
+async def _run() -> None:
     manager = MCPManager()
-    client_map = {{}}
+    clients = ClientRegistry()
     try:
         for server in {servers_literal}:
             name = server.get("name")
             transport = server.get("transport", "stdio")
             client = await manager.build_client(server_name=name, transport=transport)
-            client_map[name] = client
+            clients.register(name, client)
 
-        registry = ClientRegistry()
-        registry.update(client_map)
-
-        result = await solve_task(registry)
+        result = await solve_task(clients)
         if isinstance(result, (dict, list)):
             print(json.dumps(result, indent=2, default=str))
         else:
             print(result)
     finally:
-        for client in client_map.values():
-            await client.cleanup()
+        await clients.cleanup()
 
 
 if __name__ == "__main__":
