@@ -59,6 +59,8 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
 - [Utility Scripts](#utility-scripts)
     - [List tool performance scores](#list-tool-performance-scores)
     - [Optimize MCP tool descriptions](#optimize-mcp-tool-descriptions)
+    - [Evaluate MCP tool description quality](#evaluate-mcp-tool-description-quality)
+- [Dynamic MCP Orchestration](#dynamic-mcp-orchestration)
 - [Citation](#citation)
 
 ## Architecture Overview
@@ -722,6 +724,33 @@ The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
 using a compatible proxy. Each tool evaluation spawns the corresponding MCP
 server through its stdio transport, lists available tools, and records both LLM
 assessments in the output CSV.
+
+## Dynamic MCP Orchestration
+
+Use the `generate_financial_analysis_runs.py` utility to dynamically orchestrate
+MCP tooling for the financial analysis benchmark. The CLI performs the
+following workflow:
+
+1. Reads `mcpuniverse/benchmark/configs/test/financial_analysis.yaml` to
+   discover the target LLM, agent, and tasks.
+2. Launches the configured MCP servers through `MCPManager` and collects their
+   tool descriptions and input schemas.
+3. Prompts the benchmark's LLM to emit an asynchronous `solve_task` function
+   that uses the discovered tools for each benchmark task.
+4. Executes every generated solution end-to-end, printing structured outputs and
+   diagnostics to the console.
+
+Run the orchestrator with:
+
+```bash
+python mcpuniverse/scripts/generate_financial_analysis_runs.py \
+  --config mcpuniverse/benchmark/configs/test/financial_analysis.yaml \
+  --log-level INFO
+```
+
+The script streams execution logs for each task and cleans up MCP client
+connections automatically. Increase verbosity with `--log-level DEBUG` when you
+need deeper insight into tool discovery, LLM prompting, or runtime errors.
 
 ## Citation
 
