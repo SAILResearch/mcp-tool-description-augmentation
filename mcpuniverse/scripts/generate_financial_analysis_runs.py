@@ -43,6 +43,7 @@ import yaml
 
 from mcp.types import Tool
 
+from mcpuniverse.benchmark.task import Task
 from mcpuniverse.agent.utils import get_tools_description
 from mcpuniverse.common.context import Context
 from mcpuniverse.llm.base import BaseLLM
@@ -233,7 +234,7 @@ def _build_messages(
     tool_descriptions: str,
     tool_metadata: Mapping[str, Any],
 ) -> List[Dict[str, str]]:
-    output_format = json.dumps(task_payload.get("output_format", {}), indent=2)
+    output_format = json.dumps(task_payload.get("output_format") or {}, indent=2)
     task_context = json.dumps(task_payload, indent=2)
     tool_metadata_dump = json.dumps(tool_metadata, indent=2)
 
@@ -270,7 +271,7 @@ def _extract_code_block(text: str) -> str:
     return dedent(text).strip()
 
 
-def _initialise_llm(llm_spec: Mapping[str, Any]) -> BaseLLM:
+def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] = None) -> BaseLLM:
     model_type = llm_spec.get("type")
     if not model_type:
         raise ValueError("LLM specification must include a 'type' field")
@@ -278,13 +279,30 @@ def _initialise_llm(llm_spec: Mapping[str, Any]) -> BaseLLM:
     model_config = llm_spec.get("config", {})
     manager = ModelManager()
     model = manager.build_model(model_type, config=model_config)
-    model.set_context(Context(env=dict(os.environ)))
+    model_context = context if context is not None else Context(env=dict(os.environ))
+    model.set_context(model_context)
     return model
 
 
-def _load_task_config(task_path: Path) -> Mapping[str, Any]:
+def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
     with task_path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+        raw_payload = json.load(handle)
+
+    if not isinstance(raw_payload, dict):
+        raise ValueError(f"Task file {task_path} must contain a JSON object")
+
+    task = Task(str(task_path), context=context)
+    payload: Dict[str, Any] = dict(raw_payload)
+    payload["question"] = task.get_question()
+
+    output_format = task.get_output_format()
+    if output_format is not None:
+        payload["output_format"] = output_format
+
+    if "mcp_servers" not in payload:
+        payload["mcp_servers"] = task.get_mcp_servers()
+
+    return payload
 
 
 def _compose_system_prompt(agent_spec: Mapping[str, Any], base_prompt: str) -> str:
@@ -334,8 +352,9 @@ def run_benchmark_tasks(config_path: Path) -> None:
     documents = _load_yaml_documents(config_path)
     llm_spec, agent_spec, benchmark_spec = _extract_config_sections(documents)
 
-    llm = _initialise_llm(llm_spec)
-    manager = MCPManager(context=Context(env=dict(os.environ)))
+    context = Context(env=dict(os.environ))
+    llm = _initialise_llm(llm_spec, context=context)
+    manager = MCPManager(context=context)
 
     servers = agent_spec.get("config", {}).get("servers", [])
     if not servers:
@@ -361,7 +380,7 @@ def run_benchmark_tasks(config_path: Path) -> None:
             LOGGER.error("Task file %s does not exist", task_path)
             continue
 
-        task_payload = _load_task_config(task_path)
+        task_payload = _load_task_payload(task_path, context=context)
         messages = _build_messages(
             system_instruction=system_prompt,
             task_payload=task_payload,
