@@ -37,12 +37,11 @@ import sys
 import tempfile
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
-
-import yaml
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from mcp.types import Tool
 
+from mcpuniverse.benchmark.runner import BenchmarkRunner
 from mcpuniverse.benchmark.task import Task
 from mcpuniverse.agent.utils import get_tools_description
 from mcpuniverse.common.context import Context
@@ -219,38 +218,39 @@ def _prepare_server_configs(
     return prepared
 
 
-def _load_yaml_documents(path: Path) -> List[Mapping[str, Any]]:
-    with path.open("r", encoding="utf-8") as handle:
-        documents = [doc for doc in yaml.safe_load_all(handle) if doc]
-    if not documents:
-        raise ValueError(f"No YAML documents were found in {path}")
-    return documents
+def _load_configuration_sections(
+    config_path: Path,
+    *,
+    context: Context,
+) -> tuple[Mapping[str, Any], Mapping[str, Any], Mapping[str, Any]]:
+    """Leverage :class:`BenchmarkRunner` to parse benchmark configuration data."""
 
+    runner = BenchmarkRunner(str(config_path), context=context)
 
-def _extract_config_sections(documents: Iterable[Mapping[str, Any]]) -> tuple[dict, dict, dict]:
-    llm_spec: Optional[dict] = None
-    agent_spec: Optional[dict] = None
-    benchmark_spec: Optional[dict] = None
-
-    for document in documents:
-        kind = str(document.get("kind", "")).strip().lower()
-        spec = document.get("spec", {})
+    llm_section: Optional[Mapping[str, Any]] = None
+    agent_section: Optional[Mapping[str, Any]] = None
+    for component in runner._agent_configs:  # pylint: disable=protected-access
+        kind = str(component.get("kind", "")).lower()
+        spec = component.get("spec", {})
         if not spec:
             continue
         if kind == CONFIG_KIND_LLM:
-            llm_spec = spec
+            llm_section = dict(spec)
         elif kind == CONFIG_KIND_AGENT:
-            agent_spec = spec
-        elif kind == CONFIG_KIND_BENCHMARK:
-            benchmark_spec = spec
+            agent_section = dict(spec)
 
-    if llm_spec is None or agent_spec is None or benchmark_spec is None:
+    benchmarks = getattr(runner, "_benchmark_configs", [])  # pylint: disable=protected-access
+    benchmark_section: Optional[Mapping[str, Any]] = None
+    if benchmarks:
+        benchmark_section = benchmarks[0].model_dump(mode="python")
+
+    if llm_section is None or agent_section is None or benchmark_section is None:
         missing = [
             name
             for name, value in (
-                (CONFIG_KIND_LLM, llm_spec),
-                (CONFIG_KIND_AGENT, agent_spec),
-                (CONFIG_KIND_BENCHMARK, benchmark_spec),
+                (CONFIG_KIND_LLM, llm_section),
+                (CONFIG_KIND_AGENT, agent_section),
+                (CONFIG_KIND_BENCHMARK, benchmark_section),
             )
             if value is None
         ]
@@ -258,7 +258,7 @@ def _extract_config_sections(documents: Iterable[Mapping[str, Any]]) -> tuple[di
             "Configuration file is missing required sections: " + ", ".join(missing)
         )
 
-    return llm_spec, agent_spec, benchmark_spec
+    return llm_section, agent_section, benchmark_section
 
 
 async def _list_agent_tools(
@@ -266,31 +266,43 @@ async def _list_agent_tools(
     manager: MCPManager,
     servers: Sequence[Mapping[str, Any]],
 ) -> Dict[str, List[Tool]]:
-    clients: Dict[str, Any] = {}
     tools: Dict[str, List[Tool]] = {}
 
-    try:
-        for server in servers:
-            name = server.get("name")
-            if not name:
-                raise ValueError("Encountered an MCP server entry without a name")
-            transport = server.get("transport", "stdio")
-            client = await manager.build_client(server_name=name, transport=str(transport))
-            clients[name] = client
+    for server in servers:
+        name = server.get("name")
+        if not name:
+            raise ValueError("Encountered an MCP server entry without a name")
+        transport = server.get("transport", "stdio")
+        client = await manager.build_client(server_name=name, transport=str(transport))
+        try:
             tool_list = await client.list_tools()
-            tools[name] = list(tool_list)
-    finally:
-        for name, client in clients.items():
+        finally:
             try:
                 await client.cleanup()
-            except asyncio.CancelledError:  # pragma: no cover - defensive cleanup
-                LOGGER.warning(
-                    "Cleanup for MCP client %s was cancelled; continuing shutdown", name
-                )
-            except Exception:  # pragma: no cover - defensive cleanup
-                LOGGER.exception("Error during cleanup of client %s", name)
+            except Exception as exc:  # pragma: no cover - defensive cleanup
+                LOGGER.warning("Error cleaning up client %s: %s", name, exc)
+        tools[name] = list(tool_list)
 
     return tools
+
+
+async def _resolve_tool_context(
+    manager: MCPManager,
+    servers: Sequence[Mapping[str, Any]],
+    cache: Dict[Tuple[str, ...], Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Retrieve tool descriptions and schemas for ``servers`` with caching."""
+
+    key = _normalise_server_cache_key(servers)
+    cached = cache.get(key)
+    if cached is None:
+        collected_tools = await _list_agent_tools(manager=manager, servers=servers)
+        cached = {
+            "tool_descriptions": get_tools_description(collected_tools),
+            "tool_metadata": _tool_metadata(collected_tools),
+        }
+        cache[key] = cached
+    return cached
 
 
 def _tool_metadata(tools: Mapping[str, Sequence[Tool]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -439,10 +451,11 @@ def _print_execution_summary(task_name: str, execution: subprocess.CompletedProc
 
 
 async def run_benchmark_tasks_async(config_path: Path) -> None:
-    documents = _load_yaml_documents(config_path)
-    llm_spec, agent_spec, benchmark_spec = _extract_config_sections(documents)
-
     context = Context(env=dict(os.environ))
+    llm_spec, agent_spec, benchmark_spec = _load_configuration_sections(
+        config_path, context=context
+    )
+
     llm = _initialise_llm(llm_spec, context=context)
     manager = MCPManager(context=context)
 
@@ -459,24 +472,13 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
     )
 
     server_tool_cache: Dict[Tuple[str, ...], Dict[str, Any]] = {}
-
-    async def _tool_context(servers: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
-        key = _normalise_server_cache_key(servers)
-        cached = server_tool_cache.get(key)
-        if cached is None:
-            collected_tools = await _list_agent_tools(manager=manager, servers=servers)
-            cached = {
-                "tool_descriptions": get_tools_description(collected_tools),
-                "tool_metadata": _tool_metadata(collected_tools),
-            }
-            server_tool_cache[key] = cached
-        return cached
-
-    default_tool_context = await _tool_context(default_servers)
+    default_tool_context = await _resolve_tool_context(
+        manager, default_servers, server_tool_cache
+    )
 
     system_prompt = _compose_system_prompt(agent_spec, BASE_SYSTEM_PROMPT)
 
-    tasks = benchmark_spec.get("tasks", [])
+    tasks = list(benchmark_spec.get("tasks", []))
     if not tasks:
         LOGGER.warning("No tasks found in benchmark specification")
         return
@@ -509,7 +511,9 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
                 )
                 continue
             active_servers: Sequence[Mapping[str, Any]] = task_servers
-            active_tool_context = await _tool_context(active_servers)
+            active_tool_context = await _resolve_tool_context(
+                manager, active_servers, server_tool_cache
+            )
         else:
             active_servers = default_servers
             active_tool_context = default_tool_context
