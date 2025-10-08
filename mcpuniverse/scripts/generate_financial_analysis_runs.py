@@ -119,13 +119,43 @@ from mcpuniverse.mcp.manager import MCPManager
 logger = logging.getLogger(__name__)
 
 
-class ClientRegistry(MutableMapping[str, Any]):
-    '''Mapping wrapper exposing MCP clients via both key and attribute access.'''
+class ToolClientProxy:
+    \"\"\"Proxy exposing MCP tools as coroutine callables on demand.\"\"\"
+
+    def __init__(self, name: str, client: Any) -> None:
+        self._name = name
+        self._client = client
+        self._tool_cache: dict[str, Any] = {{}}
+
+    def __getattr__(self, attr: str) -> Any:  # pragma: no cover - runtime delegation
+        if attr.startswith("_"):
+            raise AttributeError(attr)
+
+        if hasattr(self._client, attr):
+            return getattr(self._client, attr)
+
+        if attr not in self._tool_cache:
+
+            async def _call_tool(**kwargs: Any) -> Any:
+                arguments = kwargs or {{}}
+                logger.debug("Calling tool %s.%s with %s", self._name, attr, arguments)
+                return await self._client.execute_tool(attr, arguments)
+
+            self._tool_cache[attr] = _call_tool
+
+        return self._tool_cache[attr]
+
+    async def cleanup(self) -> None:
+        await self._client.cleanup()
+
+
+class ClientRegistry(MutableMapping[str, ToolClientProxy]):
+    \"\"\"Mapping wrapper exposing MCP clients via both key and attribute access.\"\"\"
 
     def __init__(self) -> None:
-        self._clients: dict[str, Any] = {{}}
+        self._clients: dict[str, ToolClientProxy] = {{}}
 
-    def __getattr__(self, name: str) -> Any:  # pragma: no cover - passthrough helper
+    def __getattr__(self, name: str) -> ToolClientProxy:  # pragma: no cover - passthrough helper
         try:
             return self._clients[name]
         except KeyError as exc:  # pragma: no cover - aligns AttributeError semantics
@@ -144,10 +174,10 @@ class ClientRegistry(MutableMapping[str, Any]):
             raise AttributeError(name) from exc
 
     # MutableMapping interface -------------------------------------------------
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> ToolClientProxy:
         return self._clients[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: ToolClientProxy) -> None:
         self._clients[key] = value
 
     def __delitem__(self, key: str) -> None:
@@ -160,13 +190,13 @@ class ClientRegistry(MutableMapping[str, Any]):
         return len(self._clients)
 
     # Convenience helpers ------------------------------------------------------
-    def register(self, name: str, client: Any) -> None:
-        self._clients[name] = client
+    async def register(self, name: str, client: Any) -> None:
+        self._clients[name] = ToolClientProxy(name, client)
 
     async def cleanup(self) -> None:
-        for name, client in list(self._clients.items()):
+        for name, proxy in list(self._clients.items()):
             try:
-                await client.cleanup()
+                await proxy.cleanup()
             except Exception as exc:  # pragma: no cover - runtime safeguard
                 logger.warning("Error cleaning up client %s: %s", name, exc)
 
@@ -182,7 +212,7 @@ async def _run() -> None:
             name = server.get("name")
             transport = server.get("transport", "stdio")
             client = await manager.build_client(server_name=name, transport=transport)
-            clients.register(name, client)
+            await clients.register(name, client)
 
         result = await solve_task(clients)
         if isinstance(result, (dict, list)):
@@ -449,11 +479,19 @@ def _write_and_execute_code(
 
     try:
         LOGGER.info("Executing generated solution for %s using %s", task_name, script_path)
+        env = dict(os.environ)
+        pythonpath_entries = [str(Path.cwd())]
+        existing_pythonpath = env.get("PYTHONPATH")
+        if existing_pythonpath:
+            pythonpath_entries.append(existing_pythonpath)
+        env["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
         result = subprocess.run(
             [sys.executable, str(script_path)],
             check=False,
             capture_output=True,
             text=True,
+            cwd=str(Path.cwd()),
+            env=env,
         )
         return _log_result("_write_and_execute_code", result)
     finally:
