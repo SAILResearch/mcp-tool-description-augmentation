@@ -59,6 +59,17 @@ _BENCHMARK_CONFIG_ROOT = Path(__file__).resolve().parents[1] / "benchmark" / "co
 DEFAULT_CONFIG_PATH = _BENCHMARK_CONFIG_ROOT / "test" / "financial_analysis.yaml"
 
 
+# ---------------------------------------------------------------------------
+# Logging helpers
+
+
+def _log_result(function_name: str, result: Any) -> Any:
+    """Log the result of a function call before returning it."""
+
+    LOGGER.info("%s -> %r", function_name, result)
+    return result
+
+
 #: Base system prompt steering the LLM toward code-generation tasks.
 BASE_SYSTEM_PROMPT = dedent(
     """
@@ -195,7 +206,8 @@ CONFIG_KIND_BENCHMARK = "benchmark"
 def _normalise_server_cache_key(servers: Sequence[Mapping[str, Any]]) -> Tuple[str, ...]:
     """Create a stable cache key for a sequence of MCP server configurations."""
 
-    return tuple(json.dumps(dict(server), sort_keys=True) for server in servers)
+    key = tuple(json.dumps(dict(server), sort_keys=True) for server in servers)
+    return _log_result("_normalise_server_cache_key", key)
 
 
 def _prepare_server_configs(
@@ -207,7 +219,7 @@ def _prepare_server_configs(
 
     if not isinstance(servers, Sequence) or isinstance(servers, (str, bytes)):
         LOGGER.warning("Expected a list of server configurations from %s but received %r", source, servers)
-        return []
+        return _log_result("_prepare_server_configs", [])
 
     prepared: List[Dict[str, Any]] = []
     for server in servers:
@@ -215,7 +227,7 @@ def _prepare_server_configs(
             prepared.append(dict(server))
         else:
             LOGGER.warning("Skipping invalid MCP server entry %r from %s", server, source)
-    return prepared
+    return _log_result("_prepare_server_configs", prepared)
 
 
 def _load_configuration_sections(
@@ -258,7 +270,8 @@ def _load_configuration_sections(
             "Configuration file is missing required sections: " + ", ".join(missing)
         )
 
-    return llm_section, agent_section, benchmark_section
+    result = (llm_section, agent_section, benchmark_section)
+    return _log_result("_load_configuration_sections", result)
 
 
 async def _list_agent_tools(
@@ -283,7 +296,7 @@ async def _list_agent_tools(
                 LOGGER.warning("Error cleaning up client %s: %s", name, exc)
         tools[name] = list(tool_list)
 
-    return tools
+    return _log_result("_list_agent_tools", tools)
 
 
 async def _resolve_tool_context(
@@ -302,7 +315,7 @@ async def _resolve_tool_context(
             "tool_metadata": _tool_metadata(collected_tools),
         }
         cache[key] = cached
-    return cached
+    return _log_result("_resolve_tool_context", cached)
 
 
 def _tool_metadata(tools: Mapping[str, Sequence[Tool]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -324,7 +337,7 @@ def _tool_metadata(tools: Mapping[str, Sequence[Tool]]) -> Dict[str, List[Dict[s
                 }
             )
         metadata[server_name] = serialized
-    return metadata
+    return _log_result("_tool_metadata", metadata)
 
 
 def _build_messages(
@@ -357,18 +370,21 @@ def _build_messages(
         """
     ).strip()
 
-    return [
+    messages = [
         {"role": "system", "content": system_instruction},
         {"role": "user", "content": user_prompt},
     ]
+    return _log_result("_build_messages", messages)
 
 
 def _extract_code_block(text: str) -> str:
     pattern = re.compile(r"```(?:python)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
     match = pattern.search(text or "")
     if match:
-        return dedent(match.group(1)).strip()
-    return dedent(text).strip()
+        code = dedent(match.group(1)).strip()
+    else:
+        code = dedent(text).strip()
+    return _log_result("_extract_code_block", code)
 
 
 def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] = None) -> BaseLLM:
@@ -381,7 +397,7 @@ def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] =
     model = manager.build_model(model_type, config=model_config)
     model_context = context if context is not None else Context(env=dict(os.environ))
     model.set_context(model_context)
-    return model
+    return _log_result("_initialise_llm", model)
 
 
 def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
@@ -404,14 +420,16 @@ def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
 
     payload["use_specified_server"] = task.use_specified_server()
 
-    return payload
+    return _log_result("_load_task_payload", payload)
 
 
 def _compose_system_prompt(agent_spec: Mapping[str, Any], base_prompt: str) -> str:
     instruction = agent_spec.get("config", {}).get("instruction", "").strip()
     if instruction:
-        return f"{base_prompt}\n\nAgent instruction: {instruction}"
-    return base_prompt
+        prompt = f"{base_prompt}\n\nAgent instruction: {instruction}"
+    else:
+        prompt = base_prompt
+    return _log_result("_compose_system_prompt", prompt)
 
 
 def _write_and_execute_code(
@@ -437,7 +455,7 @@ def _write_and_execute_code(
             capture_output=True,
             text=True,
         )
-        return result
+        return _log_result("_write_and_execute_code", result)
     finally:
         try:
             script_path.unlink()
@@ -448,6 +466,7 @@ def _write_and_execute_code(
 def _print_execution_summary(task_name: str, execution: subprocess.CompletedProcess[str]) -> None:
     divider = "=" * 80
     LOGGER.info("%s\nTask: %s\nExit code: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n%s", divider, task_name, execution.returncode, execution.stdout.strip(), execution.stderr.strip(), divider)
+    _log_result("_print_execution_summary", {"task": task_name, "exit_code": execution.returncode})
 
 
 async def run_benchmark_tasks_async(config_path: Path) -> None:
@@ -481,6 +500,7 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
     tasks = list(benchmark_spec.get("tasks", []))
     if not tasks:
         LOGGER.warning("No tasks found in benchmark specification")
+        _log_result("run_benchmark_tasks_async", {"config_path": str(config_path), "tasks": []})
         return
 
     for task_relative in tasks:
@@ -551,11 +571,17 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
         )
         _print_execution_summary(task_relative, execution)
 
+    _log_result(
+        "run_benchmark_tasks_async",
+        {"config_path": str(config_path), "tasks": [str(task) for task in tasks]},
+    )
+
 
 def run_benchmark_tasks(config_path: Path) -> None:
     """Synchronous wrapper for :func:`run_benchmark_tasks_async`."""
 
     asyncio.run(run_benchmark_tasks_async(config_path))
+    _log_result("run_benchmark_tasks", {"config_path": str(config_path)})
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -574,7 +600,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
         help="Logging level for diagnostic output.",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    return _log_result("parse_args", args)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
@@ -584,6 +611,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file {config_path} does not exist")
     run_benchmark_tasks(config_path)
+    _log_result("main", {"config_path": str(config_path)})
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
