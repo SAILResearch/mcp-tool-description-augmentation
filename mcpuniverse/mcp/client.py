@@ -6,6 +6,7 @@ stdio or SSE transport, list available tools, and execute tools on the server.
 """
 # pylint: disable=broad-exception-caught
 import asyncio
+import base64
 import os
 import shutil
 from datetime import timedelta
@@ -17,6 +18,7 @@ from pydantic import BaseModel
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
+from mcp.types import BlobResourceContents, TextResourceContents
 from mcpuniverse.common.misc import AutodocABCMeta
 from mcpuniverse.mcp.config import ServerConfig
 from mcpuniverse.common.logger import get_logger
@@ -223,6 +225,23 @@ class MCPClient(metaclass=AutodocABCMeta):
                         source=self.id, type=MessageType.STATUS, data=Status.FAILED,
                         project_id=self._project_id))
                     raise e
+
+    async def read_resource(self, uri: str) -> bytes:
+        """Read a remote resource and return its raw bytes."""
+        if not self._session:
+            raise RuntimeError(f"Client {self._name} not initialized")
+
+        result = await self._session.read_resource(uri)
+        data = bytearray()
+        for content in result.contents:
+            if isinstance(content, TextResourceContents):
+                data.extend(content.text.encode("utf-8"))
+            elif isinstance(content, BlobResourceContents) and content.blob:
+                try:
+                    data.extend(base64.b64decode(content.blob))
+                except (ValueError, TypeError):
+                    self._logger.error("Failed to decode blob content from %s", uri)
+        return bytes(data)
 
     async def cleanup(self):
         """
