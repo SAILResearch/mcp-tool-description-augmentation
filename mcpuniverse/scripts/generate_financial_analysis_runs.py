@@ -37,7 +37,7 @@ import sys
 import tempfile
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import yaml
 
@@ -137,6 +137,32 @@ if __name__ == "__main__":
 CONFIG_KIND_LLM = "llm"
 CONFIG_KIND_AGENT = "agent"
 CONFIG_KIND_BENCHMARK = "benchmark"
+
+
+def _normalise_server_cache_key(servers: Sequence[Mapping[str, Any]]) -> Tuple[str, ...]:
+    """Create a stable cache key for a sequence of MCP server configurations."""
+
+    return tuple(json.dumps(dict(server), sort_keys=True) for server in servers)
+
+
+def _prepare_server_configs(
+    servers: Any,
+    *,
+    source: str,
+) -> List[Dict[str, Any]]:
+    """Validate and normalise MCP server configuration dictionaries."""
+
+    if not isinstance(servers, Sequence) or isinstance(servers, (str, bytes)):
+        LOGGER.warning("Expected a list of server configurations from %s but received %r", source, servers)
+        return []
+
+    prepared: List[Dict[str, Any]] = []
+    for server in servers:
+        if isinstance(server, Mapping):
+            prepared.append(dict(server))
+        else:
+            LOGGER.warning("Skipping invalid MCP server entry %r from %s", server, source)
+    return prepared
 
 
 def _load_yaml_documents(path: Path) -> List[Mapping[str, Any]]:
@@ -302,6 +328,8 @@ def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
     if "mcp_servers" not in payload:
         payload["mcp_servers"] = task.get_mcp_servers()
 
+    payload["use_specified_server"] = task.use_specified_server()
+
     return payload
 
 
@@ -356,14 +384,33 @@ def run_benchmark_tasks(config_path: Path) -> None:
     llm = _initialise_llm(llm_spec, context=context)
     manager = MCPManager(context=context)
 
-    servers = agent_spec.get("config", {}).get("servers", [])
-    if not servers:
+    default_servers = _prepare_server_configs(
+        agent_spec.get("config", {}).get("servers", []),
+        source="agent configuration",
+    )
+    if not default_servers:
         raise ValueError("Agent configuration must list MCP servers")
 
-    LOGGER.info("Collecting tool metadata for servers: %s", ", ".join(server.get("name", "<unknown>") for server in servers))
-    tools = asyncio.run(_list_agent_tools(manager=manager, servers=servers))
-    tool_descriptions = get_tools_description(tools)
-    tool_metadata = _tool_metadata(tools)
+    LOGGER.info(
+        "Collecting tool metadata for servers: %s",
+        ", ".join(server.get("name", "<unknown>") for server in default_servers),
+    )
+
+    server_tool_cache: Dict[Tuple[str, ...], Dict[str, Any]] = {}
+
+    def _tool_context(servers: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+        key = _normalise_server_cache_key(servers)
+        cached = server_tool_cache.get(key)
+        if cached is None:
+            collected_tools = asyncio.run(_list_agent_tools(manager=manager, servers=servers))
+            cached = {
+                "tool_descriptions": get_tools_description(collected_tools),
+                "tool_metadata": _tool_metadata(collected_tools),
+            }
+            server_tool_cache[key] = cached
+        return cached
+
+    default_tool_context = _tool_context(default_servers)
 
     system_prompt = _compose_system_prompt(agent_spec, BASE_SYSTEM_PROMPT)
 
@@ -381,11 +428,33 @@ def run_benchmark_tasks(config_path: Path) -> None:
             continue
 
         task_payload = _load_task_payload(task_path, context=context)
+        use_task_servers = bool(task_payload.get("use_specified_server"))
+        raw_task_servers = task_payload.get("mcp_servers") or []
+
+        if use_task_servers:
+            task_servers = _prepare_server_configs(
+                raw_task_servers,
+                source=f"task {task_relative}",
+            )
+            if not task_servers:
+                LOGGER.error(
+                    "Task %s requires specified MCP servers but none were provided in the task configuration",
+                    task_relative,
+                )
+                continue
+            active_servers: Sequence[Mapping[str, Any]] = task_servers
+            active_tool_context = _tool_context(active_servers)
+        else:
+            active_servers = default_servers
+            active_tool_context = default_tool_context
+
+        task_payload["mcp_servers"] = [dict(server) for server in active_servers]
+
         messages = _build_messages(
             system_instruction=system_prompt,
             task_payload=task_payload,
-            tool_descriptions=tool_descriptions,
-            tool_metadata=tool_metadata,
+            tool_descriptions=active_tool_context["tool_descriptions"],
+            tool_metadata=active_tool_context["tool_metadata"],
         )
 
         LOGGER.info("Requesting code generation for task %s", task_relative)
@@ -406,7 +475,7 @@ def run_benchmark_tasks(config_path: Path) -> None:
 
         execution = _write_and_execute_code(
             generated_code=generated_code,
-            servers=servers,
+            servers=active_servers,
             task_name=task_relative,
         )
         _print_execution_summary(task_relative, execution)
