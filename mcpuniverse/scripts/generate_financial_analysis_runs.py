@@ -54,13 +54,10 @@ from mcpuniverse.mcp.manager import MCPManager
 LOGGER = logging.getLogger(__name__)
 
 
-DEFAULT_CONFIG_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "benchmark"
-    / "configs"
-    / "test"
-    / "financial_analysis.yaml"
-)
+_BENCHMARK_CONFIG_ROOT = Path(__file__).resolve().parents[1] / "benchmark" / "configs"
+
+
+DEFAULT_CONFIG_PATH = _BENCHMARK_CONFIG_ROOT / "test" / "financial_analysis.yaml"
 
 
 #: Base system prompt steering the LLM toward code-generation tasks.
@@ -226,7 +223,15 @@ async def _list_agent_tools(
             tool_list = await client.list_tools()
             tools[name] = list(tool_list)
     finally:
-        await asyncio.gather(*(client.cleanup() for client in clients.values()))
+        for name, client in clients.items():
+            try:
+                await client.cleanup()
+            except asyncio.CancelledError:  # pragma: no cover - defensive cleanup
+                LOGGER.warning(
+                    "Cleanup for MCP client %s was cancelled; continuing shutdown", name
+                )
+            except Exception:  # pragma: no cover - defensive cleanup
+                LOGGER.exception("Error during cleanup of client %s", name)
 
     return tools
 
@@ -419,13 +424,17 @@ def run_benchmark_tasks(config_path: Path) -> None:
         LOGGER.warning("No tasks found in benchmark specification")
         return
 
-    config_folder = config_path.parent
-
     for task_relative in tasks:
-        task_path = (config_folder / task_relative).resolve()
+        task_path = Path(task_relative)
         if not task_path.exists():
-            LOGGER.error("Task file %s does not exist", task_path)
-            continue
+            candidate = (_BENCHMARK_CONFIG_ROOT / task_relative).resolve()
+            if candidate.exists():
+                task_path = candidate
+            else:
+                LOGGER.error("Task file %s does not exist", candidate)
+                continue
+        else:
+            task_path = task_path.resolve()
 
         task_payload = _load_task_payload(task_path, context=context)
         use_task_servers = bool(task_payload.get("use_specified_server"))
