@@ -6,6 +6,7 @@ import io
 import csv
 import json
 from typing import Optional, Literal, List, Tuple
+from mcp.types import EmbeddedResource, TextContent
 from mcpuniverse.evaluator.functions import compare_func
 from mcpuniverse.mcp.manager import MCPManager
 
@@ -37,6 +38,7 @@ async def github__check_repository(query: str, **kwargs):
 async def github__get_file_contents(owner: str, repo: str, path: str, branch: Optional[str] = None, **kwargs):
     """Get the content of a file, return none if not exist."""
     manager = MCPManager(context=kwargs.get("context", None))
+    client = None
     args = {
         "owner": owner,
         "repo": repo,
@@ -45,20 +47,36 @@ async def github__get_file_contents(owner: str, repo: str, path: str, branch: Op
     if branch:
         args["ref"] = branch
 
-    # get file contents in github MCP might be crashed, so we need to catch the error
     try:
-        output = await manager.execute(
-            server_name="github",
+        client = await manager.build_client(server_name="github", transport="stdio")
+        output = await client.execute_tool(
             tool_name="get_file_contents",
-            arguments=args,
-            transport="stdio"
+            arguments=args
         )
+        if output.isError:
+            return None
+
+        for content in output.content:
+            if isinstance(content, TextContent) and content.text:
+                return content.text
+            if isinstance(content, EmbeddedResource):
+                resource = content.resource
+                text = getattr(resource, "text", "") or ""
+                if text:
+                    return text
+                try:
+                    resource_bytes = await client.read_resource(str(resource.uri))
+                    if resource_bytes:
+                        return resource_bytes.decode("utf-8", errors="replace")
+                except Exception as e:  # pragma: no cover - log unexpected read errors
+                    print(f"Error reading resource {resource.uri}: {e}")
+        return None
     except Exception as e:
         print(f"Error getting file contents: {e}")
         return None
-    if output.isError:
-        return None
-    return output.content[1].resource.text
+    finally:
+        if client is not None:
+            await client.cleanup()
 
 async def github__list_branches(owner: str, repo: str, **kwargs):
     """List the branches of a repository."""
