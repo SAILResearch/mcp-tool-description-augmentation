@@ -103,26 +103,45 @@ import json
 from mcpuniverse.mcp.manager import MCPManager
 
 
+class ClientRegistry(dict):
+    '''Mapping of MCP clients with attribute-style access.'''
+
+    def __getattr__(self, item):
+        try:
+            return self[item]
+        except KeyError as exc:  # pragma: no cover - defensive guard
+            raise AttributeError(item) from exc
+
+    def __setattr__(self, key, value):  # pragma: no cover - read-only helper
+        raise AttributeError("ClientRegistry is read-only")
+
+    def __delattr__(self, item):  # pragma: no cover - read-only helper
+        raise AttributeError("ClientRegistry is read-only")
+
+
 {generated_code}
 
 
 async def _run():
     manager = MCPManager()
-    clients = {{}}
+    client_map = {{}}
     try:
         for server in {servers_literal}:
             name = server.get("name")
             transport = server.get("transport", "stdio")
             client = await manager.build_client(server_name=name, transport=transport)
-            clients[name] = client
+            client_map[name] = client
 
-        result = await solve_task(clients)
+        registry = ClientRegistry()
+        registry.update(client_map)
+
+        result = await solve_task(registry)
         if isinstance(result, (dict, list)):
             print(json.dumps(result, indent=2, default=str))
         else:
             print(result)
     finally:
-        for client in clients.values():
+        for client in client_map.values():
             await client.cleanup()
 
 
@@ -381,7 +400,7 @@ def _print_execution_summary(task_name: str, execution: subprocess.CompletedProc
     LOGGER.info("%s\nTask: %s\nExit code: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n%s", divider, task_name, execution.returncode, execution.stdout.strip(), execution.stderr.strip(), divider)
 
 
-def run_benchmark_tasks(config_path: Path) -> None:
+async def run_benchmark_tasks_async(config_path: Path) -> None:
     documents = _load_yaml_documents(config_path)
     llm_spec, agent_spec, benchmark_spec = _extract_config_sections(documents)
 
@@ -403,11 +422,11 @@ def run_benchmark_tasks(config_path: Path) -> None:
 
     server_tool_cache: Dict[Tuple[str, ...], Dict[str, Any]] = {}
 
-    def _tool_context(servers: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    async def _tool_context(servers: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
         key = _normalise_server_cache_key(servers)
         cached = server_tool_cache.get(key)
         if cached is None:
-            collected_tools = asyncio.run(_list_agent_tools(manager=manager, servers=servers))
+            collected_tools = await _list_agent_tools(manager=manager, servers=servers)
             cached = {
                 "tool_descriptions": get_tools_description(collected_tools),
                 "tool_metadata": _tool_metadata(collected_tools),
@@ -415,7 +434,7 @@ def run_benchmark_tasks(config_path: Path) -> None:
             server_tool_cache[key] = cached
         return cached
 
-    default_tool_context = _tool_context(default_servers)
+    default_tool_context = await _tool_context(default_servers)
 
     system_prompt = _compose_system_prompt(agent_spec, BASE_SYSTEM_PROMPT)
 
@@ -452,7 +471,7 @@ def run_benchmark_tasks(config_path: Path) -> None:
                 )
                 continue
             active_servers: Sequence[Mapping[str, Any]] = task_servers
-            active_tool_context = _tool_context(active_servers)
+            active_tool_context = await _tool_context(active_servers)
         else:
             active_servers = default_servers
             active_tool_context = default_tool_context
@@ -482,12 +501,19 @@ def run_benchmark_tasks(config_path: Path) -> None:
             LOGGER.error("Failed to extract code block from LLM response for task %s", task_relative)
             continue
 
-        execution = _write_and_execute_code(
+        execution = await asyncio.to_thread(
+            _write_and_execute_code,
             generated_code=generated_code,
             servers=active_servers,
             task_name=task_relative,
         )
         _print_execution_summary(task_relative, execution)
+
+
+def run_benchmark_tasks(config_path: Path) -> None:
+    """Synchronous wrapper for :func:`run_benchmark_tasks_async`."""
+
+    asyncio.run(run_benchmark_tasks_async(config_path))
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
