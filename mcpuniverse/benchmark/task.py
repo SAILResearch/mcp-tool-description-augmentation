@@ -167,7 +167,13 @@ class Task(metaclass=AutodocABCMeta):
             input_args = self._parse_cleanup_args(cleanup_config.cleanup_args, tool_call)
             if (cleanup_config.server, cleanup_config.cleanup_func) in CLEANUP_FUNCTIONS:
                 func = CLEANUP_FUNCTIONS[(cleanup_config.server, cleanup_config.cleanup_func)]
-                return await func(**input_args)
+                if isinstance(input_args, dict):
+                    call_kwargs = dict(input_args)
+                    call_kwargs.setdefault("context", self._context)
+                    return await func(**call_kwargs)
+                if isinstance(input_args, list):
+                    return await func(*input_args, context=self._context)
+                return await func(input_args, context=self._context)
             return await self._mcp_manager.execute(
                 server_name=cleanup_config.server,
                 tool_name=cleanup_config.cleanup_func,

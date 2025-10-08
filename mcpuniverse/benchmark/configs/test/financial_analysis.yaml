@@ -17,10 +17,7 @@ spec:
     summarize_tool_response: false
     servers:
       - name: yfinance
-      # - name: investor
-      # - name: financial-datasets
       - name: calculator
-      - name: date
 
 ---
 kind: benchmark

@@ -1,8 +1,14 @@
+import asyncio
 import os
 import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+
 from mcpuniverse.benchmark.task import Task
-from mcpuniverse.evaluator.github.functions import *
+from mcpuniverse.evaluator.github import functions as github_functions
+from mcpuniverse.evaluator.github.functions import *  # noqa: F401,F403 - legacy wildcard usage
 
 
 class TestFunctionsExtra(unittest.IsolatedAsyncioTestCase):
@@ -30,3 +36,42 @@ class TestFunctionsExtra(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _make_output(text: str = "test-content"):
+    return SimpleNamespace(
+        isError=False,
+        content=[
+            SimpleNamespace(text=""),
+            SimpleNamespace(resource=SimpleNamespace(text=text)),
+        ],
+    )
+
+
+def test_github_get_file_contents_plain_branch(monkeypatch):
+    output = _make_output("branch-content")
+    execute_mock = AsyncMock(return_value=output)
+    manager_instance = MagicMock(execute=execute_mock)
+    monkeypatch.setattr(github_functions, "MCPManager", MagicMock(return_value=manager_instance))
+
+    result = asyncio.run(github_functions.github__get_file_contents("owner", "repo", "path", branch="main"))
+
+    execute_mock.assert_awaited_once()
+    arguments = execute_mock.await_args.kwargs["arguments"]
+    assert arguments["ref"] == "heads/main"
+    assert result == "branch-content"
+
+
+def test_github_get_file_contents_ref_passthrough(monkeypatch):
+    output = _make_output("ref-content")
+    execute_mock = AsyncMock(return_value=output)
+    manager_instance = MagicMock(execute=execute_mock)
+    monkeypatch.setattr(github_functions, "MCPManager", MagicMock(return_value=manager_instance))
+
+    branch = "refs/heads/main"
+    result = asyncio.run(github_functions.github__get_file_contents("owner", "repo", "path", branch=branch))
+
+    execute_mock.assert_awaited_once()
+    arguments = execute_mock.await_args.kwargs["arguments"]
+    assert arguments["ref"] == branch
+    assert result == "ref-content"
