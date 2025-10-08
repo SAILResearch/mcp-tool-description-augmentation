@@ -5,6 +5,7 @@ Evaluation functions for Github tasks
 import io
 import csv
 import json
+import re
 from typing import Optional, Literal, List, Tuple
 from mcpuniverse.evaluator.functions import compare_func
 from mcpuniverse.mcp.manager import MCPManager
@@ -43,7 +44,12 @@ async def github__get_file_contents(owner: str, repo: str, path: str, branch: Op
         "path": path
     }
     if branch:
-        args["ref"] = branch
+        normalized_branch = branch
+        if not branch.startswith("refs/"):
+            is_sha = bool(re.fullmatch(r"[0-9a-fA-F]{7,40}", branch))
+            if "/" not in branch and not is_sha:
+                normalized_branch = f"heads/{branch}"
+        args["ref"] = normalized_branch
 
     # get file contents in github MCP might be crashed, so we need to catch the error
     try:
