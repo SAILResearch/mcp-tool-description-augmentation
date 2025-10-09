@@ -1,29 +1,80 @@
 {
-  "server": "calculator",
-  "description": "Simple arithmetic calculator for evaluating mathematical expressions.",
-  "tools": [
-    {
-      "name": "calculate",
-      "description": "Evaluate an arithmetic expression and return the computed result as text.",
+  "mcp_server": "calculator",
+  "tools": {
+    "calculate": {
+      "description": "Evaluate a mathematical expression with standard operators, unary minus, power (^), and Python math functions/constants.",
       "input_schema": {
         "type": "object",
+        "required": ["expression"],
         "properties": {
           "expression": {
             "type": "string",
-            "description": "Mathematical expression written using standard operators, e.g. '((10 + 5) / 3) * 2'."
+            "minLength": 1,
+            "description": "Math expression to evaluate. Supported operators: +, -, *, /, //, %, ^ (power), unary -, parentheses. Also supports × and ÷ (mapped to * and /). Functions/constants from Python's math module are allowed (e.g., sin, cos, tan, log, exp, sqrt, pow, pi, e).",
+            "examples": [
+              "2 + 3*4",
+              "sin(pi/2)",
+              "sqrt(2)^2",
+              "log(e)",
+              "3^3^2",
+              "-5 + 2",
+              "10 ÷ 4",
+              "7 × (3 + 2)",
+              "floor(3.9)",
+              "pow(2, 10)"
+            ]
           }
         },
-        "required": ["expression"],
         "additionalProperties": false
       },
-      "example": {
-        "request": {
-          "expression": "(25000 / 240.17)"
+      "output_schema": {
+        "type": "string",
+        "description": "The numeric result serialized to a string (e.g., '5', '3.141592653589793')."
+      },
+      "success_examples": [
+        {
+          "input": { "expression": "2 + 3*4" },
+          "output": "14"
         },
-        "response": {
-          "data": "104.05441084662706"
+        {
+          "input": { "expression": "sin(pi/2)" },
+          "output": "1.0"
+        },
+        {
+          "input": { "expression": "sqrt(2)^2" },
+          "output": "2.0000000000000004"
+        },
+        {
+          "input": { "expression": "log(e)" },
+          "output": "1.0"
+        },
+        {
+          "input": { "expression": "3^3^2" },
+          "notes": "Caret is right-associative via Python '**' after replacement: 3**(3**2) = 3**9",
+          "output": "19683"
+        },
+        {
+          "input": { "expression": "-5 + 2" },
+          "output": "-3"
+        },
+        {
+          "input": { "expression": "10 ÷ 4" },
+          "output": "2.5"
+        },
+        {
+          "input": { "expression": "7 × (3 + 2)" },
+          "output": "35"
+        },
+        {
+          "input": { "expression": "floor(3.9)" },
+          "output": "3"
+        },
+        {
+          "input": { "expression": "pow(2,10)" },
+          "output": "1024.0"
         }
-      }
+      ],
+      "error_behavior_notes": "On invalid identifiers, unsupported AST nodes, or runtime math errors (e.g., division by zero), the tool raises an exception and does not produce a successful result. Clients should treat such cases as errors (non-JSON-schema-conformant to output_schema)."
     }
-  ]
+  }
 }
