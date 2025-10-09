@@ -83,7 +83,7 @@ class OpenAIModel(BaseLLM):
             **kwargs: Additional keyword arguments including:
                 - max_retries (int): Maximum number of retry attempts (default: 5)
                 - base_delay (float): Base delay in seconds for exponential backoff (default: 10.0)
-                - timeout (int): Request timeout in seconds (default: 60)
+                - timeout (int): Request timeout in seconds (default: 600)
 
         Returns:
             Union[str, PydanticBaseModel, None]: Generated content as a string
@@ -113,7 +113,7 @@ class OpenAIModel(BaseLLM):
                         messages=messages,
                         model=self.config.model_name,
                         temperature=self.config.temperature,
-                        timeout=int(kwargs.get("timeout", 60)),
+                        timeout=int(kwargs.get("timeout", 600)),
                         top_p=self.config.top_p,
                         frequency_penalty=self.config.frequency_penalty,
                         presence_penalty=self.config.presence_penalty,
@@ -132,7 +132,7 @@ class OpenAIModel(BaseLLM):
                     messages=messages,
                     model=self.config.model_name,
                     temperature=self.config.temperature,
-                    timeout=int(kwargs.get("timeout", 60)),
+                    timeout=int(kwargs.get("timeout", 600)),
                     top_p=self.config.top_p,
                     frequency_penalty=self.config.frequency_penalty,
                     presence_penalty=self.config.presence_penalty,
