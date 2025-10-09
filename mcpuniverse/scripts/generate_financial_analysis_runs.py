@@ -59,6 +59,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 _BENCHMARK_CONFIG_ROOT = Path(__file__).resolve().parents[1] / "benchmark" / "configs"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPORT_LOG_DIR = _REPO_ROOT / "log"
 
 
 DEFAULT_CONFIG_PATH = _BENCHMARK_CONFIG_ROOT / "test" / "financial_analysis.yaml"
@@ -582,12 +584,71 @@ def _strip_ansi_codes(value: str) -> str:
     return pattern.sub("", value or "")
 
 
-def _extract_structured_output(execution: subprocess.CompletedProcess[str]) -> tuple[Any | None, str]:
+def _matches_output_template(candidate: Any, template: Any) -> bool:
+    """Return ``True`` if *candidate* matches the structure described by *template*."""
+
+    if isinstance(template, Mapping):
+        if not isinstance(candidate, Mapping):
+            return False
+        for key, nested in template.items():
+            if key not in candidate:
+                return False
+            if isinstance(nested, (Mapping, Sequence)) and not isinstance(nested, (str, bytes, bytearray)):
+                if not _matches_output_template(candidate[key], nested):
+                    return False
+        return True
+
+    if isinstance(template, Sequence) and not isinstance(template, (str, bytes, bytearray)):
+        if not isinstance(candidate, Sequence) or isinstance(candidate, (str, bytes, bytearray)):
+            return False
+        if not template:
+            return True
+        nested_template = template[0]
+        if isinstance(nested_template, (Mapping, Sequence)) and not isinstance(nested_template, (str, bytes, bytearray)):
+            return all(_matches_output_template(item, nested_template) for item in candidate)
+        return True
+
+    return True
+
+
+def _extract_using_output_format(cleaned_output: str, output_format: Any) -> Any | None:
+    """Attempt to recover structured JSON that matches ``output_format`` from text."""
+
+    if not cleaned_output:
+        return None
+
+    if not isinstance(output_format, (Mapping, Sequence)) or isinstance(output_format, (str, bytes, bytearray)):
+        return None
+
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"[\[{]", cleaned_output):
+        start = match.start()
+        try:
+            candidate, _ = decoder.raw_decode(cleaned_output, start)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(candidate, (Mapping, list)):
+            continue
+        if _matches_output_template(candidate, output_format):
+            return candidate
+        # Continue searching in case multiple JSON blobs are present in the output
+    return None
+
+
+def _extract_structured_output(
+    execution: subprocess.CompletedProcess[str],
+    *,
+    output_format: Any | None = None,
+) -> tuple[Any | None, str]:
     stdout = execution.stdout or ""
     cleaned = _strip_ansi_codes(stdout).strip()
 
     candidate: Any | None = None
-    if cleaned:
+
+    if cleaned and output_format is not None:
+        candidate = _extract_using_output_format(cleaned, output_format)
+
+    if candidate is None and cleaned:
         last_line = ""
         for line in reversed(cleaned.splitlines()):
             stripped = line.strip()
@@ -597,19 +658,24 @@ def _extract_structured_output(execution: subprocess.CompletedProcess[str]) -> t
         if last_line.lower().startswith("final result:"):
             json_fragment = last_line.split(":", 1)[1].strip()
             try:
-                candidate = json.loads(json_fragment)
+                parsed = json.loads(json_fragment)
             except json.JSONDecodeError:
-                candidate = None
+                parsed = None
+            else:
+                candidate = parsed
 
     if candidate is None and cleaned:
         matches = re.findall(r"({.*})", cleaned, re.DOTALL)
         for fragment in reversed(matches):
             try:
-                candidate = json.loads(fragment)
+                parsed = json.loads(fragment)
             except json.JSONDecodeError:
                 continue
-            else:
-                break
+            if output_format is not None and isinstance(parsed, (Mapping, list)):
+                if not _matches_output_template(parsed, output_format):
+                    continue
+            candidate = parsed
+            break
 
     return candidate, cleaned
 
@@ -832,7 +898,7 @@ def _write_evaluation_report(
 
         lines.append("")
 
-    report_dir = Path("log")
+    report_dir = _REPORT_LOG_DIR
     report_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     report_path = report_dir / f"report-{timestamp}.md"
@@ -990,7 +1056,10 @@ async def run_benchmark_tasks_async(
             )
         _print_execution_summary(task_relative, execution)
 
-        structured_output, cleaned_stdout = _extract_structured_output(execution)
+        structured_output, cleaned_stdout = _extract_structured_output(
+            execution,
+            output_format=task_payload.get("output_format"),
+        )
         evaluation_results: List[EvaluationResult] = []
         evaluation_error: Optional[str] = None
         evaluators = task_object.get_evaluators()
