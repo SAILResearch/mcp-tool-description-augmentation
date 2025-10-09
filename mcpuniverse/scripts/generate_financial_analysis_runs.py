@@ -144,7 +144,8 @@ class ToolClientProxy:
                     formatted = json.dumps(response, indent=2, default=str)
                 except TypeError:
                     formatted = repr(response)
-                logger.debug("Tool %s.%s response:\n%s", self._name, attr, formatted)
+                logger.debug("Tool %s.%s response:", self._name, attr)
+                logger.debug("%s", formatted)
                 return response
 
             self._tool_cache[attr] = _call_tool
