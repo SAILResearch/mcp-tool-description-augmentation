@@ -200,6 +200,10 @@ from mcpuniverse.mcp.manager import MCPManager
 
 logger = logging.getLogger(__name__)
 
+_LABEL_COLOUR = "\033[1;35m"
+_VALUE_COLOUR = "\033[1;97m"
+_RESET_COLOUR = "\033[0m"
+
 
 async def call_tool(
     manager: MCPManager,
@@ -241,6 +245,16 @@ async def call_tool(
     return response
 
 
+def _format_final_result(payload: Any) -> str:
+    """Return a colourised representation of the final orchestration result."""
+
+    if isinstance(payload, (dict, list)):
+        body = json.dumps(payload, indent=2, default=str)
+    else:
+        body = str(payload)
+    return f"{_LABEL_COLOUR}Final result:{_RESET_COLOUR} {_VALUE_COLOUR}{body}{_RESET_COLOUR}"
+
+
 {generated_code}
 
 
@@ -263,10 +277,8 @@ async def _run() -> Any:
 
 if __name__ == "__main__":
     output = asyncio.run(_run())
-    if isinstance(output, (dict, list)):
-        print(json.dumps(output, indent=2, default=str))
-    elif output is not None:
-        print(output)
+    if output is not None:
+        print(_format_final_result(output))
 '''
 
 
@@ -509,7 +521,11 @@ def _build_messages(
         object interfaces, decode JSON payloads when indicated, and iterate over arrays
         exactly as the schemas describe. Your orchestration function should collect the
         final results in memory and `return` them so the caller can decide how to surface
-        the output; emitting the final payload via `print` is not allowed.
+        the output; emitting the final payload via `print` is not allowed. When you
+        need to display a final payload (for example, inside a CLI entry point), format
+        it with a bold magenta ``Final result:`` label followed by the JSON payload in
+        bright white using ANSI escape codes ``\033[1;35m`` for the label,
+        ``\033[1;97m`` for the payload, and ``\033[0m`` to reset colours.
         """
     ).strip()
 
@@ -524,7 +540,10 @@ def _build_messages(
             "`call_tool`) within your module because the saved file is executed on its own. "
             "Capture the dictionary returned by `solve_task`, log any helpful context, "
             "and serialise that payload to stdout so running `python <saved_file>` "
-            "produces the task result. Handle exceptions gracefully, and do not invent "
+            "produces the task result. Colourise the final output using the ANSI "
+            "sequence guidance above so the line begins with a bold magenta `Final result:` "
+            "label followed by the JSON payload in bright white text. Handle exceptions "
+            "gracefully, and do not invent "
             "helper modules or placeholder clients. Remember to import MCPManager via "
             "`from mcpuniverse.mcp.manager import MCPManager`."
         )
