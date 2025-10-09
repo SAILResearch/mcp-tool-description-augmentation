@@ -383,6 +383,7 @@ def _build_messages(
     task_payload: Mapping[str, Any],
     tool_descriptions: str,
     tool_metadata: Mapping[str, Any],
+    require_main_function: bool,
 ) -> List[Dict[str, str]]:
     output_format = json.dumps(task_payload.get("output_format") or {}, indent=2)
     task_context = json.dumps(task_payload, indent=2)
@@ -406,6 +407,13 @@ def _build_messages(
         Remember to use the MCP tools via the provided clients.
         """
     ).strip()
+
+    if require_main_function:
+        user_prompt += (
+            "\n\nWhen this code is saved via the --output flag, include a callable `main()` "
+            "function and an `if __name__ == \"__main__\": main()` guard so the "
+            "module can be executed directly from the CLI."
+        )
 
     messages = [
         {"role": "system", "content": system_instruction},
@@ -596,6 +604,7 @@ async def run_benchmark_tasks_async(
             task_payload=task_payload,
             tool_descriptions=active_tool_context["tool_descriptions"],
             tool_metadata=active_tool_context["tool_metadata"],
+            require_main_function=output_path is not None,
         )
 
         LOGGER.info("Requesting code generation for task %s", task_relative)
