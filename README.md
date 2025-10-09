@@ -735,8 +735,12 @@ following workflow:
    discover the target LLM, agent, and tasks.
 2. Launches the configured MCP servers through `MCPManager` and collects their
    tool descriptions and input schemas.
-3. Prompts the benchmark's LLM to emit an asynchronous `solve_task` function
-   that uses the discovered tools for each benchmark task.
+3. Prompts the benchmark's LLM to emit an asynchronous `solve_task(manager, servers)`
+   function that uses the discovered tools for each benchmark task by calling
+   `await manager.execute(...)`, mirroring the in-repo
+   `github__check_repository` helper. The runner injects a `call_tool` utility
+   into the generated script to log every request and response while delegating
+   to `MCPManager` for execution.
 4. Executes every generated solution end-to-end, printing structured outputs and
    diagnostics to the console.
 

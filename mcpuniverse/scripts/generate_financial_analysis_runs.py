@@ -106,12 +106,10 @@ BASE_SYSTEM_PROMPT = dedent(
 ).strip()
 
 
-CODE_TEMPLATE = """
-import asyncio
+CODE_TEMPLATE = '''import asyncio
 import json
 import logging
-from collections.abc import MutableMapping
-from typing import Any, Iterator, Mapping
+from typing import Any, Mapping, Sequence
 
 from mcpuniverse.mcp.manager import MCPManager
 
@@ -119,106 +117,44 @@ from mcpuniverse.mcp.manager import MCPManager
 logger = logging.getLogger(__name__)
 
 
-class ToolClientProxy:
-    \"\"\"Proxy exposing MCP tools as coroutine callables on demand.\"\"\"
+async def call_tool(
+    manager: MCPManager,
+    *,
+    server_name: str,
+    tool_name: str,
+    arguments: Mapping[str, Any] | None = None,
+    transport: str = "stdio",
+) -> Any:
+    """Execute an MCP tool via :class:`MCPManager` with structured logging."""
 
-    def __init__(self, name: str, client: Any) -> None:
-        self._name = name
-        self._client = client
-        self._tool_cache: dict[str, Any] = {{}}
+    payload = dict(arguments or {})
+    logger.debug("Calling tool %s.%s with %s", server_name, tool_name, payload)
+    response = await manager.execute(
+        server_name=server_name,
+        tool_name=tool_name,
+        arguments=payload,
+        transport=transport,
+    )
 
-    def __getattr__(self, attr: str) -> Any:  # pragma: no cover - runtime delegation
-        if attr.startswith("_"):
-            raise AttributeError(attr)
+    processed: Any = response
+    if hasattr(response, "model_dump"):
+        processed = response.model_dump(mode="python")  # type: ignore[call-arg]
+    elif isinstance(response, Mapping):
+        processed = dict(response)
 
-        if hasattr(self._client, attr):
-            return getattr(self._client, attr)
+    if isinstance(processed, dict):
+        structured_content = processed.get("structuredContent")
+        if structured_content is not None and "data" not in processed:
+            processed["data"] = structured_content
 
-        if attr not in self._tool_cache:
+    try:
+        formatted = json.dumps(processed, indent=2, default=str)
+    except TypeError:
+        formatted = repr(processed)
 
-            async def _call_tool(**kwargs: Any) -> Any:
-                arguments = kwargs or {{}}
-                logger.debug("Calling tool %s.%s with %s", self._name, attr, arguments)
-                response = await self._client.execute_tool(attr, arguments)
-
-                processed: Any = response
-                if hasattr(response, "model_dump"):
-                    processed = response.model_dump(mode="python")  # type: ignore[call-arg]
-                elif isinstance(response, Mapping):
-                    processed = dict(response)
-
-                if isinstance(processed, dict):
-                    structured_content = processed.get("structuredContent")
-                    if structured_content is not None and "data" not in processed:
-                        processed["data"] = structured_content
-
-                try:
-                    formatted = json.dumps(processed, indent=2, default=str)
-                except TypeError:
-                    formatted = repr(processed)
-
-                logger.debug("Tool %s.%s response:", self._name, attr)
-                logger.debug("%s", formatted)
-                return processed
-
-            self._tool_cache[attr] = _call_tool
-
-        return self._tool_cache[attr]
-
-    async def cleanup(self) -> None:
-        await self._client.cleanup()
-
-
-class ClientRegistry(MutableMapping[str, ToolClientProxy]):
-    \"\"\"Mapping wrapper exposing MCP clients via both key and attribute access.\"\"\"
-
-    def __init__(self) -> None:
-        self._clients: dict[str, ToolClientProxy] = {{}}
-
-    def __getattr__(self, name: str) -> ToolClientProxy:  # pragma: no cover - passthrough helper
-        try:
-            return self._clients[name]
-        except KeyError as exc:  # pragma: no cover - aligns AttributeError semantics
-            raise AttributeError(name) from exc
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name.startswith("_"):
-            super().__setattr__(name, value)
-        else:
-            self._clients[name] = value
-
-    def __delattr__(self, name: str) -> None:  # pragma: no cover - defensive guard
-        try:
-            del self._clients[name]
-        except KeyError as exc:
-            raise AttributeError(name) from exc
-
-    # MutableMapping interface -------------------------------------------------
-    def __getitem__(self, key: str) -> ToolClientProxy:
-        return self._clients[key]
-
-    def __setitem__(self, key: str, value: ToolClientProxy) -> None:
-        self._clients[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        del self._clients[key]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._clients)
-
-    def __len__(self) -> int:
-        return len(self._clients)
-
-    # Convenience helpers ------------------------------------------------------
-    async def register(self, name: str, client: Any) -> None:
-        self._clients[name] = ToolClientProxy(name, client)
-
-    async def cleanup(self) -> None:
-        for name, proxy in list(self._clients.items()):
-            try:
-                await proxy.cleanup()
-            except Exception as exc:  # pragma: no cover - runtime safeguard
-                logger.warning("Error cleaning up client %s: %s", name, exc)
+    logger.debug("Tool %s.%s response:", server_name, tool_name)
+    logger.debug("%s", formatted)
+    return processed
 
 
 {generated_code}
@@ -226,31 +162,27 @@ class ClientRegistry(MutableMapping[str, ToolClientProxy]):
 
 async def _run() -> None:
     manager = MCPManager()
-    clients = ClientRegistry()
+    servers: Sequence[Mapping[str, Any]] = {servers_literal}
     try:
-        for server in {servers_literal}:
-            name = server.get("name")
-            transport = server.get("transport", "stdio")
-            client = await manager.build_client(server_name=name, transport=transport)
-            await clients.register(name, client)
-
         try:
-            result = await solve_task(manager, clients)
+            result = await solve_task(manager, servers)
         except TypeError:
-            # Backwards compatibility if the generated function still expects a
-            # single ``clients`` argument.
-            result = await solve_task(clients)
+            # Backwards compatibility if the generated function still expects only
+            # the manager argument.
+            result = await solve_task(manager)
         if isinstance(result, (dict, list)):
             print(json.dumps(result, indent=2, default=str))
         else:
             print(result)
     finally:
-        await clients.cleanup()
+        # ``MCPManager.execute`` handles per-call cleanup, but this log records the
+        # end of the orchestration lifecycle for consistency.
+        logger.debug("Finished executing generated orchestration script.")
 
 
 if __name__ == "__main__":
     asyncio.run(_run())
-"""
+'''
 
 
 CONFIG_KIND_LLM = "llm"
@@ -418,20 +350,19 @@ def _build_messages(
         Tool metadata (JSON schemas):
         {tool_metadata_dump}
 
-        Please generate the Python implementation of `async def solve_task(manager: MCPManager, clients: ClientRegistry):`
+        Please generate the Python implementation of `async def solve_task(manager: MCPManager, servers: Sequence[Mapping[str, Any]]):`
         that returns a dictionary matching this output format:
         {output_format}
 
-        Remember that `clients` is a mapping populated by `MCPManager.build_client` for
-        every entry in `mcp_servers`, while `manager` is the shared `MCPManager`
-        instance. Use `await manager.execute(server_name="name", tool_name="tool",
-        arguments={...}, transport="stdio")` to call tools, mirroring the
-        `github__check_repository` helper in the codebase. Do not create placeholder or
-        dummy clients—work with the provided manager and mapping to talk to the actual
-        tools, and validate responses before continuing. Never import helper packages
-        that are not part of this repository (for example, do not invent modules such
-        as `mcp_sdk`). Work only with the concrete implementations that ship with the
-        project.
+        The `servers` argument mirrors the `mcp_servers` payload from the task and lists
+        every server configuration the orchestration should consider. Use the shared
+        `MCPManager` instance to talk to tools exactly like the `github__check_repository`
+        helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
+        You may optionally reuse the provided `call_tool` helper, but you must not create
+        substitute or dummy clients. Validate the responses you receive before moving on
+        to the next step, and never import helper packages that are not part of this
+        repository (for example, do not invent modules such as `mcp_sdk`). Work only with
+        the concrete implementations that ship with the project.
         """
     ).strip()
 
@@ -440,15 +371,11 @@ def _build_messages(
             "\n\nWhen this code is saved via the --output flag, include a callable `main()` "
             "function and an `if __name__ == \"__main__\": main()` guard so the "
             "module can be executed directly from the CLI. The `main()` workflow must "
-            "instantiate `MCPManager`, connect to each server listed in `mcp_servers` "
-            "using `await manager.build_client(server_name=name, transport=transport)`, "
-            "wrap those clients in a mapping that matches the runtime contract (for "
-            "example by importing `ClientRegistry` from "
-            "`mcpuniverse.scripts.generate_financial_analysis_runs`), invoke "
-            "`solve_task(manager, clients)`, print the structured result, and clean up "
-            "every client in a `finally` block. Do not substitute dummy stand-ins for "
-            "the real MCP clients, and do not reference helper modules that do not exist "
-            "in this codebase."
+            "instantiate `MCPManager`, read the `mcp_servers` configuration, and invoke "
+            "`solve_task(manager, mcp_servers)` using real MCP executions via "
+            "`await manager.execute(...)` (optionally through the provided `call_tool` helper). "
+            "Log the resulting output, handle exceptions gracefully, and do not invent "
+            "helper modules or placeholder clients."
         )
 
     messages = [
