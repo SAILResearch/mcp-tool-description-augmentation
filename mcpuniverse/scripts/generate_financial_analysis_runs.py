@@ -394,14 +394,14 @@ def _build_messages(
         every server configuration the orchestration should consider. Use the shared
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
         helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
-        You may optionally reuse the provided `call_tool` helper—note that it returns the
-        raw tool response object (e.g., `CallToolResult`) without converting it into a
-        dictionary—but you must not create substitute or dummy clients. Validate the
-        responses you receive before moving on to the next step, and never import helper
-        packages that are not part of this repository (for example, do not invent modules
-        such as `mcp_sdk`). Work only with the concrete implementations that ship with the
-        project, and ensure you include `from mcpuniverse.mcp.manager import MCPManager`
-        at the top of your module.
+        If you create a helper such as `call_tool`, implement it inside your module so the
+        saved script can execute in isolation—the evaluation harness may provide an
+        equivalent helper when running in memory, so matching the same signature keeps
+        behaviour consistent. Under no circumstances invent substitute or dummy clients,
+        and never import helper packages that are not part of this repository (for
+        example, do not invent modules such as `mcp_sdk`). Work only with the concrete
+        implementations that ship with the project, and ensure you include
+        `from mcpuniverse.mcp.manager import MCPManager` at the top of your module.
 
         When handling tool responses, strictly follow the `output_schema` (and any
         examples) documented above for each tool. Top-level envelopes such as
@@ -424,7 +424,8 @@ def _build_messages(
             "module can be executed directly from the CLI. The `main()` workflow must "
             "instantiate `MCPManager`, read the `mcp_servers` configuration, and invoke "
             "`solve_task(manager, mcp_servers)` using real MCP executions via "
-            "`await manager.execute(...)` (optionally through the provided `call_tool` helper). "
+            "`await manager.execute(...)`. Define any helper utilities (for example, "
+            "`call_tool`) within your module because the saved file is executed on its own. "
             "Log the resulting output, handle exceptions gracefully, and do not invent "
             "helper modules or placeholder clients. Remember to import MCPManager via "
             "`from mcpuniverse.mcp.manager import MCPManager`."
@@ -529,6 +530,27 @@ def _write_and_execute_code(
             script_path.unlink()
         except OSError:
             LOGGER.warning("Failed to delete temporary script %s", script_path, exc_info=True)
+
+
+def _execute_python_module(script_path: Path) -> subprocess.CompletedProcess[str]:
+    """Run an existing Python module and capture its output."""
+
+    LOGGER.info("Executing saved module %s", script_path)
+    env = dict(os.environ)
+    pythonpath_entries = [str(Path.cwd())]
+    existing_pythonpath = env.get("PYTHONPATH")
+    if existing_pythonpath:
+        pythonpath_entries.append(existing_pythonpath)
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
+    result = subprocess.run(
+        [sys.executable, str(script_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=str(Path.cwd()),
+        env=env,
+    )
+    return _log_result("_execute_python_module", result)
 
 
 def _print_execution_summary(task_name: str, execution: subprocess.CompletedProcess[str]) -> None:
@@ -655,14 +677,18 @@ async def run_benchmark_tasks_async(
                 task_relative,
                 multiple_tasks=multiple_tasks,
             )
-            _save_generated_code(generated_code, destination)
-
-        execution = await asyncio.to_thread(
-            _write_and_execute_code,
-            generated_code=generated_code,
-            servers=active_servers,
-            task_name=task_relative,
-        )
+            saved_path = _save_generated_code(generated_code, destination)
+            execution = await asyncio.to_thread(
+                _execute_python_module,
+                script_path=saved_path,
+            )
+        else:
+            execution = await asyncio.to_thread(
+                _write_and_execute_code,
+                generated_code=generated_code,
+                servers=active_servers,
+                task_name=task_relative,
+            )
         _print_execution_summary(task_relative, execution)
 
     _log_result(

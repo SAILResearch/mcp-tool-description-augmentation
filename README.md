@@ -738,11 +738,13 @@ following workflow:
 3. Prompts the benchmark's LLM to emit an asynchronous `solve_task(manager, servers)`
    function that uses the discovered tools for each benchmark task by calling
    `await manager.execute(...)`, mirroring the in-repo
-   `github__check_repository` helper. The runner injects a `call_tool` utility
-   into the generated script to log every request and response while delegating
-   to `MCPManager` for execution.
+   `github__check_repository` helper. The runner provides a reference `call_tool`
+   helper during in-memory execution so the generated code can log requests and
+   responses while delegating to `MCPManager`.
 4. Executes every generated solution end-to-end, printing structured outputs and
-   diagnostics to the console.
+   diagnostics to the console. When `--output` is supplied the runner saves each
+   response to disk and then runs `python <saved_file>` so the on-disk module must
+   include its own helpers (such as `call_tool`) alongside a CLI-friendly `main()`.
 
 Run the orchestrator with:
 
@@ -755,10 +757,12 @@ python mcpuniverse/scripts/generate_financial_analysis_runs.py \
 
 Passing the optional `--output` flag tells the runner to persist each LLM
 response to disk (one file per task when multiple tasks are present) before
-execution. The script streams execution logs for each task and cleans up MCP
-client connections automatically. Increase verbosity with `--log-level DEBUG`
-when you need deeper insight into tool discovery, LLM prompting, or runtime
-errors.
+execution, then invoke `python` on the saved module. Ensure your generated code
+defines the helpers it references and exposes an `if __name__ == "__main__"`
+guard so it can run standalone. The script streams execution logs for each task
+and cleans up MCP client connections automatically. Increase verbosity with
+`--log-level DEBUG` when you need deeper insight into tool discovery, LLM
+prompting, or runtime errors.
 
 ## Citation
 
