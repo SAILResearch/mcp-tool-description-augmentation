@@ -111,7 +111,7 @@ import asyncio
 import json
 import logging
 from collections.abc import MutableMapping
-from typing import Any, Iterator
+from typing import Any, Iterator, Mapping
 
 from mcpuniverse.mcp.manager import MCPManager
 
@@ -234,7 +234,12 @@ async def _run() -> None:
             client = await manager.build_client(server_name=name, transport=transport)
             await clients.register(name, client)
 
-        result = await solve_task(clients)
+        try:
+            result = await solve_task(manager, clients)
+        except TypeError:
+            # Backwards compatibility if the generated function still expects a
+            # single ``clients`` argument.
+            result = await solve_task(clients)
         if isinstance(result, (dict, list)):
             print(json.dumps(result, indent=2, default=str))
         else:
@@ -413,18 +418,20 @@ def _build_messages(
         Tool metadata (JSON schemas):
         {tool_metadata_dump}
 
-        Please generate the Python implementation of `async def solve_task(clients):`
+        Please generate the Python implementation of `async def solve_task(manager: MCPManager, clients: ClientRegistry):`
         that returns a dictionary matching this output format:
         {output_format}
 
         Remember that `clients` is a mapping populated by `MCPManager.build_client` for
-        every entry in `mcp_servers`. Each value already exposes the real MCP tools via
-        `await clients["server"].execute_tool(tool_name, arguments)` and attribute-style
-        access from a `ClientRegistry`. Do not create placeholder or dummy clients—use
-        the provided mapping to talk to the actual tools and validate responses before
-        continuing. Never import helper packages that are not part of this repository
-        (for example, do not invent modules such as `mcp_sdk`). Work only with the
-        concrete implementations that ship with the project.
+        every entry in `mcp_servers`, while `manager` is the shared `MCPManager`
+        instance. Use `await manager.execute(server_name="name", tool_name="tool",
+        arguments={...}, transport="stdio")` to call tools, mirroring the
+        `github__check_repository` helper in the codebase. Do not create placeholder or
+        dummy clients—work with the provided manager and mapping to talk to the actual
+        tools, and validate responses before continuing. Never import helper packages
+        that are not part of this repository (for example, do not invent modules such
+        as `mcp_sdk`). Work only with the concrete implementations that ship with the
+        project.
         """
     ).strip()
 
@@ -438,10 +445,10 @@ def _build_messages(
             "wrap those clients in a mapping that matches the runtime contract (for "
             "example by importing `ClientRegistry` from "
             "`mcpuniverse.scripts.generate_financial_analysis_runs`), invoke "
-            "`solve_task`, print the structured result, and clean up every client in a "
-            "`finally` block. Do not substitute dummy stand-ins for the real MCP "
-            "clients, and do not reference helper modules that do not exist in this "
-            "codebase."
+            "`solve_task(manager, clients)`, print the structured result, and clean up "
+            "every client in a `finally` block. Do not substitute dummy stand-ins for "
+            "the real MCP clients, and do not reference helper modules that do not exist "
+            "in this codebase."
         )
 
     messages = [
