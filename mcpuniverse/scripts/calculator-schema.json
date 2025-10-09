@@ -1,0 +1,223 @@
+{
+  "mcp_server": "calculator",
+  "tools": {
+    "calculate": {
+      "description": "Evaluate a mathematical expression with standard operators, unary minus, power (^), and Python math functions/constants.",
+      "input_schema": {
+        "type": "object",
+        "required": ["expression"],
+        "properties": {
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Math expression to evaluate. Supported operators: +, -, *, /, //, %, ^ (power), unary -, parentheses. Also supports × and ÷ (mapped to * and /). Functions/constants from Python's math module are allowed (e.g., sin, cos, tan, log, exp, sqrt, pow, pi, e).",
+            "examples": [
+              "2 + 3*4",
+              "sin(pi/2)",
+              "sqrt(2)^2",
+              "log(e)",
+              "3^3^2",
+              "-5 + 2",
+              "10 ÷ 4",
+              "7 × (3 + 2)",
+              "floor(3.9)",
+              "pow(2, 10)"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "description": "MCP execution envelope. The calculator's numeric result is returned as a string under structuredContent.result (and may also be duplicated in content[i].text).",
+        "properties": {
+          "meta": {
+            "type": ["object", "null"]
+          },
+          "content": {
+            "type": "array",
+            "description": "Optional list of content parts; one of them may carry structuredContent with the result or the plain text value.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": ["string", "null"],
+                  "enum": ["text", null]
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Numeric result serialized to a string.",
+                  "pattern": "^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$"
+                },
+                "structuredContent": {
+                  "type": "object",
+                  "required": ["result"],
+                  "properties": {
+                    "result": {
+                      "type": "string",
+                      "description": "Numeric result serialized to a string.",
+                      "pattern": "^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "structuredContent": {
+            "type": "object",
+            "required": ["result"],
+            "properties": {
+              "result": {
+                "type": "string",
+                "description": "Numeric result serialized to a string.",
+                "pattern": "^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$"
+              }
+            },
+            "additionalProperties": true
+          },
+          "isError": {
+            "type": ["boolean", "null"]
+          }
+        },
+        "anyOf": [
+          {
+            "required": ["structuredContent"],
+            "properties": {
+              "structuredContent": {
+                "type": "object",
+                "required": ["result"],
+                "properties": {
+                  "result": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "content": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": ["structuredContent"],
+                  "properties": {
+                    "structuredContent": {
+                      "type": "object",
+                      "required": ["result"],
+                      "properties": {
+                        "result": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "content": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": ["type", "text"],
+                  "properties": {
+                    "type": {
+                      "const": "text"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "meta": null,
+            "content": [
+              {
+                "type": "text",
+                "text": "58.75276739376195"
+              }
+            ],
+            "structuredContent": {
+              "result": "58.75276739376195"
+            },
+            "isError": false
+          }
+        ]
+      },
+      "success_examples": [
+        {
+          "input": {
+            "expression": "2 + 3*4"
+          },
+          "output": "14"
+        },
+        {
+          "input": {
+            "expression": "sin(pi/2)"
+          },
+          "output": "1.0"
+        },
+        {
+          "input": {
+            "expression": "sqrt(2)^2"
+          },
+          "output": "2.0000000000000004"
+        },
+        {
+          "input": {
+            "expression": "log(e)"
+          },
+          "output": "1.0"
+        },
+        {
+          "input": {
+            "expression": "3^3^2"
+          },
+          "notes": "Caret is right-associative via Python '**' after replacement: 3**(3**2) = 3**9",
+          "output": "19683"
+        },
+        {
+          "input": {
+            "expression": "-5 + 2"
+          },
+          "output": "-3"
+        },
+        {
+          "input": {
+            "expression": "10 ÷ 4"
+          },
+          "output": "2.5"
+        },
+        {
+          "input": {
+            "expression": "7 × (3 + 2)"
+          },
+          "output": "35"
+        },
+        {
+          "input": {
+            "expression": "floor(3.9)"
+          },
+          "output": "3"
+        },
+        {
+          "input": {
+            "expression": "pow(2, 10)"
+          },
+          "output": "1024.0"
+        }
+      ],
+      "error_behavior_notes": "On invalid identifiers, unsupported AST nodes, or runtime math errors (e.g., division by zero), the tool raises an exception and does not produce a successful result. Clients should treat such cases as errors (non-JSON-schema-conformant to output_schema)."
+    }
+  }
+}

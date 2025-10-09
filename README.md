@@ -59,6 +59,8 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
 - [Utility Scripts](#utility-scripts)
     - [List tool performance scores](#list-tool-performance-scores)
     - [Optimize MCP tool descriptions](#optimize-mcp-tool-descriptions)
+    - [Evaluate MCP tool description quality](#evaluate-mcp-tool-description-quality)
+- [Dynamic MCP Orchestration](#dynamic-mcp-orchestration)
 - [Citation](#citation)
 
 ## Architecture Overview
@@ -722,6 +724,47 @@ The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
 using a compatible proxy. Each tool evaluation spawns the corresponding MCP
 server through its stdio transport, lists available tools, and records both LLM
 assessments in the output CSV.
+
+## Dynamic MCP Orchestration
+
+Use the `generate_financial_analysis_runs.py` utility to dynamically orchestrate
+MCP tooling for the financial analysis benchmark. The CLI performs the
+following workflow:
+
+1. Reads `mcpuniverse/benchmark/configs/test/financial_analysis.yaml` to
+   discover the target LLM, agent, and tasks.
+2. Launches the configured MCP servers through `MCPManager` and collects their
+   tool descriptions and input schemas.
+3. Prompts the benchmark's LLM to emit an asynchronous `solve_task(manager, servers)`
+   function that uses the discovered tools for each benchmark task by calling
+   `await manager.execute(...)`, mirroring the in-repo
+   `github__check_repository` helper. The generated orchestration must return its
+   final payload instead of printing so the runner can surface results uniformly.
+   During in-memory execution the runner provides a reference `call_tool` helper
+   that logs requests and responses while delegating to `MCPManager`.
+4. Executes every generated solution end-to-end, captures the returned payload,
+   and prints structured outputs and diagnostics to the console. When `--output`
+   is supplied the runner saves each
+   response to disk and then runs `python <saved_file>` so the on-disk module must
+   include its own helpers (such as `call_tool`) alongside a CLI-friendly `main()`.
+
+Run the orchestrator with:
+
+```bash
+python mcpuniverse/scripts/generate_financial_analysis_runs.py \
+  --config mcpuniverse/benchmark/configs/test/financial_analysis.yaml \
+  --log-level INFO \
+  [--output generated/financial_task.py]
+```
+
+Passing the optional `--output` flag tells the runner to persist each LLM
+response to disk (one file per task when multiple tasks are present) before
+execution, then invoke `python` on the saved module. Ensure your generated code
+defines the helpers it references and exposes an `if __name__ == "__main__"`
+guard so it can run standalone. The script streams execution logs for each task
+and cleans up MCP client connections automatically. Increase verbosity with
+`--log-level DEBUG` when you need deeper insight into tool discovery, LLM
+prompting, or runtime errors.
 
 ## Citation
 
