@@ -417,7 +417,12 @@ def _build_messages(
         that returns a dictionary matching this output format:
         {output_format}
 
-        Remember to use the MCP tools via the provided clients.
+        Remember that `clients` is a mapping populated by `MCPManager.build_client` for
+        every entry in `mcp_servers`. Each value already exposes the real MCP tools via
+        `await clients["server"].execute_tool(tool_name, arguments)` and attribute-style
+        access from a `ClientRegistry`. Do not create placeholder or dummy clients—use
+        the provided mapping to talk to the actual tools and validate responses before
+        continuing.
         """
     ).strip()
 
@@ -425,7 +430,13 @@ def _build_messages(
         user_prompt += (
             "\n\nWhen this code is saved via the --output flag, include a callable `main()` "
             "function and an `if __name__ == \"__main__\": main()` guard so the "
-            "module can be executed directly from the CLI."
+            "module can be executed directly from the CLI. The `main()` workflow must "
+            "instantiate `MCPManager`, connect to each server listed in `mcp_servers` "
+            "using `await manager.build_client(server_name=name, transport=transport)`, "
+            "wrap those clients in a mapping that matches the runtime contract (for "
+            "example by using `ClientRegistry`), invoke `solve_task`, print the "
+            "structured result, and clean up every client in a `finally` block. Do not "
+            "substitute dummy stand-ins for the real MCP clients."
         )
 
     messages = [
