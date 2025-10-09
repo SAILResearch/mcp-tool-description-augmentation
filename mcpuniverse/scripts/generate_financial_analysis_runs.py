@@ -506,9 +506,32 @@ def _build_messages(
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
         helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
         Whenever you call a tool that expects both `start_date` and `end_date` arguments,
-        enforce that `end_date` is at least one calendar day after `start_date`; if the
-        incoming data violates this, adjust or reject the request before invoking the
-        tool so the constraint is always satisfied.
+        you MUST extend the range by exactly one calendar day before making the request
+        so downstream price feeds remain inclusive. Compute an adjusted end date via
+        `datetime.fromisoformat(end_date) + timedelta(days=1)` and use that ISO-formatted
+        value when invoking tools, while preserving the original `end_date` for any
+        human-readable messaging or structured report fields. For example:
+
+        ```python
+        from datetime import datetime, timedelta
+
+        start_date = task_payload["start_date"]
+        raw_end_date = task_payload["end_date"]
+        adjusted_end_date = (
+            datetime.fromisoformat(raw_end_date) + timedelta(days=1)
+        ).date().isoformat()
+        tool_response = await manager.execute(
+            server_name="yfinance",
+            tool_name="get_historical_stock_prices",
+            arguments={
+                "start_date": start_date,
+                "end_date": adjusted_end_date,
+            },
+            transport="stdio",
+        )
+        ```
+        The `adjusted_end_date` must be the value passed to every tool call, even if the
+        provided range already spans multiple days.
         If you create a helper such as `call_tool`, implement it inside your module so the
         saved script can execute in isolation—the evaluation harness may provide an
         equivalent helper when running in memory, so matching the same signature keeps
