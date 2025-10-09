@@ -200,8 +200,8 @@ from mcpuniverse.mcp.manager import MCPManager
 
 logger = logging.getLogger(__name__)
 
-_LABEL_COLOUR = "\033[1;35m"
-_VALUE_COLOUR = "\033[1;97m"
+_LABEL_COLOUR = "\033[1;96m"
+_VALUE_COLOUR = "\033[1;92m"
 _RESET_COLOUR = "\033[0m"
 
 
@@ -523,9 +523,9 @@ def _build_messages(
         final results in memory and `return` them so the caller can decide how to surface
         the output; emitting the final payload via `print` is not allowed. When you
         need to display a final payload (for example, inside a CLI entry point), format
-        it with a bold magenta ``Final result:`` label followed by the JSON payload in
-        bright white using ANSI escape codes ``\033[1;35m`` for the label,
-        ``\033[1;97m`` for the payload, and ``\033[0m`` to reset colours.
+        it with a bold bright-cyan ``Final result:`` label followed by the JSON payload in
+        bright green using ANSI escape codes ``\033[1;96m`` for the label,
+        ``\033[1;92m`` for the payload, and ``\033[0m`` to reset colours.
         """
     ).strip()
 
@@ -541,8 +541,8 @@ def _build_messages(
             "Capture the dictionary returned by `solve_task`, log any helpful context, "
             "and serialise that payload to stdout so running `python <saved_file>` "
             "produces the task result. Colourise the final output using the ANSI "
-            "sequence guidance above so the line begins with a bold magenta `Final result:` "
-            "label followed by the JSON payload in bright white text. Handle exceptions "
+            "sequence guidance above so the line begins with a bold bright-cyan `Final result:` "
+            "label followed by the JSON payload in bright green text. Handle exceptions "
             "gracefully, and do not invent "
             "helper modules or placeholder clients. Remember to import MCPManager via "
             "`from mcpuniverse.mcp.manager import MCPManager`."
