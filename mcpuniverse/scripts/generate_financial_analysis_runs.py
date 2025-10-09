@@ -166,7 +166,7 @@ async def call_tool(
 {generated_code}
 
 
-async def _run() -> None:
+async def _run() -> Any:
     manager = MCPManager()
     servers: Sequence[Mapping[str, Any]] = {servers_literal}
     try:
@@ -176,10 +176,7 @@ async def _run() -> None:
             # Backwards compatibility if the generated function still expects only
             # the manager argument.
             result = await solve_task(manager)
-        if isinstance(result, (dict, list)):
-            print(json.dumps(result, indent=2, default=str))
-        else:
-            print(result)
+        return result
     finally:
         # ``MCPManager.execute`` handles per-call cleanup, but this log records the
         # end of the orchestration lifecycle for consistency.
@@ -187,7 +184,11 @@ async def _run() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(_run())
+    output = asyncio.run(_run())
+    if isinstance(output, (dict, list)):
+        print(json.dumps(output, indent=2, default=str))
+    elif output is not None:
+        print(output)
 '''
 
 
@@ -387,7 +388,7 @@ def _build_messages(
         {schema_dump}
 
         Please generate the Python implementation of `async def solve_task(manager: MCPManager, servers: Sequence[Mapping[str, Any]]):`
-        that returns a dictionary matching this output format:
+        that returns (do not print) a dictionary matching this output format:
         {output_format}
 
         The `servers` argument mirrors the `mcp_servers` payload from the task and lists
@@ -413,7 +414,9 @@ def _build_messages(
         on that nested structure. Avoid coercing tool responses into dictionaries or
         calling `.model_dump()` inside your orchestration logic—work with the provided
         object interfaces, decode JSON payloads when indicated, and iterate over arrays
-        exactly as the schemas describe.
+        exactly as the schemas describe. Your orchestration function should collect the
+        final results in memory and `return` them so the caller can decide how to surface
+        the output; emitting the final payload via `print` is not allowed.
         """
     ).strip()
 
@@ -426,7 +429,9 @@ def _build_messages(
             "`solve_task(manager, mcp_servers)` using real MCP executions via "
             "`await manager.execute(...)`. Define any helper utilities (for example, "
             "`call_tool`) within your module because the saved file is executed on its own. "
-            "Log the resulting output, handle exceptions gracefully, and do not invent "
+            "Capture the dictionary returned by `solve_task`, log any helpful context, "
+            "and serialise that payload to stdout so running `python <saved_file>` "
+            "produces the task result. Handle exceptions gracefully, and do not invent "
             "helper modules or placeholder clients. Remember to import MCPManager via "
             "`from mcpuniverse.mcp.manager import MCPManager`."
         )
@@ -555,6 +560,8 @@ def _execute_python_module(script_path: Path) -> subprocess.CompletedProcess[str
 
 def _print_execution_summary(task_name: str, execution: subprocess.CompletedProcess[str]) -> None:
     divider = "=" * 80
+    if execution.stdout.strip():
+        print(execution.stdout.strip())
     LOGGER.info("%s\nTask: %s\nExit code: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n%s", divider, task_name, execution.returncode, execution.stdout.strip(), execution.stderr.strip(), divider)
     _log_result("_print_execution_summary", {"task": task_name, "exit_code": execution.returncode})
 

@@ -738,11 +738,13 @@ following workflow:
 3. Prompts the benchmark's LLM to emit an asynchronous `solve_task(manager, servers)`
    function that uses the discovered tools for each benchmark task by calling
    `await manager.execute(...)`, mirroring the in-repo
-   `github__check_repository` helper. The runner provides a reference `call_tool`
-   helper during in-memory execution so the generated code can log requests and
-   responses while delegating to `MCPManager`.
-4. Executes every generated solution end-to-end, printing structured outputs and
-   diagnostics to the console. When `--output` is supplied the runner saves each
+   `github__check_repository` helper. The generated orchestration must return its
+   final payload instead of printing so the runner can surface results uniformly.
+   During in-memory execution the runner provides a reference `call_tool` helper
+   that logs requests and responses while delegating to `MCPManager`.
+4. Executes every generated solution end-to-end, captures the returned payload,
+   and prints structured outputs and diagnostics to the console. When `--output`
+   is supplied the runner saves each
    response to disk and then runs `python <saved_file>` so the on-disk module must
    include its own helpers (such as `call_tool`) alongside a CLI-friendly `main()`.
 
