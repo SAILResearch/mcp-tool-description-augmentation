@@ -504,7 +504,7 @@ def _build_messages(
         The `servers` argument mirrors the `mcp_servers` payload from the task and lists
         every server configuration the orchestration should consider. Use the shared
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
-        helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
+        helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={{...}}, transport="stdio")`.
         Whenever you call a tool that expects both `start_date` and `end_date` arguments,
         you MUST extend the range by exactly one calendar day before making the request
         so downstream price feeds remain inclusive. Compute an adjusted end date via
@@ -523,10 +523,10 @@ def _build_messages(
         tool_response = await manager.execute(
             server_name="yfinance",
             tool_name="get_historical_stock_prices",
-            arguments={
+            arguments={{
                 "start_date": start_date,
                 "end_date": adjusted_end_date,
-            },
+            }},
             transport="stdio",
         )
         ```
