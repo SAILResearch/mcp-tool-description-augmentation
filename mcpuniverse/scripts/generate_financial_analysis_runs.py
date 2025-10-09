@@ -38,6 +38,7 @@ import sys
 import tempfile
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -46,6 +47,7 @@ from mcp.types import Tool
 
 from mcpuniverse.benchmark.runner import BenchmarkRunner
 from mcpuniverse.benchmark.task import Task
+from mcpuniverse.evaluator import EvaluationResult
 from mcpuniverse.agent.utils import get_tools_description
 from mcpuniverse.common.context import Context
 from mcpuniverse.llm.base import BaseLLM
@@ -575,6 +577,43 @@ def _extract_code_block(text: str) -> str:
     return _log_result("_extract_code_block", code)
 
 
+def _strip_ansi_codes(value: str) -> str:
+    pattern = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+    return pattern.sub("", value or "")
+
+
+def _extract_structured_output(execution: subprocess.CompletedProcess[str]) -> tuple[Any | None, str]:
+    stdout = execution.stdout or ""
+    cleaned = _strip_ansi_codes(stdout).strip()
+
+    candidate: Any | None = None
+    if cleaned:
+        last_line = ""
+        for line in reversed(cleaned.splitlines()):
+            stripped = line.strip()
+            if stripped:
+                last_line = stripped
+                break
+        if last_line.lower().startswith("final result:"):
+            json_fragment = last_line.split(":", 1)[1].strip()
+            try:
+                candidate = json.loads(json_fragment)
+            except json.JSONDecodeError:
+                candidate = None
+
+    if candidate is None and cleaned:
+        matches = re.findall(r"({.*})", cleaned, re.DOTALL)
+        for fragment in reversed(matches):
+            try:
+                candidate = json.loads(fragment)
+            except json.JSONDecodeError:
+                continue
+            else:
+                break
+
+    return candidate, cleaned
+
+
 def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] = None) -> BaseLLM:
     model_type = llm_spec.get("type")
     if not model_type:
@@ -589,7 +628,7 @@ def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] =
     return _log_result("_initialise_llm", model)
 
 
-def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
+def _load_task_payload(task_path: Path, *, context: Context) -> tuple[Task, Dict[str, Any]]:
     with task_path.open("r", encoding="utf-8") as handle:
         raw_payload = json.load(handle)
 
@@ -614,7 +653,7 @@ def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
         use_task_servers=payload["use_specified_server"],
     )
 
-    return _log_result("_load_task_payload", payload)
+    return _log_result("_load_task_payload", (task, payload))
 
 
 def _compose_system_prompt(agent_spec: Mapping[str, Any], base_prompt: str) -> str:
@@ -708,6 +747,100 @@ def _print_execution_summary(task_name: str, execution: subprocess.CompletedProc
     _log_result("_print_execution_summary", {"task": task_name, "exit_code": execution.returncode})
 
 
+def _write_evaluation_report(
+    *,
+    llm_spec: Mapping[str, Any],
+    agent_spec: Mapping[str, Any],
+    benchmark_spec: Mapping[str, Any],
+    tasks: Sequence[Mapping[str, Any]],
+) -> Path:
+    description = benchmark_spec.get("description", "")
+    agent_name = benchmark_spec.get("agent", agent_spec.get("name", ""))
+    llm_type = llm_spec.get("type", "")
+    llm_config = llm_spec.get("config", {}) if isinstance(llm_spec.get("config"), Mapping) else {}
+    llm_model = llm_config.get("model_name") or llm_config.get("model") or ""
+
+    lines: List[str] = []
+    lines.append("## Benchmark Config\n")
+    lines.append(f"**Benchmark description:** {description}\n")
+    lines.append(f"**Agent:** {agent_name}\n")
+    llm_label = f"{llm_type}: {llm_model}".strip(": ") if llm_model else llm_type
+    lines.append(f"**LLM:** {llm_label}\n")
+
+    lines.append("## Benchmark Summary")
+    lines.append("| Name | Passed | Not Passed | Score | LLM Calls |")
+    lines.append("| ---  | ------ | ---------- | ----- | --------- |")
+
+    for task in tasks:
+        name = task.get("name", "")
+        passed = int(task.get("passed", 0))
+        failed = int(task.get("failed", 0))
+        total = passed + failed
+        score = (passed / total) if total else 0.0
+        llm_calls = task.get("llm_calls", 0)
+        lines.append(
+            f"|**{name}**| {passed} | {failed} | {score:.2f} | {llm_calls} |"
+        )
+
+    lines.append("")
+    lines.append("## Appendix (Benchmark Details)")
+
+    for task in tasks:
+        name = task.get("name", "")
+        lines.append("### Task")
+        lines.append(f"- config: {name}")
+        exit_code = task.get("exit_code")
+        if exit_code is not None:
+            lines.append(f"- Exit Code: {exit_code}")
+
+        raw_output = task.get("raw_output", "")
+        structured_output = task.get("structured_output")
+        if structured_output is not None:
+            lines.append("- Parsed Output:")
+            lines.append("```json")
+            lines.append(json.dumps(structured_output, indent=2, default=str))
+            lines.append("```")
+        elif raw_output:
+            lines.append("- Raw Output:")
+            lines.append("```")
+            lines.append(raw_output)
+            lines.append("```")
+
+        stderr_output = task.get("stderr", "").strip()
+        if stderr_output:
+            lines.append("- STDERR:")
+            lines.append("```")
+            lines.append(stderr_output)
+            lines.append("```")
+
+        lines.append("- Evaluation Results:")
+        evaluation_results: Sequence[EvaluationResult] = task.get("evaluation_results", [])
+        evaluation_error = task.get("evaluation_error")
+        if evaluation_results:
+            for result in evaluation_results:
+                status = "PASSED" if result.passed else "FAILED"
+                description = result.config.desc or result.config.func
+                lines.append(f"  - {description}: {status}")
+                if result.reason:
+                    lines.append(f"    - Reason: {result.reason}")
+                if result.error:
+                    lines.append(f"    - Error: {result.error}")
+        elif evaluation_error:
+            lines.append(f"  - Evaluation error: {evaluation_error}")
+        else:
+            lines.append("  - No evaluators defined.")
+
+        lines.append("")
+
+    report_dir = Path("log")
+    report_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    report_path = report_dir / f"report-{timestamp}.md"
+    report_path.write_text("\n".join(lines), encoding="utf-8")
+    _log_state("Wrote evaluation report", path=str(report_path))
+    return report_path
+
+
 async def run_benchmark_tasks_async(
     config_path: Path,
     *,
@@ -756,6 +889,7 @@ async def run_benchmark_tasks_async(
     _log_state("Discovered benchmark tasks", total=len(tasks))
 
     multiple_tasks = len(tasks) > 1
+    report_entries: List[Dict[str, Any]] = []
 
     for task_relative in tasks:
         _log_state("Processing task", task=task_relative)
@@ -770,7 +904,7 @@ async def run_benchmark_tasks_async(
         else:
             task_path = task_path.resolve()
 
-        task_payload = _load_task_payload(task_path, context=context)
+        task_object, task_payload = _load_task_payload(task_path, context=context)
         use_task_servers = bool(task_payload.get("use_specified_server"))
         raw_task_servers = task_payload.get("mcp_servers") or []
 
@@ -856,11 +990,48 @@ async def run_benchmark_tasks_async(
             )
         _print_execution_summary(task_relative, execution)
 
+        structured_output, cleaned_stdout = _extract_structured_output(execution)
+        evaluation_results: List[EvaluationResult] = []
+        evaluation_error: Optional[str] = None
+        evaluators = task_object.get_evaluators()
+        if evaluators:
+            evaluation_input: Any = structured_output if structured_output is not None else cleaned_stdout
+            try:
+                evaluation_results = await task_object.evaluate(evaluation_input)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                evaluation_error = str(exc)
+                LOGGER.exception("Failed to evaluate task %s: %s", task_relative, exc)
+
+        passed = sum(1 for result in evaluation_results if result.passed)
+        failed = sum(1 for result in evaluation_results if not result.passed)
+        report_entries.append(
+            {
+                "name": task_relative,
+                "passed": passed,
+                "failed": failed,
+                "llm_calls": 1,
+                "exit_code": execution.returncode,
+                "raw_output": cleaned_stdout,
+                "structured_output": structured_output,
+                "stderr": execution.stderr or "",
+                "evaluation_results": evaluation_results,
+                "evaluation_error": evaluation_error,
+            }
+        )
+
     _log_state(
         "Completed benchmark run",
         total_tasks=len(tasks),
         output_path=str(output_path) if output_path else None,
     )
+
+    if report_entries:
+        _write_evaluation_report(
+            llm_spec=llm_spec,
+            agent_spec=agent_spec,
+            benchmark_spec=benchmark_spec,
+            tasks=report_entries,
+        )
 
     _log_result(
         "run_benchmark_tasks_async",
