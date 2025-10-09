@@ -81,11 +81,36 @@
           },
           "structuredContent": {
             "type": "object",
+            "description": "Container for the JSON-encoded OHLCV records returned by the MCP call.",
             "required": ["result"],
             "properties": {
               "result": {
                 "type": "string",
-                "description": "JSON string encoding a list of OHLCV rows. Call json.loads(result) to obtain the records described in result_schema."
+                "description": "JSON string encoding an array of OHLCV records.",
+                "contentMediaType": "application/json",
+                "contentSchema": {
+                  "type": "array",
+                  "description": "Parsed structure of the JSON string (after json.loads).",
+                  "items": {
+                    "type": "object",
+                    "required": ["Date", "Close"],
+                    "properties": {
+                      "Date": { "type": "string", "format": "date-time" },
+                      "Open": { "type": ["number", "null"] },
+                      "High": { "type": ["number", "null"] },
+                      "Low": { "type": ["number", "null"] },
+                      "Close": { "type": ["number", "null"] },
+                      "Adj Close": { "type": ["number", "null"] },
+                      "Volume": { "type": ["number", "null"] },
+                      "Dividends": { "type": ["number", "null"] },
+                      "Stock Splits": { "type": ["number", "null"] }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "examples": [
+                  "[{\"Date\":\"2025-01-03T05:00:00.000Z\",\"Open\":418.778884609,\"High\":421.712775701,\"Low\":417.2473221952,\"Close\":421.0364990234,\"Volume\":16662900,\"Dividends\":0.0,\"Stock Splits\":0.0}]"
+                ]
               }
             },
             "additionalProperties": true
