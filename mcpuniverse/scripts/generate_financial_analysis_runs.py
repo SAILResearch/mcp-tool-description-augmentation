@@ -219,7 +219,11 @@ def _load_local_tool_schemas() -> Dict[str, Any]:
         except Exception as exc:  # pragma: no cover - defensive logging
             LOGGER.error("Failed to load tool schema %s: %s", path, exc)
             continue
-        server_name = str(document.get("server") or path.stem)
+        server_name = str(
+            document.get("mcp_server")
+            or document.get("server")
+            or path.stem
+        )
         documents[server_name] = document
     return _log_result("_load_local_tool_schemas", documents)
 

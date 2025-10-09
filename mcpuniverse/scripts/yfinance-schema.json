@@ -1,12 +1,19 @@
 {
-  "yfinance_tools": {
+  "mcp_server": "yfinance",
+  "tools": {
     "get_historical_stock_prices": {
       "description": "Get historical OHLCV data for a given ticker from Yahoo Finance.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker", "start_date", "end_date"],
+        "required": [
+          "ticker",
+          "start_date",
+          "end_date"
+        ],
         "properties": {
-          "ticker": { "type": "string" },
+          "ticker": {
+            "type": "string"
+          },
           "start_date": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
@@ -37,68 +44,275 @@
         }
       },
       "output_schema": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "Date": { "type": "string", "description": "ISO datetime" },
-            "Open": { "type": "number" },
-            "High": { "type": "number" },
-            "Low": { "type": "number" },
-            "Close": { "type": "number" },
-            "Adj Close": { "type": ["number", "null"] },
-            "Volume": { "type": ["number", "null"] },
-            "Dividends": { "type": ["number", "null"] },
-            "Stock Splits": { "type": ["number", "null"] }
+        "type": "object",
+        "description": "MCP execution envelope. Historical rows are returned as a JSON string under structuredContent.result.",
+        "properties": {
+          "meta": {
+            "type": [
+              "object",
+              "null"
+            ]
           },
-          "additionalProperties": true
-        }
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "description": "JSON string representation of the historical price rows (same shape as structuredContent.result)."
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "structuredContent": {
+            "type": "object",
+            "required": [
+              "result"
+            ],
+            "properties": {
+              "result": {
+                "type": "string",
+                "description": "JSON string encoding a list of OHLCV rows. Call json.loads(result) to obtain the records described in result_schema."
+              }
+            },
+            "additionalProperties": true
+          },
+          "result_schema": {
+            "type": "array",
+            "description": "Describes the decoded structure of structuredContent.result after json.loads.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Date": {
+                  "type": "string",
+                  "description": "ISO datetime"
+                },
+                "Open": {
+                  "type": "number"
+                },
+                "High": {
+                  "type": "number"
+                },
+                "Low": {
+                  "type": "number"
+                },
+                "Close": {
+                  "type": "number"
+                },
+                "Adj Close": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "Volume": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "Dividends": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "Stock Splits": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "structuredContent"
+        ],
+        "examples": [
+          {
+            "meta": null,
+            "content": [
+              {
+                "type": "text",
+                "text": "[{\"Date\":\"2025-01-08T05:00:00.000Z\",\"Open\":421.1458429196,\"High\":424.6366709819,\"Low\":419.2363524426,\"Close\":422.2398376465,\"Volume\":15054600,\"Dividends\":0.0,\"Stock Splits\":0.0}]"
+              }
+            ],
+            "structuredContent": {
+              "result": "[{\"Date\":\"2025-01-08T05:00:00.000Z\",\"Open\":421.1458429196,\"High\":424.6366709819,\"Low\":419.2363524426,\"Close\":422.2398376465,\"Volume\":15054600,\"Dividends\":0.0,\"Stock Splits\":0.0}]"
+            },
+            "result_schema": [
+              {
+                "Date": "2025-01-08T05:00:00.000Z",
+                "Open": 421.1458429196,
+                "High": 424.6366709819,
+                "Low": 419.2363524426,
+                "Close": 422.2398376465,
+                "Volume": 15054600,
+                "Dividends": 0.0,
+                "Stock Splits": 0.0
+              }
+            ]
+          }
+        ]
       }
     },
     "get_stock_info": {
       "description": "Get detailed stock and company info for a given ticker.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker"],
+        "required": [
+          "ticker"
+        ],
         "properties": {
-          "ticker": { "type": "string" }
+          "ticker": {
+            "type": "string"
+          }
         }
       },
       "output_schema": {
         "type": "object",
         "description": "Flat key-value pairs of stock and company information from yfinance.Ticker.info.",
         "properties": {
-          "symbol": { "type": "string" },
-          "shortName": { "type": "string" },
-          "longName": { "type": "string" },
-          "sector": { "type": "string" },
-          "industry": { "type": "string" },
-          "website": { "type": "string" },
-          "longBusinessSummary": { "type": "string" },
-          "country": { "type": "string" },
-          "fullTimeEmployees": { "type": ["integer", "null"] },
-          "marketCap": { "type": ["number", "null"] },
-          "enterpriseValue": { "type": ["number", "null"] },
-          "trailingPE": { "type": ["number", "null"] },
-          "forwardPE": { "type": ["number", "null"] },
-          "priceToBook": { "type": ["number", "null"] },
-          "dividendRate": { "type": ["number", "null"] },
-          "dividendYield": { "type": ["number", "null"] },
-          "beta": { "type": ["number", "null"] },
-          "fiftyTwoWeekHigh": { "type": ["number", "null"] },
-          "fiftyTwoWeekLow": { "type": ["number", "null"] },
-          "regularMarketPrice": { "type": ["number", "null"] },
-          "regularMarketVolume": { "type": ["number", "null"] },
-          "currency": { "type": ["string", "null"] }
+          "symbol": {
+            "type": "string"
+          },
+          "shortName": {
+            "type": "string"
+          },
+          "longName": {
+            "type": "string"
+          },
+          "sector": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "website": {
+            "type": "string"
+          },
+          "longBusinessSummary": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "fullTimeEmployees": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "marketCap": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "enterpriseValue": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trailingPE": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "forwardPE": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "priceToBook": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dividendRate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "dividendYield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "beta": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fiftyTwoWeekHigh": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fiftyTwoWeekLow": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "regularMarketPrice": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "regularMarketVolume": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         },
         "additionalProperties": {
           "oneOf": [
-            { "type": "string" },
-            { "type": "number" },
-            { "type": "boolean" },
-            { "type": "null" },
-            { "type": "array" },
-            { "type": "object" }
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array"
+            },
+            {
+              "type": "object"
+            }
           ]
         }
       }
@@ -107,9 +321,13 @@
       "description": "Fetch recent Yahoo Finance news stories for a ticker.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker"],
+        "required": [
+          "ticker"
+        ],
         "properties": {
-          "ticker": { "type": "string" }
+          "ticker": {
+            "type": "string"
+          }
         }
       },
       "output_schema": {
@@ -118,10 +336,18 @@
         "items": {
           "type": "object",
           "properties": {
-            "title": { "type": "string" },
-            "summary": { "type": "string" },
-            "description": { "type": "string" },
-            "url": { "type": "string" }
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
           }
         }
       }
@@ -130,9 +356,13 @@
       "description": "Retrieve dividend and stock split history for a ticker.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker"],
+        "required": [
+          "ticker"
+        ],
         "properties": {
-          "ticker": { "type": "string" }
+          "ticker": {
+            "type": "string"
+          }
         }
       },
       "output_schema": {
@@ -140,9 +370,21 @@
         "items": {
           "type": "object",
           "properties": {
-            "Date": { "type": "string" },
-            "Dividends": { "type": ["number", "null"] },
-            "Stock Splits": { "type": ["number", "null"] }
+            "Date": {
+              "type": "string"
+            },
+            "Dividends": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "Stock Splits": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
           },
           "additionalProperties": true
         }
@@ -152,9 +394,14 @@
       "description": "Get a company's financial statement (annual or quarterly).",
       "input_schema": {
         "type": "object",
-        "required": ["ticker", "financial_type"],
+        "required": [
+          "ticker",
+          "financial_type"
+        ],
         "properties": {
-          "ticker": { "type": "string" },
+          "ticker": {
+            "type": "string"
+          },
           "financial_type": {
             "type": "string",
             "enum": [
@@ -173,7 +420,9 @@
         "description": "Array of financial statement entries. Each entry corresponds to one reporting date with metrics as key-value pairs.",
         "items": {
           "type": "object",
-          "required": ["date"],
+          "required": [
+            "date"
+          ],
           "properties": {
             "date": {
               "type": "string",
@@ -182,7 +431,14 @@
             }
           },
           "additionalProperties": {
-            "oneOf": [{ "type": "number" }, { "type": "null" }]
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "examples": [
@@ -209,9 +465,14 @@
       "description": "Get holder or insider information for a ticker.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker", "holder_type"],
+        "required": [
+          "ticker",
+          "holder_type"
+        ],
         "properties": {
-          "ticker": { "type": "string" },
+          "ticker": {
+            "type": "string"
+          },
           "holder_type": {
             "type": "string",
             "enum": [
@@ -228,16 +489,23 @@
       "output_schema": {
         "type": "array",
         "description": "Array of holder information rows. Fields vary depending on holder_type.",
-        "items": { "type": "object", "additionalProperties": true }
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
       }
     },
     "get_option_expiration_dates": {
       "description": "List available option expiration dates for a ticker.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker"],
+        "required": [
+          "ticker"
+        ],
         "properties": {
-          "ticker": { "type": "string" }
+          "ticker": {
+            "type": "string"
+          }
         }
       },
       "output_schema": {
@@ -252,16 +520,25 @@
       "description": "Fetch the option chain (calls or puts) for a ticker and expiration date.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker", "expiration_date", "option_type"],
+        "required": [
+          "ticker",
+          "expiration_date",
+          "option_type"
+        ],
         "properties": {
-          "ticker": { "type": "string" },
+          "ticker": {
+            "type": "string"
+          },
           "expiration_date": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           },
           "option_type": {
             "type": "string",
-            "enum": ["calls", "puts"]
+            "enum": [
+              "calls",
+              "puts"
+            ]
           }
         }
       },
@@ -270,20 +547,87 @@
         "items": {
           "type": "object",
           "properties": {
-            "contractSymbol": { "type": "string" },
-            "lastTradeDate": { "type": ["string", "null"] },
-            "strike": { "type": ["number", "null"] },
-            "lastPrice": { "type": ["number", "null"] },
-            "bid": { "type": ["number", "null"] },
-            "ask": { "type": ["number", "null"] },
-            "change": { "type": ["number", "null"] },
-            "percentChange": { "type": ["number", "null"] },
-            "volume": { "type": ["number", "null"] },
-            "openInterest": { "type": ["number", "null"] },
-            "impliedVolatility": { "type": ["number", "null"] },
-            "inTheMoney": { "type": ["boolean", "null"] },
-            "contractSize": { "type": ["string", "null"] },
-            "currency": { "type": ["string", "null"] }
+            "contractSymbol": {
+              "type": "string"
+            },
+            "lastTradeDate": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "strike": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "lastPrice": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "bid": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ask": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "change": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "percentChange": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "volume": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "openInterest": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "impliedVolatility": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inTheMoney": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "contractSize": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "currency": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           },
           "additionalProperties": true
         }
@@ -293,12 +637,20 @@
       "description": "Get analyst recommendations or upgrades/downgrades for a ticker.",
       "input_schema": {
         "type": "object",
-        "required": ["ticker", "recommendation_type"],
+        "required": [
+          "ticker",
+          "recommendation_type"
+        ],
         "properties": {
-          "ticker": { "type": "string" },
+          "ticker": {
+            "type": "string"
+          },
           "recommendation_type": {
             "type": "string",
-            "enum": ["recommendations", "upgrades_downgrades"]
+            "enum": [
+              "recommendations",
+              "upgrades_downgrades"
+            ]
           },
           "months_back": {
             "type": "integer",
