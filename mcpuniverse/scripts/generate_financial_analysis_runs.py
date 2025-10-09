@@ -513,7 +513,11 @@ def _print_execution_summary(task_name: str, execution: subprocess.CompletedProc
     _log_result("_print_execution_summary", {"task": task_name, "exit_code": execution.returncode})
 
 
-async def run_benchmark_tasks_async(config_path: Path) -> None:
+async def run_benchmark_tasks_async(
+    config_path: Path,
+    *,
+    output_path: Optional[Path] = None,
+) -> None:
     context = Context(env=dict(os.environ))
     llm_spec, agent_spec, benchmark_spec = _load_configuration_sections(
         config_path, context=context
@@ -546,6 +550,8 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
         LOGGER.warning("No tasks found in benchmark specification")
         _log_result("run_benchmark_tasks_async", {"config_path": str(config_path), "tasks": []})
         return
+
+    multiple_tasks = len(tasks) > 1
 
     for task_relative in tasks:
         task_path = Path(task_relative)
@@ -607,6 +613,14 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
             LOGGER.error("Failed to extract code block from LLM response for task %s", task_relative)
             continue
 
+        if output_path is not None:
+            destination = _resolve_task_output_path(
+                output_path,
+                task_relative,
+                multiple_tasks=multiple_tasks,
+            )
+            _save_generated_code(generated_code, destination)
+
         execution = await asyncio.to_thread(
             _write_and_execute_code,
             generated_code=generated_code,
@@ -617,15 +631,71 @@ async def run_benchmark_tasks_async(config_path: Path) -> None:
 
     _log_result(
         "run_benchmark_tasks_async",
-        {"config_path": str(config_path), "tasks": [str(task) for task in tasks]},
+        {
+            "config_path": str(config_path),
+            "tasks": [str(task) for task in tasks],
+            "output_path": str(output_path) if output_path else None,
+        },
     )
 
 
-def run_benchmark_tasks(config_path: Path) -> None:
+def run_benchmark_tasks(config_path: Path, *, output_path: Optional[Path] = None) -> None:
     """Synchronous wrapper for :func:`run_benchmark_tasks_async`."""
 
-    asyncio.run(run_benchmark_tasks_async(config_path))
-    _log_result("run_benchmark_tasks", {"config_path": str(config_path)})
+    asyncio.run(run_benchmark_tasks_async(config_path, output_path=output_path))
+    _log_result(
+        "run_benchmark_tasks",
+        {
+            "config_path": str(config_path),
+            "output_path": str(output_path) if output_path else None,
+        },
+    )
+
+
+def _sanitise_task_name(identifier: str) -> str:
+    """Sanitise a task identifier for filesystem usage."""
+
+    sanitized = re.sub(r"[^A-Za-z0-9_.-]+", "_", identifier).strip("_")
+    if not sanitized:
+        sanitized = "task"
+    return _log_result("_sanitise_task_name", sanitized)
+
+
+def _resolve_task_output_path(
+    base_output: Path,
+    task_identifier: str,
+    *,
+    multiple_tasks: bool,
+) -> Path:
+    """Determine the filesystem destination for a task's generated code."""
+
+    resolved_base = base_output.expanduser()
+    sanitized = _sanitise_task_name(task_identifier)
+
+    if resolved_base.exists() and resolved_base.is_dir():
+        resolved_base.mkdir(parents=True, exist_ok=True)
+        destination = resolved_base / f"{sanitized}.py"
+    elif resolved_base.suffix and not multiple_tasks:
+        resolved_base.parent.mkdir(parents=True, exist_ok=True)
+        destination = resolved_base
+    elif resolved_base.suffix and multiple_tasks:
+        resolved_base.parent.mkdir(parents=True, exist_ok=True)
+        destination = resolved_base.with_name(
+            f"{resolved_base.stem}_{sanitized}{resolved_base.suffix}"
+        )
+    else:
+        resolved_base.mkdir(parents=True, exist_ok=True)
+        destination = resolved_base / f"{sanitized}.py"
+
+    return _log_result("_resolve_task_output_path", destination)
+
+
+def _save_generated_code(code: str, destination: Path) -> Path:
+    """Persist generated code to ``destination`` and return the path."""
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(code, encoding="utf-8")
+    return _log_result("_save_generated_code", destination)
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -644,6 +714,15 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
         help="Logging level for diagnostic output.",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Optional path where generated code should be saved. If multiple tasks are "
+            "processed, individual files will be created per task."
+        ),
+    )
     args = parser.parse_args(argv)
     return _log_result("parse_args", args)
 
@@ -654,8 +733,14 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     config_path = args.config
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file {config_path} does not exist")
-    run_benchmark_tasks(config_path)
-    _log_result("main", {"config_path": str(config_path)})
+    run_benchmark_tasks(config_path, output_path=args.output)
+    _log_result(
+        "main",
+        {
+            "config_path": str(config_path),
+            "output_path": str(args.output) if args.output else None,
+        },
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
