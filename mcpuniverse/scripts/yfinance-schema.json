@@ -45,28 +45,35 @@
       },
       "output_schema": {
         "type": "object",
-        "description": "MCP execution envelope. Historical rows are returned as a JSON string under structuredContent.result.",
+        "description": "MCP execution envelope. Historical rows are returned as a JSON string under structuredContent.result (either at the root or nested within content[].structuredContent.result).",
         "properties": {
           "meta": {
-            "type": [
-              "object",
-              "null"
-            ]
+            "type": ["object", "null"]
           },
           "content": {
             "type": "array",
+            "description": "Optional list of content parts; one of them may carry structuredContent with the result.",
             "items": {
               "type": "object",
               "properties": {
                 "type": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                  "type": ["string", "null"],
+                  "enum": ["text", null]
                 },
                 "text": {
                   "type": "string",
                   "description": "JSON string representation of the historical price rows (same shape as structuredContent.result)."
+                },
+                "structuredContent": {
+                  "type": "object",
+                  "required": ["result"],
+                  "properties": {
+                    "result": {
+                      "type": "string",
+                      "description": "JSON string encoding a list of OHLCV rows. Call json.loads(result) to obtain the records described in result_schema."
+                    }
+                  },
+                  "additionalProperties": true
                 }
               },
               "additionalProperties": true
@@ -74,9 +81,7 @@
           },
           "structuredContent": {
             "type": "object",
-            "required": [
-              "result"
-            ],
+            "required": ["result"],
             "properties": {
               "result": {
                 "type": "string",
@@ -85,59 +90,67 @@
             },
             "additionalProperties": true
           },
+          "isError": {
+            "type": ["boolean", "null"]
+          },
           "result_schema": {
             "type": "array",
-            "description": "Describes the decoded structure of structuredContent.result after json.loads.",
+            "description": "Describes the decoded structure of structuredContent.result (or content[i].structuredContent.result) after json.loads.",
             "items": {
               "type": "object",
+              "required": ["Date", "Close"],
               "properties": {
                 "Date": {
                   "type": "string",
-                  "description": "ISO datetime"
+                  "format": "date-time",
+                  "description": "ISO 8601 datetime (e.g., 2025-01-08T05:00:00.000Z)"
                 },
-                "Open": {
-                  "type": "number"
-                },
-                "High": {
-                  "type": "number"
-                },
-                "Low": {
-                  "type": "number"
-                },
-                "Close": {
-                  "type": "number"
-                },
-                "Adj Close": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "Volume": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "Dividends": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "Stock Splits": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                }
+                "Open": { "type": ["number", "null"] },
+                "High": { "type": ["number", "null"] },
+                "Low": { "type": ["number", "null"] },
+                "Close": { "type": ["number", "null"] },
+                "Adj Close": { "type": ["number", "null"] },
+                "Volume": { "type": ["number", "null"] },
+                "Dividends": { "type": ["number", "null"] },
+                "Stock Splits": { "type": ["number", "null"] }
               },
               "additionalProperties": true
             }
           }
         },
-        "required": [
-          "structuredContent"
+        "anyOf": [
+          {
+            "required": ["structuredContent"],
+            "properties": {
+              "structuredContent": {
+                "type": "object",
+                "required": ["result"],
+                "properties": {
+                  "result": { "type": "string" }
+                }
+              }
+            }
+          },
+          {
+            "properties": {
+              "content": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": ["structuredContent"],
+                  "properties": {
+                    "structuredContent": {
+                      "type": "object",
+                      "required": ["result"],
+                      "properties": {
+                        "result": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         ],
         "examples": [
           {
@@ -151,6 +164,7 @@
             "structuredContent": {
               "result": "[{\"Date\":\"2025-01-08T05:00:00.000Z\",\"Open\":421.1458429196,\"High\":424.6366709819,\"Low\":419.2363524426,\"Close\":422.2398376465,\"Volume\":15054600,\"Dividends\":0.0,\"Stock Splits\":0.0}]"
             },
+            "isError": false,
             "result_schema": [
               {
                 "Date": "2025-01-08T05:00:00.000Z",
@@ -163,8 +177,22 @@
                 "Stock Splits": 0.0
               }
             ]
+          },
+          {
+            "meta": null,
+            "content": [
+              {
+                "type": "text",
+                "text": "[{\"Date\":\"2025-01-07T05:00:00.000Z\",\"Open\":426.6555708652,\"High\":428.2965477599,\"Low\":418.5003706571,\"Close\":420.0617980957,\"Volume\":18139100,\"Dividends\":0.0,\"Stock Splits\":0.0}]",
+                "structuredContent": {
+                  "result": "[{\"Date\":\"2025-01-07T05:00:00.000Z\",\"Open\":426.6555708652,\"High\":428.2965477599,\"Low\":418.5003706571,\"Close\":420.0617980957,\"Volume\":18139100,\"Dividends\":0.0,\"Stock Splits\":0.0}]"
+                }
+              }
+            ],
+            "isError": false
           }
-        ]
+        ],
+        "usage_notes": "Responses are instances of CallToolResult. Access top-level fields with getattr(result, \"structuredContent\", None) or getattr(result, \"content\", None) before falling back to dictionary operations. Decode any JSON strings described above with json.loads before iterating over price rows."
       }
     },
     "get_stock_info": {

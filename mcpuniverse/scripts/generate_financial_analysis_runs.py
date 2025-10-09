@@ -142,25 +142,25 @@ async def call_tool(
         transport=transport,
     )
 
-    processed: Any = response
+    serializable: Any
     if hasattr(response, "model_dump"):
-        processed = response.model_dump(mode="python")  # type: ignore[call-arg]
+        serializable = response.model_dump(mode="python")  # type: ignore[call-arg]
     elif isinstance(response, Mapping):
-        processed = dict(response)
+        serializable = dict(response)
+    else:
+        serializable = repr(response)
 
-    if isinstance(processed, dict):
-        structured_content = processed.get("structuredContent")
-        if structured_content is not None and "data" not in processed:
-            processed["data"] = structured_content
+    if not isinstance(serializable, str):
+        try:
+            formatted = json.dumps(serializable, indent=2, default=str)
+        except TypeError:
+            formatted = repr(serializable)
+    else:
+        formatted = serializable
 
-    try:
-        formatted = json.dumps(processed, indent=2, default=str)
-    except TypeError:
-        formatted = repr(processed)
-
-    logger.debug("Tool %s.%s response:", server_name, tool_name)
+    logger.debug("Tool %s.%s response envelope:", server_name, tool_name)
     logger.debug("%s", formatted)
-    return processed
+    return response
 
 
 {generated_code}
@@ -394,18 +394,24 @@ def _build_messages(
         every server configuration the orchestration should consider. Use the shared
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
         helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
-        You may optionally reuse the provided `call_tool` helper, but you must not create
-        substitute or dummy clients. Validate the responses you receive before moving on
-        to the next step, and never import helper packages that are not part of this
-        repository (for example, do not invent modules such as `mcp_sdk`). Work only with
-        the concrete implementations that ship with the project, and ensure you include
-        `from mcpuniverse.mcp.manager import MCPManager` at the top of your module.
+        You may optionally reuse the provided `call_tool` helper—note that it returns the
+        raw tool response object (e.g., `CallToolResult`) without converting it into a
+        dictionary—but you must not create substitute or dummy clients. Validate the
+        responses you receive before moving on to the next step, and never import helper
+        packages that are not part of this repository (for example, do not invent modules
+        such as `mcp_sdk`). Work only with the concrete implementations that ship with the
+        project, and ensure you include `from mcpuniverse.mcp.manager import MCPManager`
+        at the top of your module.
 
         When handling tool responses, strictly follow the `output_schema` (and any
-        examples) documented above for each tool. Treat objects by using attribute access
-        (e.g., `getattr(response, "field", default)`), validate dictionary fields with
-        `in` checks before reading values, and iterate over arrays as described. Do not
-        assume shapes that are not guaranteed by the schema or examples.
+        examples) documented above for each tool. Treat envelopes whose schema type is
+        `object` as Python objects (for example, `CallToolResult`) and access their
+        fields with `getattr(response, "field", default)` before considering any
+        dictionary conversions. Only when the schema describes nested dictionaries
+        should you perform `in` checks and subscripting on those inner mappings. Avoid
+        coercing tool responses into dictionaries or calling `.model_dump()` inside your
+        orchestration logic—work with the object interfaces provided and iterate over
+        arrays exactly as documented.
         """
     ).strip()
 
