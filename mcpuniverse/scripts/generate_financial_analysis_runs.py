@@ -404,14 +404,16 @@ def _build_messages(
         at the top of your module.
 
         When handling tool responses, strictly follow the `output_schema` (and any
-        examples) documented above for each tool. Treat envelopes whose schema type is
-        `object` as Python objects (for example, `CallToolResult`) and access their
-        fields with `getattr(response, "field", default)` before considering any
-        dictionary conversions. Only when the schema describes nested dictionaries
-        should you perform `in` checks and subscripting on those inner mappings. Avoid
-        coercing tool responses into dictionaries or calling `.model_dump()` inside your
-        orchestration logic—work with the object interfaces provided and iterate over
-        arrays exactly as documented.
+        examples) documented above for each tool. Top-level envelopes such as
+        `CallToolResult` expose their fields via attributes (for example,
+        `getattr(response, "structuredContent", None)`), but the attribute values can be
+        dictionaries. When a schema property is defined as an `object` (like
+        `structuredContent`), treat the returned value as a mapping—use
+        `"key" in value`, `value.get("key")`, or `value["key"]` rather than `getattr`
+        on that nested structure. Avoid coercing tool responses into dictionaries or
+        calling `.model_dump()` inside your orchestration logic—work with the provided
+        object interfaces, decode JSON payloads when indicated, and iterate over arrays
+        exactly as the schemas describe.
         """
     ).strip()
 

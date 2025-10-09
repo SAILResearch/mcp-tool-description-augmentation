@@ -81,7 +81,7 @@
           },
           "structuredContent": {
             "type": "object",
-            "description": "Container for the JSON-encoded OHLCV records returned by the MCP call.",
+            "description": "Container for the JSON-encoded OHLCV records returned by the MCP call. In Python this attribute is a dictionary; access values with subscription (e.g., `structured[\"result\"]`).",
             "required": ["result"],
             "properties": {
               "result": {
@@ -113,7 +113,11 @@
                 ]
               }
             },
-            "additionalProperties": true
+            "additionalProperties": true,
+            "usage_notes": [
+              "Top-level response attributes (e.g., `structuredContent`) are exposed via Python attributes on the CallToolResult, but the attribute value is a dict-like object.",
+              "Retrieve the JSON payload with `structured = getattr(response, \"structuredContent\", None)` followed by `raw_result = structured[\"result\"]`."
+            ]
           },
           "isError": {
             "type": ["boolean", "null"]
