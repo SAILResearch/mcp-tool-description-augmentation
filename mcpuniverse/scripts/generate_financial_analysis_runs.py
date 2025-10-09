@@ -500,6 +500,10 @@ def _build_messages(
         every server configuration the orchestration should consider. Use the shared
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
         helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
+        Whenever you call a tool that expects both `start_date` and `end_date` arguments,
+        enforce that `end_date` is at least one calendar day after `start_date`; if the
+        incoming data violates this, adjust or reject the request before invoking the
+        tool so the constraint is always satisfied.
         If you create a helper such as `call_tool`, implement it inside your module so the
         saved script can execute in isolation—the evaluation harness may provide an
         equivalent helper when running in memory, so matching the same signature keeps
