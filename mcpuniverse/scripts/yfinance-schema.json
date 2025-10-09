@@ -100,7 +100,6 @@
                       "High": { "type": ["number", "null"] },
                       "Low": { "type": ["number", "null"] },
                       "Close": { "type": ["number", "null"] },
-                      "Adj Close": { "type": ["number", "null"] },
                       "Volume": { "type": ["number", "null"] },
                       "Dividends": { "type": ["number", "null"] },
                       "Stock Splits": { "type": ["number", "null"] }
@@ -138,7 +137,6 @@
                 "High": { "type": ["number", "null"] },
                 "Low": { "type": ["number", "null"] },
                 "Close": { "type": ["number", "null"] },
-                "Adj Close": { "type": ["number", "null"] },
                 "Volume": { "type": ["number", "null"] },
                 "Dividends": { "type": ["number", "null"] },
                 "Stock Splits": { "type": ["number", "null"] }
