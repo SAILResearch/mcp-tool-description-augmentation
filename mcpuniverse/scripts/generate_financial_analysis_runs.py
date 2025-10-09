@@ -1049,6 +1049,10 @@ def _write_evaluation_report(
         exit_code = task.get("exit_code")
         if exit_code is not None:
             lines.append(f"- Exit Code: {exit_code}")
+        if total_execution_time is not None:
+            lines.append(f"- Total Execution Time: {total_execution_time:.2f}s")
+        if average_response_time is not None:
+            lines.append(f"- Average Response Time: {average_response_time:.2f}s")
 
         task_prompt_tokens = _coerce_int(task.get("prompt_tokens"))
         task_completion_tokens = _coerce_int(task.get("completion_tokens"))
