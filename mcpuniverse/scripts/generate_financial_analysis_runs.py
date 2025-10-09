@@ -1259,7 +1259,17 @@ async def run_benchmark_tasks_async(
         evaluation_error: Optional[str] = None
         evaluators = task_object.get_evaluators()
         if evaluators:
-            evaluation_input: Any = structured_output if structured_output is not None else cleaned_stdout
+            if structured_output is not None:
+                try:
+                    evaluation_input = json.dumps(
+                        structured_output,
+                        ensure_ascii=False,
+                        default=str,
+                    )
+                except TypeError:
+                    evaluation_input = str(structured_output)
+            else:
+                evaluation_input = cleaned_stdout
             try:
                 evaluation_results = await task_object.evaluate(evaluation_input)
             except Exception as exc:  # pragma: no cover - defensive guard
