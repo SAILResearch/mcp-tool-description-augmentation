@@ -139,7 +139,13 @@ class ToolClientProxy:
             async def _call_tool(**kwargs: Any) -> Any:
                 arguments = kwargs or {{}}
                 logger.debug("Calling tool %s.%s with %s", self._name, attr, arguments)
-                return await self._client.execute_tool(attr, arguments)
+                response = await self._client.execute_tool(attr, arguments)
+                try:
+                    formatted = json.dumps(response, indent=2, default=str)
+                except TypeError:
+                    formatted = repr(response)
+                logger.debug("Tool %s.%s response:\n%s", self._name, attr, formatted)
+                return response
 
             self._tool_cache[attr] = _call_tool
 
