@@ -400,6 +400,12 @@ def _build_messages(
         repository (for example, do not invent modules such as `mcp_sdk`). Work only with
         the concrete implementations that ship with the project, and ensure you include
         `from mcpuniverse.mcp.manager import MCPManager` at the top of your module.
+
+        When handling tool responses, strictly follow the `output_schema` (and any
+        examples) documented above for each tool. Treat objects by using attribute access
+        (e.g., `getattr(response, "field", default)`), validate dictionary fields with
+        `in` checks before reading values, and iterate over arrays as described. Do not
+        assume shapes that are not guaranteed by the schema or examples.
         """
     ).strip()
 
