@@ -41,7 +41,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from mcp.types import Tool
 
@@ -611,6 +611,23 @@ def _matches_output_template(candidate: Any, template: Any) -> bool:
     return True
 
 
+def _iter_json_candidates(text: str) -> Iterable[Any]:
+    """Yield JSON payloads recovered from *text* using a tolerant decoder."""
+
+    decoder = json.JSONDecoder()
+    visited: set[int] = set()
+    for match in re.finditer(r"[\[{]", text):
+        start = match.start()
+        if start in visited:
+            continue
+        try:
+            candidate, _ = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            continue
+        visited.add(start)
+        yield candidate
+
+
 def _extract_using_output_format(cleaned_output: str, output_format: Any) -> Any | None:
     """Attempt to recover structured JSON that matches ``output_format`` from text."""
 
@@ -620,18 +637,12 @@ def _extract_using_output_format(cleaned_output: str, output_format: Any) -> Any
     if not isinstance(output_format, (Mapping, Sequence)) or isinstance(output_format, (str, bytes, bytearray)):
         return None
 
-    decoder = json.JSONDecoder()
-    for match in re.finditer(r"[\[{]", cleaned_output):
-        start = match.start()
-        try:
-            candidate, _ = decoder.raw_decode(cleaned_output, start)
-        except json.JSONDecodeError:
-            continue
+    for candidate in _iter_json_candidates(cleaned_output):
         if not isinstance(candidate, (Mapping, list)):
             continue
         if _matches_output_template(candidate, output_format):
             return candidate
-        # Continue searching in case multiple JSON blobs are present in the output
+
     return None
 
 
@@ -665,17 +676,14 @@ def _extract_structured_output(
                 candidate = parsed
 
     if candidate is None and cleaned:
-        matches = re.findall(r"({.*})", cleaned, re.DOTALL)
-        for fragment in reversed(matches):
-            try:
-                parsed = json.loads(fragment)
-            except json.JSONDecodeError:
-                continue
-            if output_format is not None and isinstance(parsed, (Mapping, list)):
-                if not _matches_output_template(parsed, output_format):
+        parsed_candidates: List[Any] = []
+        for potential in _iter_json_candidates(cleaned):
+            if output_format is not None and isinstance(potential, (Mapping, list)):
+                if not _matches_output_template(potential, output_format):
                     continue
-            candidate = parsed
-            break
+            parsed_candidates.append(potential)
+        if parsed_candidates:
+            candidate = parsed_candidates[-1]
 
     return candidate, cleaned
 
@@ -819,6 +827,8 @@ def _write_evaluation_report(
     agent_spec: Mapping[str, Any],
     benchmark_spec: Mapping[str, Any],
     tasks: Sequence[Mapping[str, Any]],
+    total_execution_time: float | None = None,
+    average_response_time: float | None = None,
 ) -> Path:
     description = benchmark_spec.get("description", "")
     agent_name = benchmark_spec.get("agent", agent_spec.get("name", ""))
@@ -849,6 +859,14 @@ def _write_evaluation_report(
         )
 
     lines.append("")
+
+    if total_execution_time is not None:
+        lines.append(f"- Total Execution Time: {total_execution_time:.2f}s")
+    if average_response_time is not None:
+        lines.append(f"- Average Response Time: {average_response_time:.2f}s")
+
+    if total_execution_time is not None or average_response_time is not None:
+        lines.append("")
     lines.append("## Appendix (Benchmark Details)")
 
     for task in tasks:
@@ -903,7 +921,12 @@ def _write_evaluation_report(
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     report_path = report_dir / f"report-{timestamp}.md"
     report_path.write_text("\n".join(lines), encoding="utf-8")
-    _log_state("Wrote evaluation report", path=str(report_path))
+    _log_state(
+        "Wrote evaluation report",
+        path=str(report_path),
+        total_execution_time=total_execution_time,
+        average_response_time=average_response_time,
+    )
     return report_path
 
 
@@ -956,6 +979,8 @@ async def run_benchmark_tasks_async(
 
     multiple_tasks = len(tasks) > 1
     report_entries: List[Dict[str, Any]] = []
+    response_durations: List[float] = []
+    run_start_time = time.perf_counter()
 
     for task_relative in tasks:
         _log_state("Processing task", task=task_relative)
@@ -1018,8 +1043,10 @@ async def run_benchmark_tasks_async(
         )
 
         LOGGER.info("Requesting code generation for task %s", task_relative)
+        generation_start = time.perf_counter()
         with Spinner(f"Generating solution for {task_relative}"):
             response = llm.generate(messages)
+        response_durations.append(time.perf_counter() - generation_start)
         _log_state("Received LLM response", task=task_relative, has_response=response is not None)
         if response is None:
             LOGGER.error("LLM returned no content for task %s", task_relative)
@@ -1094,12 +1121,21 @@ async def run_benchmark_tasks_async(
         output_path=str(output_path) if output_path else None,
     )
 
+    total_execution_time = time.perf_counter() - run_start_time
+    average_response_time = (
+        sum(response_durations) / len(response_durations)
+        if response_durations
+        else None
+    )
+
     if report_entries:
         _write_evaluation_report(
             llm_spec=llm_spec,
             agent_spec=agent_spec,
             benchmark_spec=benchmark_spec,
             tasks=report_entries,
+            total_execution_time=total_execution_time,
+            average_response_time=average_response_time,
         )
 
     _log_result(
