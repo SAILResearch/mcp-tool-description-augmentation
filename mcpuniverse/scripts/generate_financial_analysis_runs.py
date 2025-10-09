@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import itertools
 import json
 import logging
 import os
@@ -35,6 +36,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -66,8 +69,83 @@ DEFAULT_CONFIG_PATH = _BENCHMARK_CONFIG_ROOT / "test" / "financial_analysis.yaml
 def _log_result(function_name: str, result: Any) -> Any:
     """Log the result of a function call before returning it."""
 
-    LOGGER.info("%s -> %r", function_name, result)
+    LOGGER.debug("%s -> %r", function_name, result)
     return result
+
+
+def _log_state(message: str, **details: Any) -> None:
+    """Emit a consistent INFO-level message describing the current state."""
+
+    if details:
+        formatted = ", ".join(f"{key}={value!r}" for key, value in details.items())
+        LOGGER.info("%s [%s]", message, formatted)
+    else:
+        LOGGER.info("%s", message)
+
+
+class _StyledFormatter(logging.Formatter):
+    """Formatter that beautifies INFO messages with colour and glyphs."""
+
+    _RESET = "\033[0m"
+    _INFO_STYLE = "\033[1;36m"
+    _INFO_PREFIX = "✨ INFO"
+
+    def format(self, record: logging.LogRecord) -> str:  # pragma: no cover - formatting
+        original_levelname = record.levelname
+        if record.levelno == logging.INFO and sys.stderr.isatty():
+            record.levelname = f"{self._INFO_STYLE}{self._INFO_PREFIX}{self._RESET}"
+        formatted = super().format(record)
+        record.levelname = original_levelname
+        return formatted
+
+
+def _configure_logging(level: int) -> None:
+    """Apply colourful formatting for INFO logs and standard formatting otherwise."""
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(_StyledFormatter("%(levelname)s | %(message)s"))
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.handlers.clear()
+    root_logger.addHandler(handler)
+
+
+class Spinner:
+    """A simple terminal spinner displayed while blocking operations run."""
+
+    def __init__(self, message: str, interval: float = 0.1) -> None:
+        self._message = message
+        self._interval = interval
+        self._stop = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._last_rendered: str = ""
+
+    def __enter__(self) -> "Spinner":  # pragma: no cover - UI affordance
+        if not sys.stderr.isatty():
+            return self
+
+        self._thread = threading.Thread(target=self._spin, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc, exc_tb) -> None:  # pragma: no cover - UI affordance
+        if self._thread is None:
+            return
+        self._stop.set()
+        self._thread.join()
+        if self._last_rendered:
+            sys.stderr.write("\r" + " " * len(self._last_rendered) + "\r")
+            sys.stderr.flush()
+
+    def _spin(self) -> None:
+        frames = itertools.cycle("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
+        while not self._stop.is_set():
+            frame = next(frames)
+            self._last_rendered = f"{frame} {self._message}"
+            sys.stderr.write(f"\r{self._last_rendered}")
+            sys.stderr.flush()
+            time.sleep(self._interval)
 
 
 #: Base system prompt steering the LLM toward code-generation tasks.
@@ -201,6 +279,7 @@ def _normalise_server_cache_key(servers: Sequence[Mapping[str, Any]]) -> Tuple[s
     """Create a stable cache key for a sequence of MCP server configurations."""
 
     key = tuple(json.dumps(dict(server), sort_keys=True) for server in servers)
+    _log_state("Normalised MCP server cache key", server_count=len(servers))
     return _log_result("_normalise_server_cache_key", key)
 
 
@@ -226,6 +305,7 @@ def _load_local_tool_schemas() -> Dict[str, Any]:
             or path.stem
         )
         documents[server_name] = document
+    _log_state("Loaded local tool schemas", schema_keys=sorted(documents.keys()))
     return _log_result("_load_local_tool_schemas", documents)
 
 
@@ -238,6 +318,7 @@ def _prepare_server_configs(
 
     if not isinstance(servers, Sequence) or isinstance(servers, (str, bytes)):
         LOGGER.warning("Expected a list of server configurations from %s but received %r", source, servers)
+        _log_state("Prepared MCP server configurations", total=0, source=source, note="invalid structure")
         return _log_result("_prepare_server_configs", [])
 
     prepared: List[Dict[str, Any]] = []
@@ -246,6 +327,7 @@ def _prepare_server_configs(
             prepared.append(dict(server))
         else:
             LOGGER.warning("Skipping invalid MCP server entry %r from %s", server, source)
+    _log_state("Prepared MCP server configurations", total=len(prepared), source=source)
     return _log_result("_prepare_server_configs", prepared)
 
 
@@ -290,6 +372,12 @@ def _load_configuration_sections(
         )
 
     result = (llm_section, agent_section, benchmark_section)
+    _log_state(
+        "Loaded configuration sections",
+        llm_keys=sorted(llm_section.keys()),
+        agent_keys=sorted(agent_section.keys()),
+        has_benchmark=bool(benchmark_section),
+    )
     return _log_result("_load_configuration_sections", result)
 
 
@@ -315,6 +403,7 @@ async def _list_agent_tools(
                 LOGGER.warning("Error cleaning up client %s: %s", name, exc)
         tools[name] = list(tool_list)
 
+    _log_state("Listed agent tools", servers=[server.get("name") for server in servers])
     return _log_result("_list_agent_tools", tools)
 
 
@@ -334,6 +423,9 @@ async def _resolve_tool_context(
             "tool_metadata": _tool_metadata(collected_tools),
         }
         cache[key] = cached
+        _log_state("Cached tool context", cache_key=key)
+    else:
+        _log_state("Reused cached tool context", cache_key=key)
     return _log_result("_resolve_tool_context", cached)
 
 
@@ -356,6 +448,7 @@ def _tool_metadata(tools: Mapping[str, Sequence[Tool]]) -> Dict[str, List[Dict[s
                 }
             )
         metadata[server_name] = serialized
+    _log_state("Prepared tool metadata", server_count=len(metadata))
     return _log_result("_tool_metadata", metadata)
 
 
@@ -440,6 +533,11 @@ def _build_messages(
         {"role": "system", "content": system_instruction},
         {"role": "user", "content": user_prompt},
     ]
+    _log_state(
+        "Constructed LLM prompt",
+        require_main=require_main_function,
+        task_question=task_payload.get("question"),
+    )
     return _log_result("_build_messages", messages)
 
 
@@ -450,6 +548,7 @@ def _extract_code_block(text: str) -> str:
         code = dedent(match.group(1)).strip()
     else:
         code = dedent(text).strip()
+    _log_state("Extracted code block", length=len(code))
     return _log_result("_extract_code_block", code)
 
 
@@ -463,6 +562,7 @@ def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] =
     model = manager.build_model(model_type, config=model_config)
     model_context = context if context is not None else Context(env=dict(os.environ))
     model.set_context(model_context)
+    _log_state("Initialised LLM", model_type=model_type)
     return _log_result("_initialise_llm", model)
 
 
@@ -485,6 +585,11 @@ def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
         payload["mcp_servers"] = task.get_mcp_servers()
 
     payload["use_specified_server"] = task.use_specified_server()
+    _log_state(
+        "Loaded task payload",
+        task=str(task_path),
+        use_task_servers=payload["use_specified_server"],
+    )
 
     return _log_result("_load_task_payload", payload)
 
@@ -495,6 +600,7 @@ def _compose_system_prompt(agent_spec: Mapping[str, Any], base_prompt: str) -> s
         prompt = f"{base_prompt}\n\nAgent instruction: {instruction}"
     else:
         prompt = base_prompt
+    _log_state("Composed system prompt", has_agent_instruction=bool(instruction))
     return _log_result("_compose_system_prompt", prompt)
 
 
@@ -529,6 +635,12 @@ def _write_and_execute_code(
             cwd=str(Path.cwd()),
             env=env,
         )
+        _log_state(
+            "Executed generated solution",
+            task=task_name,
+            exit_code=result.returncode,
+            stdout_len=len(result.stdout or ""),
+        )
         return _log_result("_write_and_execute_code", result)
     finally:
         try:
@@ -555,6 +667,12 @@ def _execute_python_module(script_path: Path) -> subprocess.CompletedProcess[str
         cwd=str(Path.cwd()),
         env=env,
     )
+    _log_state(
+        "Executed saved module",
+        script=str(script_path),
+        exit_code=result.returncode,
+        stdout_len=len(result.stdout or ""),
+    )
     return _log_result("_execute_python_module", result)
 
 
@@ -562,6 +680,7 @@ def _print_execution_summary(task_name: str, execution: subprocess.CompletedProc
     divider = "=" * 80
     if execution.stdout.strip():
         print(execution.stdout.strip())
+    _log_state("Printed execution summary", task=task_name, exit_code=execution.returncode)
     LOGGER.info("%s\nTask: %s\nExit code: %s\nSTDOUT:\n%s\nSTDERR:\n%s\n%s", divider, task_name, execution.returncode, execution.stdout.strip(), execution.stderr.strip(), divider)
     _log_result("_print_execution_summary", {"task": task_name, "exit_code": execution.returncode})
 
@@ -575,9 +694,11 @@ async def run_benchmark_tasks_async(
     llm_spec, agent_spec, benchmark_spec = _load_configuration_sections(
         config_path, context=context
     )
+    _log_state("Loaded benchmark configuration", config=str(config_path))
 
     llm = _initialise_llm(llm_spec, context=context)
     manager = MCPManager(context=context)
+    _log_state("Initialised MCP manager", context_keys=sorted(context.env.keys()))
 
     default_servers = _prepare_server_configs(
         agent_spec.get("config", {}).get("servers", []),
@@ -595,20 +716,26 @@ async def run_benchmark_tasks_async(
     default_tool_context = await _resolve_tool_context(
         manager, default_servers, server_tool_cache
     )
+    _log_state("Resolved default tool context", servers=[s.get("name") for s in default_servers])
 
     local_tool_schemas = _load_local_tool_schemas()
+    _log_state("Loaded local schemas for prompting", available=list(local_tool_schemas.keys()))
 
     system_prompt = _compose_system_prompt(agent_spec, BASE_SYSTEM_PROMPT)
 
     tasks = list(benchmark_spec.get("tasks", []))
     if not tasks:
         LOGGER.warning("No tasks found in benchmark specification")
+        _log_state("No benchmark tasks available", config=str(config_path))
         _log_result("run_benchmark_tasks_async", {"config_path": str(config_path), "tasks": []})
         return
+
+    _log_state("Discovered benchmark tasks", total=len(tasks))
 
     multiple_tasks = len(tasks) > 1
 
     for task_relative in tasks:
+        _log_state("Processing task", task=task_relative)
         task_path = Path(task_relative)
         if not task_path.exists():
             candidate = (_BENCHMARK_CONFIG_ROOT / task_relative).resolve()
@@ -661,9 +788,16 @@ async def run_benchmark_tasks_async(
             tool_schema_documents=relevant_schema_documents,
             require_main_function=output_path is not None,
         )
+        _log_state(
+            "Prepared messages for LLM",
+            task=task_relative,
+            server_names=[server.get("name") for server in active_servers],
+        )
 
         LOGGER.info("Requesting code generation for task %s", task_relative)
-        response = llm.generate(messages)
+        with Spinner(f"Generating solution for {task_relative}"):
+            response = llm.generate(messages)
+        _log_state("Received LLM response", task=task_relative, has_response=response is not None)
         if response is None:
             LOGGER.error("LLM returned no content for task %s", task_relative)
             continue
@@ -685,6 +819,7 @@ async def run_benchmark_tasks_async(
                 multiple_tasks=multiple_tasks,
             )
             saved_path = _save_generated_code(generated_code, destination)
+            _log_state("Saved generated code", destination=str(saved_path))
             execution = await asyncio.to_thread(
                 _execute_python_module,
                 script_path=saved_path,
@@ -697,6 +832,12 @@ async def run_benchmark_tasks_async(
                 task_name=task_relative,
             )
         _print_execution_summary(task_relative, execution)
+
+    _log_state(
+        "Completed benchmark run",
+        total_tasks=len(tasks),
+        output_path=str(output_path) if output_path else None,
+    )
 
     _log_result(
         "run_benchmark_tasks_async",
@@ -712,6 +853,11 @@ def run_benchmark_tasks(config_path: Path, *, output_path: Optional[Path] = None
     """Synchronous wrapper for :func:`run_benchmark_tasks_async`."""
 
     asyncio.run(run_benchmark_tasks_async(config_path, output_path=output_path))
+    _log_state(
+        "Completed synchronous benchmark run",
+        config=str(config_path),
+        output=str(output_path) if output_path else None,
+    )
     _log_result(
         "run_benchmark_tasks",
         {
@@ -727,6 +873,7 @@ def _sanitise_task_name(identifier: str) -> str:
     sanitized = re.sub(r"[^A-Za-z0-9_.-]+", "_", identifier).strip("_")
     if not sanitized:
         sanitized = "task"
+    _log_state("Sanitised task name", original=identifier, sanitized=sanitized)
     return _log_result("_sanitise_task_name", sanitized)
 
 
@@ -756,6 +903,12 @@ def _resolve_task_output_path(
         resolved_base.mkdir(parents=True, exist_ok=True)
         destination = resolved_base / f"{sanitized}.py"
 
+    _log_state(
+        "Resolved task output path",
+        base=str(base_output),
+        destination=str(destination),
+        multiple_tasks=multiple_tasks,
+    )
     return _log_result("_resolve_task_output_path", destination)
 
 
@@ -764,6 +917,7 @@ def _save_generated_code(code: str, destination: Path) -> Path:
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(code, encoding="utf-8")
+    _log_state("Saved generated code to disk", destination=str(destination), bytes=len(code.encode("utf-8")))
     return _log_result("_save_generated_code", destination)
 
 
@@ -793,15 +947,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         ),
     )
     args = parser.parse_args(argv)
+    _log_state("Parsed CLI arguments", arguments=vars(args))
     return _log_result("parse_args", args)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
-    logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
+    _configure_logging(getattr(logging, args.log_level.upper(), logging.INFO))
+    _log_state("Configured logging", level=args.log_level.upper())
     config_path = args.config
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file {config_path} does not exist")
+    _log_state("Starting benchmark orchestration", config=str(config_path), output=str(args.output) if args.output else None)
     run_benchmark_tasks(config_path, output_path=args.output)
     _log_result(
         "main",
