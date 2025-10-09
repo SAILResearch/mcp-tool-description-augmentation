@@ -38,6 +38,7 @@ import sys
 import tempfile
 import threading
 import time
+from numbers import Number
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
@@ -688,6 +689,116 @@ def _extract_structured_output(
     return candidate, cleaned
 
 
+def _coerce_int(value: Any) -> int | None:
+    """Best-effort conversion of ``value`` into an integer."""
+
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, Number):
+        return int(value)
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            try:
+                return int(float(value))
+            except ValueError:
+                return None
+    return None
+
+
+def _normalise_usage_mapping(candidate: Any) -> Mapping[str, Any] | None:
+    """Return a mapping containing usage information if available."""
+
+    if candidate is None:
+        return None
+    if isinstance(candidate, Mapping):
+        return candidate
+    if hasattr(candidate, "model_dump"):
+        try:
+            dumped = candidate.model_dump()
+        except TypeError:
+            dumped = candidate.model_dump(mode="json")
+        if isinstance(dumped, Mapping):
+            return dumped
+    if hasattr(candidate, "dict"):
+        try:
+            dumped = candidate.dict()
+        except TypeError:
+            dumped = candidate.dict(exclude_none=True)
+        if isinstance(dumped, Mapping):
+            return dumped
+    return None
+
+
+def _extract_usage_stats(response: Any) -> Dict[str, int | None] | None:
+    """Extract token usage statistics from an LLM ``response`` object."""
+
+    usage_payload: Mapping[str, Any] | None = None
+
+    if hasattr(response, "usage"):
+        usage_payload = _normalise_usage_mapping(getattr(response, "usage"))
+
+    if usage_payload is None and hasattr(response, "model_dump"):
+        try:
+            dumped = response.model_dump()
+        except TypeError:
+            dumped = response.model_dump(mode="json")
+        if isinstance(dumped, Mapping):
+            usage_payload = _normalise_usage_mapping(dumped.get("usage"))
+
+    if usage_payload is None and hasattr(response, "dict"):
+        try:
+            dumped = response.dict()
+        except TypeError:
+            dumped = response.dict(exclude_none=True)
+        if isinstance(dumped, Mapping):
+            usage_payload = _normalise_usage_mapping(dumped.get("usage"))
+
+    if usage_payload is None and isinstance(response, Mapping):
+        usage_payload = _normalise_usage_mapping(response.get("usage"))
+
+    if usage_payload is None:
+        return None
+
+    prompt = (
+        _coerce_int(usage_payload.get("prompt_tokens"))
+        or _coerce_int(usage_payload.get("promptTokens"))
+        or _coerce_int(usage_payload.get("input_tokens"))
+        or _coerce_int(usage_payload.get("inputTokens"))
+    )
+    completion = (
+        _coerce_int(usage_payload.get("completion_tokens"))
+        or _coerce_int(usage_payload.get("completionTokens"))
+        or _coerce_int(usage_payload.get("output_tokens"))
+        or _coerce_int(usage_payload.get("outputTokens"))
+    )
+    total = (
+        _coerce_int(usage_payload.get("total_tokens"))
+        or _coerce_int(usage_payload.get("totalTokens"))
+        or None
+    )
+
+    if total is None:
+        components = [value for value in (prompt, completion) if value is not None]
+        if components:
+            total = sum(components)
+
+    if prompt is None and completion is None and total is None:
+        return None
+
+    return {
+        "prompt_tokens": prompt,
+        "completion_tokens": completion,
+        "total_tokens": total,
+    }
+
+
 def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] = None) -> BaseLLM:
     model_type = llm_spec.get("type")
     if not model_type:
@@ -860,12 +971,51 @@ def _write_evaluation_report(
 
     lines.append("")
 
+    def _aggregate_token(metric: str) -> int | None:
+        values: List[int] = []
+        for task in tasks:
+            value = task.get(metric)
+            coerced = _coerce_int(value)
+            if coerced is not None:
+                values.append(coerced)
+        if not values:
+            return None
+        return sum(values)
+
+    total_prompt_tokens = _aggregate_token("prompt_tokens")
+    total_completion_tokens = _aggregate_token("completion_tokens")
+    total_tokens_used = _aggregate_token("total_tokens")
+
+    if total_tokens_used is None and (
+        total_prompt_tokens is not None or total_completion_tokens is not None
+    ):
+        total_tokens_used = (
+            (total_prompt_tokens or 0)
+            + (total_completion_tokens or 0)
+        )
+
+    if total_prompt_tokens is not None:
+        lines.append(f"- Total Prompt Tokens: {total_prompt_tokens}")
+    if total_completion_tokens is not None:
+        lines.append(f"- Total Completion Tokens: {total_completion_tokens}")
+    if total_tokens_used is not None:
+        lines.append(f"- Total Tokens Used: {total_tokens_used}")
+
     if total_execution_time is not None:
         lines.append(f"- Total Execution Time: {total_execution_time:.2f}s")
     if average_response_time is not None:
         lines.append(f"- Average Response Time: {average_response_time:.2f}s")
 
-    if total_execution_time is not None or average_response_time is not None:
+    if any(
+        metric is not None
+        for metric in (
+            total_prompt_tokens,
+            total_completion_tokens,
+            total_tokens_used,
+            total_execution_time,
+            average_response_time,
+        )
+    ):
         lines.append("")
     lines.append("## Appendix (Benchmark Details)")
 
@@ -876,6 +1026,23 @@ def _write_evaluation_report(
         exit_code = task.get("exit_code")
         if exit_code is not None:
             lines.append(f"- Exit Code: {exit_code}")
+
+        task_prompt_tokens = _coerce_int(task.get("prompt_tokens"))
+        task_completion_tokens = _coerce_int(task.get("completion_tokens"))
+        task_total_tokens = _coerce_int(task.get("total_tokens"))
+        if task_total_tokens is None and (
+            task_prompt_tokens is not None or task_completion_tokens is not None
+        ):
+            task_total_tokens = (
+                (task_prompt_tokens or 0)
+                + (task_completion_tokens or 0)
+            )
+        if task_prompt_tokens is not None:
+            lines.append(f"- Total Prompt Tokens: {task_prompt_tokens}")
+        if task_completion_tokens is not None:
+            lines.append(f"- Total Completion Tokens: {task_completion_tokens}")
+        if task_total_tokens is not None:
+            lines.append(f"- Total Tokens Used: {task_total_tokens}")
 
         raw_output = task.get("raw_output", "")
         structured_output = task.get("structured_output")
@@ -1047,6 +1214,7 @@ async def run_benchmark_tasks_async(
         with Spinner(f"Generating solution for {task_relative}"):
             response = llm.generate(messages)
         response_durations.append(time.perf_counter() - generation_start)
+        usage_stats = _extract_usage_stats(response)
         _log_state("Received LLM response", task=task_relative, has_response=response is not None)
         if response is None:
             LOGGER.error("LLM returned no content for task %s", task_relative)
@@ -1112,6 +1280,9 @@ async def run_benchmark_tasks_async(
                 "stderr": execution.stderr or "",
                 "evaluation_results": evaluation_results,
                 "evaluation_error": evaluation_error,
+                "prompt_tokens": usage_stats.get("prompt_tokens") if usage_stats else None,
+                "completion_tokens": usage_stats.get("completion_tokens") if usage_stats else None,
+                "total_tokens": usage_stats.get("total_tokens") if usage_stats else None,
             }
         )
 
