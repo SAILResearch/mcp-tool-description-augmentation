@@ -1,0 +1,109 @@
+{
+  "server": "yfinance",
+  "description": "Yahoo Finance data access tools for equities and market information.",
+  "tools": [
+    {
+      "name": "get_historical_stock_prices",
+      "description": "Fetch historical OHLCV data for a ticker between two dates.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Ticker symbol to query, e.g. 'MSFT'."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Inclusive start date in YYYY-MM-DD format."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Inclusive end date in YYYY-MM-DD format."
+          },
+          "interval": {
+            "type": "string",
+            "description": "Sampling interval such as '1d', '1wk', or '1mo'. Defaults to '1d'."
+          }
+        },
+        "required": ["ticker", "start_date", "end_date"],
+        "additionalProperties": false
+      },
+      "example": {
+        "request": {
+          "ticker": "MSFT",
+          "start_date": "2023-01-09",
+          "end_date": "2025-01-08",
+          "interval": "1d"
+        },
+        "response": {
+          "data": [
+            {
+              "Date": "2023-01-09T00:00:00-05:00",
+              "Open": 226.27,
+              "High": 228.69,
+              "Low": 224.28,
+              "Close": 227.12,
+              "Adj Close": 226.98,
+              "Volume": 26832100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get_stock_info",
+      "description": "Return company fundamentals and quote metadata for a ticker.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Ticker symbol to query."
+          }
+        },
+        "required": ["ticker"],
+        "additionalProperties": false
+      },
+      "example": {
+        "request": {
+          "ticker": "MSFT"
+        },
+        "response": {
+          "data": {
+            "symbol": "MSFT",
+            "longName": "Microsoft Corporation",
+            "marketCap": 2500000000000
+          }
+        }
+      }
+    },
+    {
+      "name": "get_yahoo_finance_news",
+      "description": "Retrieve the latest Yahoo Finance news items for a ticker.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Ticker symbol to query."
+          }
+        },
+        "required": ["ticker"],
+        "additionalProperties": false
+      },
+      "example": {
+        "request": {
+          "ticker": "MSFT"
+        },
+        "response": {
+          "data": [
+            {
+              "title": "Microsoft announces quarterly earnings",
+              "publisher": "Yahoo Finance"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

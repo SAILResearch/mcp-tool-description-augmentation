@@ -106,6 +106,12 @@ BASE_SYSTEM_PROMPT = dedent(
 ).strip()
 
 
+_TOOL_SCHEMA_FILENAMES: Tuple[str, ...] = (
+    "calculator-schema.json",
+    "yfinance-schema.json",
+)
+
+
 CODE_TEMPLATE = '''import asyncio
 import json
 import logging
@@ -195,6 +201,27 @@ def _normalise_server_cache_key(servers: Sequence[Mapping[str, Any]]) -> Tuple[s
 
     key = tuple(json.dumps(dict(server), sort_keys=True) for server in servers)
     return _log_result("_normalise_server_cache_key", key)
+
+
+def _load_local_tool_schemas() -> Dict[str, Any]:
+    """Load repository-provided tool schema references for prompt construction."""
+
+    schema_directory = Path(__file__).resolve().parent
+    documents: Dict[str, Any] = {}
+    for filename in _TOOL_SCHEMA_FILENAMES:
+        path = schema_directory / filename
+        if not path.exists():
+            LOGGER.warning("Tool schema file %s not found", path)
+            continue
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                document = json.load(handle)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            LOGGER.error("Failed to load tool schema %s: %s", path, exc)
+            continue
+        server_name = str(document.get("server") or path.stem)
+        documents[server_name] = document
+    return _log_result("_load_local_tool_schemas", documents)
 
 
 def _prepare_server_configs(
@@ -333,11 +360,13 @@ def _build_messages(
     task_payload: Mapping[str, Any],
     tool_descriptions: str,
     tool_metadata: Mapping[str, Any],
+    tool_schema_documents: Mapping[str, Any],
     require_main_function: bool,
 ) -> List[Dict[str, str]]:
     output_format = json.dumps(task_payload.get("output_format") or {}, indent=2)
     task_context = json.dumps(task_payload, indent=2)
     tool_metadata_dump = json.dumps(tool_metadata, indent=2)
+    schema_dump = json.dumps(tool_schema_documents, indent=2)
 
     user_prompt = dedent(
         f"""
@@ -349,6 +378,9 @@ def _build_messages(
 
         Tool metadata (JSON schemas):
         {tool_metadata_dump}
+
+        Repository tool schemas and worked examples:
+        {schema_dump}
 
         Please generate the Python implementation of `async def solve_task(manager: MCPManager, servers: Sequence[Mapping[str, Any]]):`
         that returns a dictionary matching this output format:
@@ -362,7 +394,8 @@ def _build_messages(
         substitute or dummy clients. Validate the responses you receive before moving on
         to the next step, and never import helper packages that are not part of this
         repository (for example, do not invent modules such as `mcp_sdk`). Work only with
-        the concrete implementations that ship with the project.
+        the concrete implementations that ship with the project, and ensure you include
+        `from mcpuniverse.mcp.manager import MCPManager` at the top of your module.
         """
     ).strip()
 
@@ -375,7 +408,8 @@ def _build_messages(
             "`solve_task(manager, mcp_servers)` using real MCP executions via "
             "`await manager.execute(...)` (optionally through the provided `call_tool` helper). "
             "Log the resulting output, handle exceptions gracefully, and do not invent "
-            "helper modules or placeholder clients."
+            "helper modules or placeholder clients. Remember to import MCPManager via "
+            "`from mcpuniverse.mcp.manager import MCPManager`."
         )
 
     messages = [
@@ -515,6 +549,8 @@ async def run_benchmark_tasks_async(
         manager, default_servers, server_tool_cache
     )
 
+    local_tool_schemas = _load_local_tool_schemas()
+
     system_prompt = _compose_system_prompt(agent_spec, BASE_SYSTEM_PROMPT)
 
     tasks = list(benchmark_spec.get("tasks", []))
@@ -562,11 +598,20 @@ async def run_benchmark_tasks_async(
 
         task_payload["mcp_servers"] = [dict(server) for server in active_servers]
 
+        relevant_schema_documents: Dict[str, Any] = {}
+        for server in active_servers:
+            name = str(server.get("name"))
+            if name in local_tool_schemas:
+                relevant_schema_documents[name] = local_tool_schemas[name]
+        if not relevant_schema_documents:
+            relevant_schema_documents = local_tool_schemas
+
         messages = _build_messages(
             system_instruction=system_prompt,
             task_payload=task_payload,
             tool_descriptions=active_tool_context["tool_descriptions"],
             tool_metadata=active_tool_context["tool_metadata"],
+            tool_schema_documents=relevant_schema_documents,
             require_main_function=output_path is not None,
         )
 

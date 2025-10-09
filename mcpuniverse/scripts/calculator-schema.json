@@ -1,0 +1,29 @@
+{
+  "server": "calculator",
+  "description": "Simple arithmetic calculator for evaluating mathematical expressions.",
+  "tools": [
+    {
+      "name": "calculate",
+      "description": "Evaluate an arithmetic expression and return the computed result as text.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "Mathematical expression written using standard operators, e.g. '((10 + 5) / 3) * 2'."
+          }
+        },
+        "required": ["expression"],
+        "additionalProperties": false
+      },
+      "example": {
+        "request": {
+          "expression": "(25000 / 240.17)"
+        },
+        "response": {
+          "data": "104.05441084662706"
+        }
+      }
+    }
+  ]
+}
