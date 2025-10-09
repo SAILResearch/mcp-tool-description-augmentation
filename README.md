@@ -745,12 +745,16 @@ Run the orchestrator with:
 ```bash
 python mcpuniverse/scripts/generate_financial_analysis_runs.py \
   --config mcpuniverse/benchmark/configs/test/financial_analysis.yaml \
-  --log-level INFO
+  --log-level INFO \
+  [--output generated/financial_task.py]
 ```
 
-The script streams execution logs for each task and cleans up MCP client
-connections automatically. Increase verbosity with `--log-level DEBUG` when you
-need deeper insight into tool discovery, LLM prompting, or runtime errors.
+Passing the optional `--output` flag tells the runner to persist each LLM
+response to disk (one file per task when multiple tasks are present) before
+execution. The script streams execution logs for each task and cleans up MCP
+client connections automatically. Increase verbosity with `--log-level DEBUG`
+when you need deeper insight into tool discovery, LLM prompting, or runtime
+errors.
 
 ## Citation
 
