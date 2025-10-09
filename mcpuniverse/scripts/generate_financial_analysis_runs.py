@@ -422,7 +422,9 @@ def _build_messages(
         `await clients["server"].execute_tool(tool_name, arguments)` and attribute-style
         access from a `ClientRegistry`. Do not create placeholder or dummy clients—use
         the provided mapping to talk to the actual tools and validate responses before
-        continuing.
+        continuing. Never import helper packages that are not part of this repository
+        (for example, do not invent modules such as `mcp_sdk`). Work only with the
+        concrete implementations that ship with the project.
         """
     ).strip()
 
@@ -434,9 +436,12 @@ def _build_messages(
             "instantiate `MCPManager`, connect to each server listed in `mcp_servers` "
             "using `await manager.build_client(server_name=name, transport=transport)`, "
             "wrap those clients in a mapping that matches the runtime contract (for "
-            "example by using `ClientRegistry`), invoke `solve_task`, print the "
-            "structured result, and clean up every client in a `finally` block. Do not "
-            "substitute dummy stand-ins for the real MCP clients."
+            "example by importing `ClientRegistry` from "
+            "`mcpuniverse.scripts.generate_financial_analysis_runs`), invoke "
+            "`solve_task`, print the structured result, and clean up every client in a "
+            "`finally` block. Do not substitute dummy stand-ins for the real MCP "
+            "clients, and do not reference helper modules that do not exist in this "
+            "codebase."
         )
 
     messages = [
