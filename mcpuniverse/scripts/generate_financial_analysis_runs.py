@@ -140,13 +140,26 @@ class ToolClientProxy:
                 arguments = kwargs or {{}}
                 logger.debug("Calling tool %s.%s with %s", self._name, attr, arguments)
                 response = await self._client.execute_tool(attr, arguments)
+
+                processed: Any = response
+                if hasattr(response, "model_dump"):
+                    processed = response.model_dump(mode="python")  # type: ignore[call-arg]
+                elif isinstance(response, Mapping):
+                    processed = dict(response)
+
+                if isinstance(processed, dict):
+                    structured_content = processed.get("structuredContent")
+                    if structured_content is not None and "data" not in processed:
+                        processed["data"] = structured_content
+
                 try:
-                    formatted = json.dumps(response, indent=2, default=str)
+                    formatted = json.dumps(processed, indent=2, default=str)
                 except TypeError:
-                    formatted = repr(response)
+                    formatted = repr(processed)
+
                 logger.debug("Tool %s.%s response:", self._name, attr)
                 logger.debug("%s", formatted)
-                return response
+                return processed
 
             self._tool_cache[attr] = _call_tool
 
