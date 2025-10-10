@@ -38,14 +38,17 @@ import sys
 import tempfile
 import threading
 import time
+from numbers import Number
+from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from mcp.types import Tool
 
 from mcpuniverse.benchmark.runner import BenchmarkRunner
 from mcpuniverse.benchmark.task import Task
+from mcpuniverse.evaluator import EvaluationResult
 from mcpuniverse.agent.utils import get_tools_description
 from mcpuniverse.common.context import Context
 from mcpuniverse.llm.base import BaseLLM
@@ -57,6 +60,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 _BENCHMARK_CONFIG_ROOT = Path(__file__).resolve().parents[1] / "benchmark" / "configs"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPORT_LOG_DIR = _REPO_ROOT / "log"
 
 
 DEFAULT_CONFIG_PATH = _BENCHMARK_CONFIG_ROOT / "test" / "financial_analysis.yaml"
@@ -496,14 +501,69 @@ def _build_messages(
         that returns (do not print) a dictionary matching this output format:
         {output_format}
 
+        Whenever the output format lists alternative values using a forward slash
+        (for example, `status: success/failure/error`), interpret the slash as an
+        `OR`. The generated code must choose exactly one of the allowed options
+        when populating the field rather than echoing the slash-delimited string
+        verbatim.
+
         The `servers` argument mirrors the `mcp_servers` payload from the task and lists
         every server configuration the orchestration should consider. Use the shared
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
-        helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={...}, transport="stdio")`.
+        helper in the codebase: `await manager.execute(server_name="name", tool_name="tool", arguments={{...}}, transport="stdio")`.
         Whenever you call a tool that expects both `start_date` and `end_date` arguments,
-        enforce that `end_date` is at least one calendar day after `start_date`; if the
-        incoming data violates this, adjust or reject the request before invoking the
-        tool so the constraint is always satisfied.
+        you MUST extend the range by exactly one calendar day before making the request
+        so downstream price feeds remain inclusive. Compute an adjusted end date via
+        `datetime.fromisoformat(end_date) + timedelta(days=1)` and use that ISO-formatted
+        value when invoking tools, while preserving the original `end_date` for any
+        human-readable messaging or structured report fields. For example:
+
+        ```python
+        from datetime import datetime, timedelta
+
+        start_date = task_payload["start_date"]
+        raw_end_date = task_payload["end_date"]
+        adjusted_end_date = (
+            datetime.fromisoformat(raw_end_date) + timedelta(days=1)
+        ).date().isoformat()
+        tool_response = await manager.execute(
+            server_name="yfinance",
+            tool_name="get_historical_stock_prices",
+            arguments={{
+                "start_date": start_date,
+                "end_date": adjusted_end_date,
+            }},
+            transport="stdio",
+        )
+        ```
+        The `adjusted_end_date` must be the value passed to every tool call, even if the
+        provided range already spans multiple days.
+        If you need to compute moving averages (for example, SMA or EMA) with a window of
+        `N` trading days, request at least 50% more history than the window requires so
+        market holidays do not starve the calculation. Move the tool `start_date` backward
+        by `ceil(N * 0.5)` calendar days before making the request and keep the original
+        task `start_date` for reporting. For instance, an SMA(10) needs 15 days of input,
+        so shift the start by 5 days; SMA(50) should request 75 total days. A possible
+        helper looks like this:
+
+        ```python
+        from datetime import datetime, timedelta
+        import math
+
+        window = 10  # derive this from the task instructions
+        buffer_days = math.ceil(window * 0.5)
+        historical_start = (
+            datetime.fromisoformat(start_date) - timedelta(days=buffer_days)
+        ).date().isoformat()
+        ```
+        Use `historical_start` (or the earliest buffered start when multiple windows are
+        required) when calling price-history tools.
+        When you call the calculator tool, pass through the raw numeric values you
+        computed—do not wrap them in `math.floor`, `math.ceil`, `round`, or perform any
+        other precision adjustments before invoking the tool. Reserve any rounding for
+        the final payload you return to the caller, and format those reported numbers to
+        exactly two decimal places using standard Python formatting once all tool calls
+        have completed.
         If you create a helper such as `call_tool`, implement it inside your module so the
         saved script can execute in isolation—the evaluation harness may provide an
         equivalent helper when running in memory, so matching the same signature keeps
@@ -575,6 +635,225 @@ def _extract_code_block(text: str) -> str:
     return _log_result("_extract_code_block", code)
 
 
+def _strip_ansi_codes(value: str) -> str:
+    pattern = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+    return pattern.sub("", value or "")
+
+
+def _matches_output_template(candidate: Any, template: Any) -> bool:
+    """Return ``True`` if *candidate* matches the structure described by *template*."""
+
+    if isinstance(template, Mapping):
+        if not isinstance(candidate, Mapping):
+            return False
+        for key, nested in template.items():
+            if key not in candidate:
+                return False
+            if isinstance(nested, (Mapping, Sequence)) and not isinstance(nested, (str, bytes, bytearray)):
+                if not _matches_output_template(candidate[key], nested):
+                    return False
+        return True
+
+    if isinstance(template, Sequence) and not isinstance(template, (str, bytes, bytearray)):
+        if not isinstance(candidate, Sequence) or isinstance(candidate, (str, bytes, bytearray)):
+            return False
+        if not template:
+            return True
+        nested_template = template[0]
+        if isinstance(nested_template, (Mapping, Sequence)) and not isinstance(nested_template, (str, bytes, bytearray)):
+            return all(_matches_output_template(item, nested_template) for item in candidate)
+        return True
+
+    return True
+
+
+def _iter_json_candidates(text: str) -> Iterable[Any]:
+    """Yield JSON payloads recovered from *text* using a tolerant decoder."""
+
+    decoder = json.JSONDecoder()
+    visited: set[int] = set()
+    for match in re.finditer(r"[\[{]", text):
+        start = match.start()
+        if start in visited:
+            continue
+        try:
+            candidate, _ = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            continue
+        visited.add(start)
+        yield candidate
+
+
+def _extract_using_output_format(cleaned_output: str, output_format: Any) -> Any | None:
+    """Attempt to recover structured JSON that matches ``output_format`` from text."""
+
+    if not cleaned_output:
+        return None
+
+    if not isinstance(output_format, (Mapping, Sequence)) or isinstance(output_format, (str, bytes, bytearray)):
+        return None
+
+    for candidate in _iter_json_candidates(cleaned_output):
+        if not isinstance(candidate, (Mapping, list)):
+            continue
+        if _matches_output_template(candidate, output_format):
+            return candidate
+
+    return None
+
+
+def _extract_structured_output(
+    execution: subprocess.CompletedProcess[str],
+    *,
+    output_format: Any | None = None,
+) -> tuple[Any | None, str]:
+    stdout = execution.stdout or ""
+    cleaned = _strip_ansi_codes(stdout).strip()
+
+    candidate: Any | None = None
+
+    if cleaned and output_format is not None:
+        candidate = _extract_using_output_format(cleaned, output_format)
+
+    if candidate is None and cleaned:
+        last_line = ""
+        for line in reversed(cleaned.splitlines()):
+            stripped = line.strip()
+            if stripped:
+                last_line = stripped
+                break
+        if last_line.lower().startswith("final result:"):
+            json_fragment = last_line.split(":", 1)[1].strip()
+            try:
+                parsed = json.loads(json_fragment)
+            except json.JSONDecodeError:
+                parsed = None
+            else:
+                candidate = parsed
+
+    if candidate is None and cleaned:
+        parsed_candidates: List[Any] = []
+        for potential in _iter_json_candidates(cleaned):
+            if output_format is not None and isinstance(potential, (Mapping, list)):
+                if not _matches_output_template(potential, output_format):
+                    continue
+            parsed_candidates.append(potential)
+        if parsed_candidates:
+            candidate = parsed_candidates[-1]
+
+    return candidate, cleaned
+
+
+def _coerce_int(value: Any) -> int | None:
+    """Best-effort conversion of ``value`` into an integer."""
+
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, Number):
+        return int(value)
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            try:
+                return int(float(value))
+            except ValueError:
+                return None
+    return None
+
+
+def _normalise_usage_mapping(candidate: Any) -> Mapping[str, Any] | None:
+    """Return a mapping containing usage information if available."""
+
+    if candidate is None:
+        return None
+    if isinstance(candidate, Mapping):
+        return candidate
+    if hasattr(candidate, "model_dump"):
+        try:
+            dumped = candidate.model_dump()
+        except TypeError:
+            dumped = candidate.model_dump(mode="json")
+        if isinstance(dumped, Mapping):
+            return dumped
+    if hasattr(candidate, "dict"):
+        try:
+            dumped = candidate.dict()
+        except TypeError:
+            dumped = candidate.dict(exclude_none=True)
+        if isinstance(dumped, Mapping):
+            return dumped
+    return None
+
+
+def _extract_usage_stats(response: Any) -> Dict[str, int | None] | None:
+    """Extract token usage statistics from an LLM ``response`` object."""
+
+    usage_payload: Mapping[str, Any] | None = None
+
+    if hasattr(response, "usage"):
+        usage_payload = _normalise_usage_mapping(getattr(response, "usage"))
+
+    if usage_payload is None and hasattr(response, "model_dump"):
+        try:
+            dumped = response.model_dump()
+        except TypeError:
+            dumped = response.model_dump(mode="json")
+        if isinstance(dumped, Mapping):
+            usage_payload = _normalise_usage_mapping(dumped.get("usage"))
+
+    if usage_payload is None and hasattr(response, "dict"):
+        try:
+            dumped = response.dict()
+        except TypeError:
+            dumped = response.dict(exclude_none=True)
+        if isinstance(dumped, Mapping):
+            usage_payload = _normalise_usage_mapping(dumped.get("usage"))
+
+    if usage_payload is None and isinstance(response, Mapping):
+        usage_payload = _normalise_usage_mapping(response.get("usage"))
+
+    if usage_payload is None:
+        return None
+
+    prompt = (
+        _coerce_int(usage_payload.get("prompt_tokens"))
+        or _coerce_int(usage_payload.get("promptTokens"))
+        or _coerce_int(usage_payload.get("input_tokens"))
+        or _coerce_int(usage_payload.get("inputTokens"))
+    )
+    completion = (
+        _coerce_int(usage_payload.get("completion_tokens"))
+        or _coerce_int(usage_payload.get("completionTokens"))
+        or _coerce_int(usage_payload.get("output_tokens"))
+        or _coerce_int(usage_payload.get("outputTokens"))
+    )
+    total = (
+        _coerce_int(usage_payload.get("total_tokens"))
+        or _coerce_int(usage_payload.get("totalTokens"))
+        or None
+    )
+
+    if total is None:
+        components = [value for value in (prompt, completion) if value is not None]
+        if components:
+            total = sum(components)
+
+    if prompt is None and completion is None and total is None:
+        return None
+
+    return {
+        "prompt_tokens": prompt,
+        "completion_tokens": completion,
+        "total_tokens": total,
+    }
+
+
 def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] = None) -> BaseLLM:
     model_type = llm_spec.get("type")
     if not model_type:
@@ -589,7 +868,7 @@ def _initialise_llm(llm_spec: Mapping[str, Any], *, context: Optional[Context] =
     return _log_result("_initialise_llm", model)
 
 
-def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
+def _load_task_payload(task_path: Path, *, context: Context) -> tuple[Task, Dict[str, Any]]:
     with task_path.open("r", encoding="utf-8") as handle:
         raw_payload = json.load(handle)
 
@@ -614,7 +893,7 @@ def _load_task_payload(task_path: Path, *, context: Context) -> Dict[str, Any]:
         use_task_servers=payload["use_specified_server"],
     )
 
-    return _log_result("_load_task_payload", payload)
+    return _log_result("_load_task_payload", (task, payload))
 
 
 def _compose_system_prompt(agent_spec: Mapping[str, Any], base_prompt: str) -> str:
@@ -708,6 +987,175 @@ def _print_execution_summary(task_name: str, execution: subprocess.CompletedProc
     _log_result("_print_execution_summary", {"task": task_name, "exit_code": execution.returncode})
 
 
+def _write_evaluation_report(
+    *,
+    llm_spec: Mapping[str, Any],
+    agent_spec: Mapping[str, Any],
+    benchmark_spec: Mapping[str, Any],
+    tasks: Sequence[Mapping[str, Any]],
+    total_execution_time: float | None = None,
+    average_response_time: float | None = None,
+) -> Path:
+    description = benchmark_spec.get("description", "")
+    agent_name = benchmark_spec.get("agent", agent_spec.get("name", ""))
+    llm_type = llm_spec.get("type", "")
+    llm_config = llm_spec.get("config", {}) if isinstance(llm_spec.get("config"), Mapping) else {}
+    llm_model = llm_config.get("model_name") or llm_config.get("model") or ""
+
+    lines: List[str] = []
+    lines.append("## Benchmark Config\n")
+    lines.append(f"**Benchmark description:** {description}\n")
+    lines.append(f"**Agent:** {agent_name}\n")
+    llm_label = f"{llm_type}: {llm_model}".strip(": ") if llm_model else llm_type
+    lines.append(f"**LLM:** {llm_label}\n")
+
+    lines.append("## Benchmark Summary")
+    lines.append("| Name | Passed | Not Passed | Score | LLM Calls |")
+    lines.append("| ---  | ------ | ---------- | ----- | --------- |")
+
+    for task in tasks:
+        name = task.get("name", "")
+        passed = int(task.get("passed", 0))
+        failed = int(task.get("failed", 0))
+        total = passed + failed
+        score = (passed / total) if total else 0.0
+        llm_calls = task.get("llm_calls", 0)
+        lines.append(
+            f"|**{name}**| {passed} | {failed} | {score:.2f} | {llm_calls} |"
+        )
+
+    lines.append("")
+
+    def _aggregate_token(metric: str) -> int | None:
+        values: List[int] = []
+        for task in tasks:
+            value = task.get(metric)
+            coerced = _coerce_int(value)
+            if coerced is not None:
+                values.append(coerced)
+        if not values:
+            return None
+        return sum(values)
+
+    total_prompt_tokens = _aggregate_token("prompt_tokens")
+    total_completion_tokens = _aggregate_token("completion_tokens")
+    total_tokens_used = _aggregate_token("total_tokens")
+
+    if total_tokens_used is None and (
+        total_prompt_tokens is not None or total_completion_tokens is not None
+    ):
+        total_tokens_used = (
+            (total_prompt_tokens or 0)
+            + (total_completion_tokens or 0)
+        )
+
+    if total_prompt_tokens is not None:
+        lines.append(f"- Total Prompt Tokens: {total_prompt_tokens}")
+    if total_completion_tokens is not None:
+        lines.append(f"- Total Completion Tokens: {total_completion_tokens}")
+    if total_tokens_used is not None:
+        lines.append(f"- Total Tokens Used: {total_tokens_used}")
+
+    if total_execution_time is not None:
+        lines.append(f"- Total Execution Time: {total_execution_time:.2f}s")
+    if average_response_time is not None:
+        lines.append(f"- Average Response Time: {average_response_time:.2f}s")
+
+    if any(
+        metric is not None
+        for metric in (
+            total_prompt_tokens,
+            total_completion_tokens,
+            total_tokens_used,
+            total_execution_time,
+            average_response_time,
+        )
+    ):
+        lines.append("")
+    lines.append("## Appendix (Benchmark Details)")
+
+    for task in tasks:
+        name = task.get("name", "")
+        lines.append("### Task")
+        lines.append(f"- config: {name}")
+        exit_code = task.get("exit_code")
+        if exit_code is not None:
+            lines.append(f"- Exit Code: {exit_code}")
+        if total_execution_time is not None:
+            lines.append(f"- Total Execution Time: {total_execution_time:.2f}s")
+        if average_response_time is not None:
+            lines.append(f"- Average Response Time: {average_response_time:.2f}s")
+
+        task_prompt_tokens = _coerce_int(task.get("prompt_tokens"))
+        task_completion_tokens = _coerce_int(task.get("completion_tokens"))
+        task_total_tokens = _coerce_int(task.get("total_tokens"))
+        if task_total_tokens is None and (
+            task_prompt_tokens is not None or task_completion_tokens is not None
+        ):
+            task_total_tokens = (
+                (task_prompt_tokens or 0)
+                + (task_completion_tokens or 0)
+            )
+        if task_prompt_tokens is not None:
+            lines.append(f"- Total Prompt Tokens: {task_prompt_tokens}")
+        if task_completion_tokens is not None:
+            lines.append(f"- Total Completion Tokens: {task_completion_tokens}")
+        if task_total_tokens is not None:
+            lines.append(f"- Total Tokens Used: {task_total_tokens}")
+
+        raw_output = task.get("raw_output", "")
+        structured_output = task.get("structured_output")
+        if structured_output is not None:
+            lines.append("- Parsed Output:")
+            lines.append("```json")
+            lines.append(json.dumps(structured_output, indent=2, default=str))
+            lines.append("```")
+        elif raw_output:
+            lines.append("- Raw Output:")
+            lines.append("```")
+            lines.append(raw_output)
+            lines.append("```")
+
+        stderr_output = task.get("stderr", "").strip()
+        if stderr_output:
+            lines.append("- STDERR:")
+            lines.append("```")
+            lines.append(stderr_output)
+            lines.append("```")
+
+        lines.append("- Evaluation Results:")
+        evaluation_results: Sequence[EvaluationResult] = task.get("evaluation_results", [])
+        evaluation_error = task.get("evaluation_error")
+        if evaluation_results:
+            for result in evaluation_results:
+                status = "PASSED" if result.passed else "FAILED"
+                description = result.config.desc or result.config.func
+                lines.append(f"  - {description}: {status}")
+                if result.reason:
+                    lines.append(f"    - Reason: {result.reason}")
+                if result.error:
+                    lines.append(f"    - Error: {result.error}")
+        elif evaluation_error:
+            lines.append(f"  - Evaluation error: {evaluation_error}")
+        else:
+            lines.append("  - No evaluators defined.")
+
+        lines.append("")
+
+    report_dir = _REPORT_LOG_DIR
+    report_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    report_path = report_dir / f"report-{timestamp}.md"
+    report_path.write_text("\n".join(lines), encoding="utf-8")
+    _log_state(
+        "Wrote evaluation report",
+        path=str(report_path),
+        total_execution_time=total_execution_time,
+        average_response_time=average_response_time,
+    )
+    return report_path
+
+
 async def run_benchmark_tasks_async(
     config_path: Path,
     *,
@@ -756,6 +1204,9 @@ async def run_benchmark_tasks_async(
     _log_state("Discovered benchmark tasks", total=len(tasks))
 
     multiple_tasks = len(tasks) > 1
+    report_entries: List[Dict[str, Any]] = []
+    response_durations: List[float] = []
+    run_start_time = time.perf_counter()
 
     for task_relative in tasks:
         _log_state("Processing task", task=task_relative)
@@ -770,7 +1221,7 @@ async def run_benchmark_tasks_async(
         else:
             task_path = task_path.resolve()
 
-        task_payload = _load_task_payload(task_path, context=context)
+        task_object, task_payload = _load_task_payload(task_path, context=context)
         use_task_servers = bool(task_payload.get("use_specified_server"))
         raw_task_servers = task_payload.get("mcp_servers") or []
 
@@ -818,8 +1269,11 @@ async def run_benchmark_tasks_async(
         )
 
         LOGGER.info("Requesting code generation for task %s", task_relative)
+        generation_start = time.perf_counter()
         with Spinner(f"Generating solution for {task_relative}"):
             response = llm.generate(messages)
+        response_durations.append(time.perf_counter() - generation_start)
+        usage_stats = _extract_usage_stats(response)
         _log_state("Received LLM response", task=task_relative, has_response=response is not None)
         if response is None:
             LOGGER.error("LLM returned no content for task %s", task_relative)
@@ -856,11 +1310,73 @@ async def run_benchmark_tasks_async(
             )
         _print_execution_summary(task_relative, execution)
 
+        structured_output, cleaned_stdout = _extract_structured_output(
+            execution,
+            output_format=task_payload.get("output_format"),
+        )
+        evaluation_results: List[EvaluationResult] = []
+        evaluation_error: Optional[str] = None
+        evaluators = task_object.get_evaluators()
+        if evaluators:
+            if structured_output is not None:
+                try:
+                    evaluation_input = json.dumps(
+                        structured_output,
+                        ensure_ascii=False,
+                        default=str,
+                    )
+                except TypeError:
+                    evaluation_input = str(structured_output)
+            else:
+                evaluation_input = cleaned_stdout
+            try:
+                evaluation_results = await task_object.evaluate(evaluation_input)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                evaluation_error = str(exc)
+                LOGGER.exception("Failed to evaluate task %s: %s", task_relative, exc)
+
+        passed = sum(1 for result in evaluation_results if result.passed)
+        failed = sum(1 for result in evaluation_results if not result.passed)
+        report_entries.append(
+            {
+                "name": task_relative,
+                "passed": passed,
+                "failed": failed,
+                "llm_calls": 1,
+                "exit_code": execution.returncode,
+                "raw_output": cleaned_stdout,
+                "structured_output": structured_output,
+                "stderr": execution.stderr or "",
+                "evaluation_results": evaluation_results,
+                "evaluation_error": evaluation_error,
+                "prompt_tokens": usage_stats.get("prompt_tokens") if usage_stats else None,
+                "completion_tokens": usage_stats.get("completion_tokens") if usage_stats else None,
+                "total_tokens": usage_stats.get("total_tokens") if usage_stats else None,
+            }
+        )
+
     _log_state(
         "Completed benchmark run",
         total_tasks=len(tasks),
         output_path=str(output_path) if output_path else None,
     )
+
+    total_execution_time = time.perf_counter() - run_start_time
+    average_response_time = (
+        sum(response_durations) / len(response_durations)
+        if response_durations
+        else None
+    )
+
+    if report_entries:
+        _write_evaluation_report(
+            llm_spec=llm_spec,
+            agent_spec=agent_spec,
+            benchmark_spec=benchmark_spec,
+            tasks=report_entries,
+            total_execution_time=total_execution_time,
+            average_response_time=average_response_time,
+        )
 
     _log_result(
         "run_benchmark_tasks_async",
