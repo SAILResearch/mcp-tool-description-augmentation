@@ -501,6 +501,12 @@ def _build_messages(
         that returns (do not print) a dictionary matching this output format:
         {output_format}
 
+        Whenever the output format lists alternative values using a forward slash
+        (for example, `status: success/failure/error`), interpret the slash as an
+        `OR`. The generated code must choose exactly one of the allowed options
+        when populating the field rather than echoing the slash-delimited string
+        verbatim.
+
         The `servers` argument mirrors the `mcp_servers` payload from the task and lists
         every server configuration the orchestration should consider. Use the shared
         `MCPManager` instance to talk to tools exactly like the `github__check_repository`
