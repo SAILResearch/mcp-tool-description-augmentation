@@ -653,12 +653,111 @@
         }
       },
       "output_schema": {
-        "type": "array",
-        "description": "Array of holder information rows. Fields vary depending on holder_type.",
-        "items": {
-          "type": "object",
-          "additionalProperties": true
-        }
+        "type": "object",
+        "description": "MCP CallToolResult envelope containing holder rows encoded as JSON under structuredContent.result.",
+        "properties": {
+          "meta": { "type": ["object", "null"] },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": ["string", "null"] },
+                "text": { "type": ["string", "null"] },
+                "structuredContent": {
+                  "type": "object",
+                  "required": ["result"],
+                  "properties": {
+                    "result": { "type": "string" }
+                  },
+                  "additionalProperties": true
+                },
+                "meta": { "type": ["object", "null"] },
+                "annotations": { "type": ["array", "null"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "structuredContent": {
+            "type": "object",
+            "description": "Primary access point for the JSON-encoded holder rows.",
+            "required": ["result"],
+            "properties": {
+              "result": {
+                "type": "string",
+                "description": "JSON string encoding an array of holder information records.",
+                "contentMediaType": "application/json",
+                "contentSchema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["Holder"],
+                    "properties": {
+                      "Date Reported": {
+                        "type": ["integer", "number", "null"],
+                        "description": "Milliseconds since epoch identifying the reporting date."
+                      },
+                      "Holder": { "type": "string" },
+                      "pctHeld": { "type": ["number", "null"] },
+                      "Shares": { "type": ["number", "null"] },
+                      "Value": { "type": ["number", "null"] },
+                      "pctChange": { "type": ["number", "null"] }
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        { "type": "string" },
+                        { "type": "number" },
+                        { "type": "boolean" },
+                        { "type": "null" }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "additionalProperties": true
+          },
+          "isError": { "type": ["boolean", "null"] }
+        },
+        "additionalProperties": true,
+        "anyOf": [
+          { "required": ["structuredContent"] },
+          {
+            "properties": {
+              "content": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": ["structuredContent"],
+                  "properties": {
+                    "structuredContent": {
+                      "type": "object",
+                      "required": ["result"],
+                      "properties": {
+                        "result": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "meta": null,
+            "content": [
+              {
+                "type": "text",
+                "text": "[{\"Date Reported\":1751241600000,\"Holder\":\"Vanguard Group Inc\",\"pctHeld\":0.0949,\"Shares\":705077786,\"Value\":368332652620,\"pctChange\":0.0198}]"
+              }
+            ],
+            "structuredContent": {
+              "result": "[{\"Date Reported\":1751241600000,\"Holder\":\"Vanguard Group Inc\",\"pctHeld\":0.0949,\"Shares\":705077786,\"Value\":368332652620,\"pctChange\":0.0198}]"
+            },
+            "isError": false
+          }
+        ]
       }
     },
     "get_option_expiration_dates": {
