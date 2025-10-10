@@ -532,6 +532,12 @@ def _build_messages(
         ```
         The `adjusted_end_date` must be the value passed to every tool call, even if the
         provided range already spans multiple days.
+        When you call the calculator tool, pass through the raw numeric values you
+        computed—do not wrap them in `math.floor`, `math.ceil`, `round`, or perform any
+        other precision adjustments before invoking the tool. Reserve any rounding for
+        the final payload you return to the caller, and format those reported numbers to
+        exactly two decimal places using standard Python formatting once all tool calls
+        have completed.
         If you create a helper such as `call_tool`, implement it inside your module so the
         saved script can execute in isolation—the evaluation harness may provide an
         equivalent helper when running in memory, so matching the same signature keeps
