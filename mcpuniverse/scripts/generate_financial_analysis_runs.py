@@ -538,6 +538,26 @@ def _build_messages(
         ```
         The `adjusted_end_date` must be the value passed to every tool call, even if the
         provided range already spans multiple days.
+        If you need to compute moving averages (for example, SMA or EMA) with a window of
+        `N` trading days, request at least 50% more history than the window requires so
+        market holidays do not starve the calculation. Move the tool `start_date` backward
+        by `ceil(N * 0.5)` calendar days before making the request and keep the original
+        task `start_date` for reporting. For instance, an SMA(10) needs 15 days of input,
+        so shift the start by 5 days; SMA(50) should request 75 total days. A possible
+        helper looks like this:
+
+        ```python
+        from datetime import datetime, timedelta
+        import math
+
+        window = 10  # derive this from the task instructions
+        buffer_days = math.ceil(window * 0.5)
+        historical_start = (
+            datetime.fromisoformat(start_date) - timedelta(days=buffer_days)
+        ).date().isoformat()
+        ```
+        Use `historical_start` (or the earliest buffered start when multiple windows are
+        required) when calling price-history tools.
         When you call the calculator tool, pass through the raw numeric values you
         computed—do not wrap them in `math.floor`, `math.ceil`, `round`, or perform any
         other precision adjustments before invoking the tool. Reserve any rounding for
