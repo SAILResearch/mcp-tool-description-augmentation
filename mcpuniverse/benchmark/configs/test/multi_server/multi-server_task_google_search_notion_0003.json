@@ -4,7 +4,7 @@
     "use_specified_server": true,
     "mcp_servers": [
         {
-            "name": "google-search"
+            "name": "google-search-new"
         },
         {
             "name": "fetch"
