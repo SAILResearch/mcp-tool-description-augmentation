@@ -60,6 +60,7 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
     - [List tool performance scores](#list-tool-performance-scores)
     - [Optimize MCP tool descriptions](#optimize-mcp-tool-descriptions)
     - [Evaluate MCP tool description quality](#evaluate-mcp-tool-description-quality)
+    - [Extract tool call metadata from logs](#extract-tool-call-metadata-from-logs)
 - [Dynamic MCP Orchestration](#dynamic-mcp-orchestration)
 - [Citation](#citation)
 
@@ -724,6 +725,24 @@ The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
 using a compatible proxy. Each tool evaluation spawns the corresponding MCP
 server through its stdio transport, lists available tools, and records both LLM
 assessments in the output CSV.
+
+### Extract tool call metadata from logs
+
+The `extract_tool_usage.py` script parses `.log` files that contain multiple
+JSON objects separated by dashed lines (such as the traces shown in the
+repository documentation) and collects each distinct combination of tool
+invocation details. The resulting CSV lists the arguments, structured content,
+server name, and tool name for every unique entry discovered in the log.
+
+Run the script with:
+
+```bash
+python scripts/extract_tool_usage.py path/to/logfile.log --output path/to/output.csv
+```
+
+If you omit the `--output` flag, the script writes the CSV next to the log file
+using the same filename with an added `.csv` suffix (for example,
+`session.log.csv`).
 
 ## Dynamic MCP Orchestration
 
