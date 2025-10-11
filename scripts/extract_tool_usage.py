@@ -5,7 +5,7 @@ lines of dashes ("-----"). It finds records that correspond to tool calls and
 collects distinct combinations of the following fields:
 
 * ``data.arguments``
-* ``data.response.structuredContent``
+* ``data.response.content[0].text``
 * ``data.server``
 * ``data.tool_name``
 
@@ -65,20 +65,23 @@ def extract_tool_entries(obj: Dict[str, Any]) -> Iterable[Tuple[str, str, str, s
             continue
 
         arguments = data.get("arguments")
-        structured_content = (
-            data.get("response", {}).get("structuredContent")
-            if isinstance(data.get("response"), dict)
-            else None
-        )
+        response = data.get("response")
+        response_text = None
+        if isinstance(response, dict):
+            content = response.get("content")
+            if isinstance(content, list) and content:
+                first_item = content[0]
+                if isinstance(first_item, dict):
+                    text = first_item.get("text")
+                    if isinstance(text, str):
+                        response_text = text
 
         extracted.append(
             (
                 json.dumps(arguments, ensure_ascii=False, sort_keys=True)
                 if arguments is not None
                 else "",
-                json.dumps(structured_content, ensure_ascii=False, sort_keys=True)
-                if structured_content is not None
-                else "",
+                response_text if response_text is not None else "",
                 server,
                 tool_name,
             )
@@ -93,7 +96,7 @@ def write_csv(rows: Iterable[Tuple[str, str, str, str]], output_path: Path) -> N
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["arguments", "structuredContent", "server", "tool_name"])
+        writer.writerow(["arguments", "response_text", "server", "tool_name"])
         for row in rows:
             writer.writerow(row)
 
