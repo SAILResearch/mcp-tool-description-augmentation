@@ -60,6 +60,7 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
     - [List tool performance scores](#list-tool-performance-scores)
     - [Optimize MCP tool descriptions](#optimize-mcp-tool-descriptions)
     - [Evaluate MCP tool description quality](#evaluate-mcp-tool-description-quality)
+    - [Analyze tool description quality reports](#analyze-tool-description-quality-reports)
     - [Extract tool call metadata from logs](#extract-tool-call-metadata-from-logs)
 - [Dynamic MCP Orchestration](#dynamic-mcp-orchestration)
 - [Citation](#citation)
@@ -718,6 +719,7 @@ Key flags:
 | `--server-path PATH` | Optional. Explicit path to a server script or directory. Paths are merged into the loaded MCP configuration. |
 | `--pattern GLOB` | Optional. Filename pattern for locating scripts inside provided `--server-path` directories (default: `server.py`). |
 | `--limit N` | Optional. Evaluate only the first `N` discovered tools. |
+
 | `--dry-run` | Skip LLM calls and emit placeholder rows (useful for connectivity tests). |
 
 The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
@@ -725,6 +727,46 @@ The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
 using a compatible proxy. Each tool evaluation spawns the corresponding MCP
 server through its stdio transport, lists available tools, and records both LLM
 assessments in the output CSV.
+
+### Analyze tool description quality reports
+
+After collecting audit results (for example, via `evaluate_tool_descriptions`),
+use the `scripts/analyze_tools.py` CLI to summarize the CSV outputs. The CLI
+produces descriptive statistics, frequency tables, and publication-ready
+figures, then bundles the findings into a Markdown report for quick sharing.
+
+```bash
+python scripts/analyze_tools.py \
+  --input path/to/mcp_tool_quality.csv \
+  --outdir ./analysis_output \
+  --score-threshold 70 \
+  --top-k 5 \
+  --by-server yes
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--input PATH` | Required. Source CSV containing tool description audit rows. |
+| `--outdir PATH` | Required. Destination directory for generated artifacts. |
+| `--score-col NAME` | Optional. Column name for the numeric quality score (default: `description_quality_score`). |
+| `--server-col NAME` | Optional. Column name for the server identifier (default: `mcp_server_name`). |
+| `--tool-col NAME` | Optional. Column name for the tool identifier (default: `tool_name`). |
+| `--reason-col NAME` | Optional. Column name describing review reasons (default: `description_reason`). |
+| `--missing-col NAME` | Optional. Column listing missing description elements (default: `description_missing_points`). |
+| `--score-threshold N` | Optional. Threshold for “needs attention” scores (default: `70`). |
+| `--top-k N` | Optional. Number of missing items to highlight in the report (default: `5`). |
+| `--by-server {yes,no}` | Optional. Whether to compute per-server aggregates and percentages (default: `yes`). |
+| `--figure-dpi N` | Optional. Resolution for generated PNG figures (default: `200`). |
+| `--figure-fontsize N` | Optional. Base font size for Matplotlib (default: `16`). |
+| `--max-servers N` | Optional. Maximum number of servers to include in the boxplot (default: `10`). |
+
+The CLI writes summary tables (`summary_stats.json`, `top_missing_items.csv`,
+`reason_themes.csv`, and, when enabled, `server_stats.csv`) alongside figures
+such as `score_distribution.png` and `missing_vs_score.png`. A consolidated
+`report.md` embeds the visuals, key metrics, and a remediation checklist to help
+teams prioritize documentation fixes.
 
 ### Extract tool call metadata from logs
 
