@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -91,6 +92,13 @@ async def _list_server_tools(manager: MCPManager, server_name: str, *, transport
             continue
         input_schema = _schema_to_dict(getattr(tool, "input_schema", None))
         output_schema = _schema_to_dict(getattr(tool, "output_schema", None))
+        LOGGER.info(
+            "Discovered tool %s under server %s with input schema %s and output schema %s",
+            name,
+            server_name,
+            json.dumps(input_schema, sort_keys=True) if input_schema is not None else None,
+            json.dumps(output_schema, sort_keys=True) if output_schema is not None else None,
+        )
         records.append(
             ToolSchemaRecord(
                 server_name=server_name,
