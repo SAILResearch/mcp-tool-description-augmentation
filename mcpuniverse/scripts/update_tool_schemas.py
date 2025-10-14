@@ -13,7 +13,7 @@ from typing import Any, Sequence
 
 import psycopg
 from psycopg import Connection, Cursor, sql
-from psycopg.types.json import Json
+from psycopg.types.json import Jsonb
 from urllib.parse import quote_plus
 
 from mcpuniverse.common.context import Context
@@ -436,12 +436,12 @@ def _build_update_query(table: sql.Identifier) -> sql.SQL:
     ).format(table=table)
 
 
-def _to_json(value: Any | None) -> Json | None:
-    """Convert a schema structure into a Json wrapper if needed."""
+def _to_json(value: Any | None) -> Jsonb | None:
+    """Convert a schema structure into a Jsonb wrapper if needed."""
 
     if value is None:
         return None
-    return Json(value)
+    return Jsonb(value)
 
 
 def _needs_schema_update(
