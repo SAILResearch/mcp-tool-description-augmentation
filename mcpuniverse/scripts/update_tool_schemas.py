@@ -308,6 +308,48 @@ def _infer_tool_schema(llm: Any, payload: ToolPayload) -> ToolSchemaRecord | Non
     )
 
 
+def _parse_tool_schema(payload: ToolPayload) -> ToolSchemaRecord | None:
+    """Extract schemas directly from the ``tools/list`` payload."""
+
+    data = payload.payload or {}
+
+    def _get_candidate(*keys: str) -> Any | None:
+        for key in keys:
+            if key in data:
+                return data[key]
+        return None
+
+    input_schema = _normalize_schema_value(
+        _get_candidate("inputSchema", "input_schema")
+    )
+    output_schema = _normalize_schema_value(
+        _get_candidate("outputSchema", "output_schema")
+    )
+
+    if input_schema is None and output_schema is None:
+        LOGGER.warning(
+            "Payload for %s:%s did not include inputSchema/outputSchema fields; leaving row unchanged.",
+            payload.server_name,
+            payload.tool_name,
+        )
+        return None
+
+    LOGGER.info(
+        "Parsed schemas from payload for %s:%s -> input=%s output=%s",
+        payload.server_name,
+        payload.tool_name,
+        json.dumps(input_schema, sort_keys=True) if isinstance(input_schema, (dict, list)) else input_schema,
+        json.dumps(output_schema, sort_keys=True) if isinstance(output_schema, (dict, list)) else output_schema,
+    )
+
+    return ToolSchemaRecord(
+        server_name=payload.server_name,
+        tool_name=payload.tool_name,
+        input_schema=input_schema,
+        output_schema=output_schema,
+    )
+
+
 async def _list_server_tools(manager: MCPManager, server_name: str, *, transport: str) -> list[ToolPayload]:
     """Fetch tool payloads from ``server_name`` using ``transport``."""
 
@@ -484,14 +526,19 @@ async def async_main(args: argparse.Namespace) -> int:
         LOGGER.warning("No tools discovered from the configured MCP servers.")
         return 1
 
-    model_manager = ModelManager()
-    try:
-        llm = _build_llm(model_manager, args.model)
-    except AssertionError as exc:
-        LOGGER.error("%s", exc)
-        return 1
+    llm: Any | None = None
+    if args.mode == "llm":
+        if not args.model:
+            LOGGER.error("--model is required when --mode is set to 'llm'.")
+            return 1
+        model_manager = ModelManager()
+        try:
+            llm = _build_llm(model_manager, args.model)
+        except AssertionError as exc:
+            LOGGER.error("%s", exc)
+            return 1
 
-    llm.set_context(Context(env=dict(os.environ)))
+        llm.set_context(Context(env=dict(os.environ)))
 
     db_url = _get_db_url(args)
     if not db_url:
@@ -528,12 +575,17 @@ async def async_main(args: argparse.Namespace) -> int:
                         )
                         continue
 
-                    inferred = _infer_tool_schema(llm, payload)
+                    if args.mode == "llm":
+                        inferred = _infer_tool_schema(llm, payload) if llm else None
+                    else:
+                        inferred = _parse_tool_schema(payload)
                     if inferred is None:
                         continue
                     if inferred.input_schema is None and inferred.output_schema is None:
+                        mode_label = "LLM" if args.mode == "llm" else "payload parsing"
                         LOGGER.warning(
-                            "LLM returned no schema information for %s:%s; leaving row unchanged.",
+                            "No schema information produced via %s for %s:%s; leaving row unchanged.",
+                            mode_label,
                             payload.server_name,
                             payload.tool_name,
                         )
@@ -590,8 +642,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Transport preference for connecting to MCP servers.",
     )
     parser.add_argument(
+        "--mode",
+        default="llm",
+        choices=["llm", "parsing"],
+        help="Schema extraction strategy: 'llm' (default) or 'parsing'.",
+    )
+    parser.add_argument(
         "--model",
-        required=True,
+        required=False,
+        default=None,
         help=(
             "Model alias registered with ModelManager (e.g. 'openai') or an alias:model_name "
             "override specifying both provider alias and model."

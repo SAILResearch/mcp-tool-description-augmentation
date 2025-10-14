@@ -672,17 +672,21 @@ descriptions could be stored.
 ### Backfill MCP tool schemas
 
 Use the `update_tool_schemas` CLI when you want to backfill schema metadata
-with help from an LLM. The script reads an MCP server configuration file,
-connects to every server, captures the raw `tools/list` payload for each tool,
-and then asks the model you provide via `--model` to infer normalised
-`input_schema` and `output_schema` structures. Rows where at least one of the
-schema columns is `NULL` are updated with the model's response; populated rows
-are skipped.
+either with help from an LLM or by directly parsing the `tools/list` payload.
+The script reads an MCP server configuration file, connects to every server,
+captures the raw payload for each tool, and then updates missing
+`input_schema`/`output_schema` columns using the strategy selected via
+`--mode`. When `--mode llm` is used (the default), the specified model infers
+the schemas. When `--mode parsing` is supplied, the CLI extracts any
+`inputSchema`/`outputSchema` fields already present in the payload and writes
+them to the database without invoking a model. Rows where at least one of the
+schema columns is `NULL` are updated; populated rows are skipped.
 
 ```bash
 python -m mcpuniverse.scripts.update_tool_schemas \
   --table mcp_servers \
-  --model <MODEL_ALIAS_OR_ALIAS:MODEL_NAME> \
+  [--mode llm|parsing] \
+  [--model <MODEL_ALIAS_OR_ALIAS:MODEL_NAME>] \
   [--config path/to/server_list.json] \
   [--transport stdio|sse|auto] \
   [--db-url postgres://user:pass@host:port/db]
@@ -690,14 +694,19 @@ python -m mcpuniverse.scripts.update_tool_schemas \
 
 Key details:
 
-- Supply `--model` with either a registered alias (for example `openai`) or an
-  `alias:model_name` pair such as `openai:gpt-4.1-mini`. The CLI reuses the
-  provider configuration from `ModelManager`, so ensure the necessary API keys
-  are present in the environment.
+- Supply `--mode` to choose how schemas are obtained. `llm` (default) infers
+  schemas via the configured model, while `parsing` copies any
+  `inputSchema`/`outputSchema` JSON that the server already exposes.
+- When using `--mode llm`, provide `--model` with either a registered alias
+  (for example `openai`) or an `alias:model_name` pair such as
+  `openai:gpt-4.1-mini`. The CLI reuses the provider configuration from
+  `ModelManager`, so ensure the necessary API keys are present in the
+  environment. The `--model` flag is optional when `--mode parsing` is used.
 - The script never overwrites existing schema data. Rows where both schema
-  columns are already populated are left untouched and the LLM is not queried.
-- Each run logs the full `tools/list` payload alongside the JSON returned by the
-  LLM for easier auditing and debugging.
+  columns are already populated are left untouched and no additional schema
+  extraction is performed.
+- Each run logs the full `tools/list` payload alongside the schema data that was
+  applied, making auditing and debugging easier.
 - `--table` is required so the CLI can target alternate metadata tables when
   necessary.
 - Database connectivity falls back to the same `DB_URL`/`DATABASE_URL`
