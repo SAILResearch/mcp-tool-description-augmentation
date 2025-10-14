@@ -63,6 +63,23 @@ def _schema_to_dict(schema: Any) -> dict[str, Any] | None:
     return schema  # type: ignore[return-value]
 
 
+def _object_to_dict(obj: Any) -> dict[str, Any] | None:
+    """Best-effort conversion of an arbitrary object to a dictionary."""
+
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, "model_dump"):
+        try:
+            return obj.model_dump(mode="json")  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover - defensive
+            return obj.model_dump()  # type: ignore[attr-defined]
+    if hasattr(obj, "__dict__"):
+        return dict(obj.__dict__)
+    return {"value": obj}
+
+
 async def _list_server_tools(manager: MCPManager, server_name: str, *, transport: str) -> list[ToolSchemaRecord]:
     """Fetch tool schemas from ``server_name`` using ``transport``."""
 
@@ -87,6 +104,12 @@ async def _list_server_tools(manager: MCPManager, server_name: str, *, transport
         await client.cleanup()
 
     for tool in raw_tools:
+        tool_dict = _object_to_dict(tool) or {}
+        try:
+            serialized_tool = json.dumps(tool_dict, sort_keys=True)
+        except TypeError:
+            serialized_tool = json.dumps(tool_dict, sort_keys=True, default=str)
+        LOGGER.info("tools/list payload for server %s: %s", server_name, serialized_tool)
         name = getattr(tool, "name", "")
         if not name:
             continue
