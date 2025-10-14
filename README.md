@@ -669,6 +669,36 @@ Before running the CLI, ensure the destination database contains the
 server/tool pairs were updated and exits with a non-zero status if no
 descriptions could be stored.
 
+### Backfill MCP tool schemas
+
+Use the `update_tool_schemas` CLI when you want to record the input and output
+schemas that each MCP tool exposes without re-optimizing their descriptions.
+The script reads an MCP server configuration file, connects to every server,
+and captures the tool name together with its declared schemas. It then
+backfills the specified database table only when either `tool_input_params` or
+`tool_output_params` is `NULL` for a given server/tool pair.
+
+```bash
+python -m mcpuniverse.scripts.update_tool_schemas \
+  --table mcp_servers \
+  [--config path/to/server_list.json] \
+  [--transport stdio|sse|auto] \
+  [--db-url postgres://user:pass@host:port/db]
+```
+
+Key details:
+
+- The script never overwrites existing schema data. Rows where both schema
+  columns are already populated are left untouched.
+- `--table` is required so the CLI can target alternate metadata tables when
+  necessary.
+- Database connectivity falls back to the same `DB_URL`/`DATABASE_URL`
+  environment variables supported by the other tooling.
+
+This helper is useful after generating new tool descriptions or when adding
+servers that expose schema definitions post-hoc, ensuring the metadata table
+stays complete.
+
 ### Evaluate MCP tool description quality
 
 The `evaluate_tool_descriptions` CLI loads server definitions from an MCP
