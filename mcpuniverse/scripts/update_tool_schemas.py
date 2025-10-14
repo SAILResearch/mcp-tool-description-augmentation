@@ -6,6 +6,8 @@ import asyncio
 import json
 import logging
 import os
+import re
+import textwrap
 from dataclasses import dataclass
 from typing import Any, Sequence
 
@@ -14,6 +16,8 @@ from psycopg import Connection, Cursor, sql
 from psycopg.types.json import Json
 from urllib.parse import quote_plus
 
+from mcpuniverse.common.context import Context
+from mcpuniverse.llm.manager import ModelManager
 from mcpuniverse.mcp.manager import MCPManager
 
 
@@ -26,8 +30,17 @@ class ToolSchemaRecord:
 
     server_name: str
     tool_name: str
-    input_schema: dict[str, Any] | None
-    output_schema: dict[str, Any] | None
+    input_schema: Any | None
+    output_schema: Any | None
+
+
+@dataclass
+class ToolPayload:
+    """Raw tool payload fetched from an MCP server."""
+
+    server_name: str
+    tool_name: str
+    payload: dict[str, Any]
 
 
 def _select_transport(config, preferred: str) -> str | None:
@@ -48,21 +61,6 @@ def _select_transport(config, preferred: str) -> str | None:
     return None
 
 
-def _schema_to_dict(schema: Any) -> dict[str, Any] | None:
-    """Convert a schema-like object to a dictionary when possible."""
-
-    if schema is None:
-        return None
-    if isinstance(schema, dict):
-        return schema
-    if hasattr(schema, "model_dump"):
-        try:
-            return schema.model_dump(mode="json")  # type: ignore[attr-defined]
-        except Exception:  # pragma: no cover - defensive
-            return schema.model_dump()  # type: ignore[attr-defined]
-    return schema  # type: ignore[return-value]
-
-
 def _object_to_dict(obj: Any) -> dict[str, Any] | None:
     """Best-effort conversion of an arbitrary object to a dictionary."""
 
@@ -80,10 +78,240 @@ def _object_to_dict(obj: Any) -> dict[str, Any] | None:
     return {"value": obj}
 
 
-async def _list_server_tools(manager: MCPManager, server_name: str, *, transport: str) -> list[ToolSchemaRecord]:
-    """Fetch tool schemas from ``server_name`` using ``transport``."""
+_MODEL_PREFIX_ALIASES: tuple[tuple[str, str], ...] = (
+    ("gpt-", "openai"),
+    ("o1-", "openai"),
+    ("o3-", "openai"),
+    ("o4-", "openai"),
+    ("claude-", "claude"),
+    ("sonnet", "claude"),
+    ("haiku", "claude"),
+    ("opus", "claude"),
+    ("mistral", "mistral"),
+    ("ministral", "mistral"),
+    ("codestral", "mistral"),
+    ("deepseek", "deepseek"),
+    ("grok-", "grok"),
+    ("gemini", "gemini"),
+)
 
-    records: list[ToolSchemaRecord] = []
+
+def _guess_model_alias(model_spec: str) -> str | None:
+    """Best-effort guess of the model alias given a provider-specific model name."""
+
+    lowered = model_spec.lower()
+    for prefix, alias in _MODEL_PREFIX_ALIASES:
+        if lowered.startswith(prefix):
+            return alias
+    return None
+
+
+def _override_model_name(llm: Any, model_name: str) -> None:
+    """Update ``llm`` to use ``model_name`` when possible."""
+
+    config = getattr(llm, "config", None)
+    if config is None or not hasattr(config, "model_name"):
+        LOGGER.warning(
+            "Unable to set requested model '%s' for %s because its configuration does not expose 'model_name'.",
+            model_name,
+            llm.__class__.__name__,
+        )
+        return
+    setattr(config, "model_name", model_name)
+    LOGGER.info(
+        "Using %s provider with requested model '%s'.",
+        llm.__class__.__name__,
+        model_name,
+    )
+
+
+def _build_llm(model_manager: ModelManager, model_spec: str):
+    """Instantiate an LLM from ``model_spec`` supporting alias:model overrides."""
+
+    try:
+        return model_manager.build_model(model_spec)
+    except AssertionError:
+        pass
+
+    available = model_manager.available_models()
+    alias: str | None
+    requested_model: str | None
+    if ":" in model_spec:
+        alias, _, requested_model = model_spec.partition(":")
+    else:
+        alias = _guess_model_alias(model_spec)
+        requested_model = model_spec
+
+    if alias and alias in available:
+        llm = model_manager.build_model(alias)
+        if requested_model and requested_model != alias:
+            _override_model_name(llm, requested_model)
+        return llm
+
+    available_str = ", ".join(sorted(available))
+    raise AssertionError(
+        "Model "
+        f"{model_spec} is not found. Provide one of the registered aliases ({available_str}) or use the 'alias:model_name' format."
+    ) from None
+
+
+def _sanitize_text(text: str) -> str:
+    """Strip code fences, quotes, and surrounding whitespace."""
+
+    sanitized = str(text)
+    sanitized = re.sub(r"^```[a-zA-Z0-9_+.-]*\n?", "", sanitized)
+    sanitized = re.sub(r"\n?```$", "", sanitized)
+    sanitized = re.sub(r'^"""\n?', "", sanitized)
+    sanitized = re.sub(r'\n?"""$', "", sanitized)
+    return sanitized.strip()
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    """Parse JSON from ``text``; fall back to the first object-like substring."""
+
+    sanitized = _sanitize_text(text)
+    if not sanitized:
+        raise ValueError("LLM output was empty")
+    try:
+        return json.loads(sanitized)
+    except json.JSONDecodeError:
+        match = re.search(r"\{[\s\S]*\}", sanitized)
+        if match:
+            return json.loads(match.group(0))
+        raise
+
+
+def _normalize_schema_value(value: Any) -> Any | None:
+    """Coerce ``value`` into a JSON-compatible structure or ``None``."""
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped or stripped.lower() in {"none", "null", "unknown"}:
+            return None
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            return stripped
+    return value
+
+
+def _extract_text(response: Any) -> str:
+    """Normalise different response types from ``BaseLLM.generate``."""
+
+    if response is None:
+        return ""
+    if isinstance(response, str):
+        return response
+    if hasattr(response, "choices"):
+        choices = getattr(response, "choices")
+        if choices:
+            message = getattr(choices[0], "message", None)
+            if message is not None:
+                content = getattr(message, "content", None)
+                if isinstance(content, str):
+                    return content
+                if isinstance(content, list):
+                    text_parts = [
+                        part.get("text", "")
+                        for part in content
+                        if isinstance(part, dict) and part.get("type") == "text"
+                    ]
+                    return "".join(text_parts)
+    if hasattr(response, "content"):
+        content = getattr(response, "content")
+        if isinstance(content, str):
+            return content
+    return str(response)
+
+
+def _build_schema_prompt(payload: ToolPayload) -> str:
+    """Create the user prompt for inferring schemas from ``payload``."""
+
+    try:
+        payload_json = json.dumps(payload.payload, indent=2, sort_keys=True)
+    except TypeError:
+        payload_json = json.dumps(payload.payload, indent=2, sort_keys=True, default=str)
+
+    return textwrap.dedent(
+        f"""
+        Analyse the following MCP tool information and infer the tool's JSON schemas.
+
+        Respond with a single JSON object containing exactly these keys:
+        - "input_schema": JSON schema describing the tool arguments, or null if the arguments are unknown.
+        - "output_schema": JSON schema describing the tool response, or null if unknown.
+
+        Provide the most specific schema you can infer. If the payload already contains a schema, normalise and return it. If the
+        payload only includes parameter descriptions, convert them into a best-effort JSON schema.
+
+        MCP server: {payload.server_name}
+        Tool name: {payload.tool_name}
+        tools/list payload:
+        {payload_json}
+        """
+    ).strip()
+
+
+def _infer_tool_schema(llm: Any, payload: ToolPayload) -> ToolSchemaRecord | None:
+    """Use ``llm`` to infer schemas for ``payload``."""
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert in the Model Context Protocol. Convert MCP tool metadata into precise JSON schemas for tool "
+                "arguments and outputs. Always reply with valid JSON only."
+            ),
+        },
+        {"role": "user", "content": _build_schema_prompt(payload)},
+    ]
+    try:
+        response = llm.generate(messages=messages)
+    except Exception as exc:  # pragma: no cover - depends on external service
+        LOGGER.error(
+            "Failed to infer schema for %s:%s: %s",
+            payload.server_name,
+            payload.tool_name,
+            exc,
+        )
+        return None
+
+    raw_text = _extract_text(response)
+    try:
+        parsed = _extract_json_object(raw_text)
+    except Exception as exc:  # pragma: no cover - depends on model compliance
+        LOGGER.error(
+            "Could not parse LLM output for %s:%s: %s -- output was: %r",
+            payload.server_name,
+            payload.tool_name,
+            exc,
+            raw_text,
+        )
+        return None
+
+    input_schema = _normalize_schema_value(parsed.get("input_schema"))
+    output_schema = _normalize_schema_value(parsed.get("output_schema"))
+    LOGGER.info(
+        "LLM inferred schemas for %s:%s -> input=%s output=%s",
+        payload.server_name,
+        payload.tool_name,
+        json.dumps(input_schema, sort_keys=True) if isinstance(input_schema, (dict, list)) else input_schema,
+        json.dumps(output_schema, sort_keys=True) if isinstance(output_schema, (dict, list)) else output_schema,
+    )
+
+    return ToolSchemaRecord(
+        server_name=payload.server_name,
+        tool_name=payload.tool_name,
+        input_schema=input_schema,
+        output_schema=output_schema,
+    )
+
+
+async def _list_server_tools(manager: MCPManager, server_name: str, *, transport: str) -> list[ToolPayload]:
+    """Fetch tool payloads from ``server_name`` using ``transport``."""
+
+    records: list[ToolPayload] = []
     try:
         client = await manager.build_client(server_name=server_name, transport=transport)
     except Exception as exc:  # pragma: no cover - depends on external binaries
@@ -113,30 +341,20 @@ async def _list_server_tools(manager: MCPManager, server_name: str, *, transport
         name = getattr(tool, "name", "")
         if not name:
             continue
-        input_schema = _schema_to_dict(getattr(tool, "input_schema", None))
-        output_schema = _schema_to_dict(getattr(tool, "output_schema", None))
-        LOGGER.info(
-            "Discovered tool %s under server %s with input schema %s and output schema %s",
-            name,
-            server_name,
-            json.dumps(input_schema, sort_keys=True) if input_schema is not None else None,
-            json.dumps(output_schema, sort_keys=True) if output_schema is not None else None,
-        )
         records.append(
-            ToolSchemaRecord(
+            ToolPayload(
                 server_name=server_name,
                 tool_name=name,
-                input_schema=input_schema,
-                output_schema=output_schema,
+                payload=tool_dict,
             )
         )
     return records
 
 
-async def collect_tools(manager: MCPManager, *, transport_mode: str) -> list[ToolSchemaRecord]:
-    """Gather ``ToolSchemaRecord`` entries from every configured server."""
+async def collect_tools(manager: MCPManager, *, transport_mode: str) -> list[ToolPayload]:
+    """Gather ``ToolPayload`` entries from every configured server."""
 
-    collected: list[ToolSchemaRecord] = []
+    collected: list[ToolPayload] = []
     for server_name, config in manager.get_configs().items():
         transport = _select_transport(config, transport_mode)
         if transport is None:
@@ -218,28 +436,29 @@ def _build_update_query(table: sql.Identifier) -> sql.SQL:
     ).format(table=table)
 
 
-def _to_json(value: dict[str, Any] | None) -> Json | None:
-    """Convert a schema dictionary into a Json wrapper if needed."""
+def _to_json(value: Any | None) -> Json | None:
+    """Convert a schema structure into a Json wrapper if needed."""
 
     if value is None:
         return None
     return Json(value)
 
 
-def _backfill_tool(
-    cur: Cursor[Any],
-    *,
-    select_query: sql.SQL,
-    update_query: sql.SQL,
-    record: ToolSchemaRecord,
-) -> int:
-    """Update missing schemas for ``record`` and return affected rows."""
+def _needs_schema_update(
+    cur: Cursor[Any], *, select_query: sql.SQL, server_name: str, tool_name: str
+) -> bool:
+    """Return ``True`` if the database still lacks schema information."""
 
-    cur.execute(select_query, (record.server_name, record.tool_name))
+    cur.execute(select_query, (server_name, tool_name))
     res = cur.fetchone()
     missing = res[0] if res else 0
-    if missing == 0:
-        return 0
+    return bool(missing)
+
+
+def _backfill_tool(
+    cur: Cursor[Any], *, update_query: sql.SQL, record: ToolSchemaRecord
+) -> int:
+    """Update missing schemas for ``record`` and return affected rows."""
 
     cur.execute(
         update_query,
@@ -259,11 +478,20 @@ async def async_main(args: argparse.Namespace) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
     manager = MCPManager(config=args.config)
-    tool_records = await collect_tools(manager, transport_mode=args.transport)
+    tool_payloads = await collect_tools(manager, transport_mode=args.transport)
 
-    if not tool_records:
+    if not tool_payloads:
         LOGGER.warning("No tools discovered from the configured MCP servers.")
         return 1
+
+    model_manager = ModelManager()
+    try:
+        llm = _build_llm(model_manager, args.model)
+    except AssertionError as exc:
+        LOGGER.error("%s", exc)
+        return 1
+
+    llm.set_context(Context(env=dict(os.environ)))
 
     db_url = _get_db_url(args)
     if not db_url:
@@ -286,19 +514,42 @@ async def async_main(args: argparse.Namespace) -> int:
     try:
         with connection:
             with connection.cursor() as cur:
-                for record in tool_records:
-                    rows = _backfill_tool(
+                for payload in tool_payloads:
+                    if not _needs_schema_update(
                         cur,
                         select_query=select_query,
+                        server_name=payload.server_name,
+                        tool_name=payload.tool_name,
+                    ):
+                        LOGGER.info(
+                            "Skipping %s:%s because schema columns are already populated.",
+                            payload.server_name,
+                            payload.tool_name,
+                        )
+                        continue
+
+                    inferred = _infer_tool_schema(llm, payload)
+                    if inferred is None:
+                        continue
+                    if inferred.input_schema is None and inferred.output_schema is None:
+                        LOGGER.warning(
+                            "LLM returned no schema information for %s:%s; leaving row unchanged.",
+                            payload.server_name,
+                            payload.tool_name,
+                        )
+                        continue
+
+                    rows = _backfill_tool(
+                        cur,
                         update_query=update_query,
-                        record=record,
+                        record=inferred,
                     )
                     if rows:
                         updated += rows
                         LOGGER.info(
                             "Updated schemas for %s:%s (%d rows)",
-                            record.server_name,
-                            record.tool_name,
+                            inferred.server_name,
+                            inferred.tool_name,
                             rows,
                         )
     finally:
@@ -337,6 +588,14 @@ def build_parser() -> argparse.ArgumentParser:
         default="stdio",
         choices=["stdio", "sse", "auto"],
         help="Transport preference for connecting to MCP servers.",
+    )
+    parser.add_argument(
+        "--model",
+        required=True,
+        help=(
+            "Model alias registered with ModelManager (e.g. 'openai') or an alias:model_name "
+            "override specifying both provider alias and model."
+        ),
     )
     parser.add_argument(
         "--db-url",
