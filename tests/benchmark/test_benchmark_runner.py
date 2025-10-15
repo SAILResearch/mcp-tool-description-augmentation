@@ -89,6 +89,7 @@ class StubAgent(BaseAgent):
         self.initialize_calls = 0
         self.execute_calls = 0
         self.description_history: list[str] = []
+        self.change_servers_calls = 0
 
     async def _initialize(self) -> None:  # pragma: no cover - not used directly
         return None
@@ -101,6 +102,11 @@ class StubAgent(BaseAgent):
         self.description_history.append(tool.description)
         self.execute_calls += 1
         return AgentResponse(name=self.name, class_name=self.__class__.__name__, response="ok")
+
+    async def change_servers(self, mcp_servers):  # pragma: no cover - behaviour is trivial
+        self.change_servers_calls += 1
+        await self.cleanup()
+        await self.initialize(mcp_servers=mcp_servers)
 
     async def initialize(self, mcp_servers: list[dict[str, Any]] | None = None):
         self.initialize_calls += 1
@@ -125,6 +131,8 @@ def _execute_stub_benchmark(
     tmp_path,
     stub_agent: StubAgent,
     overrides_func,
+    *,
+    task_servers: list[dict[str, str]] | None = None,
     **runner_kwargs,
 ) -> None:
     config_path = tmp_path / "benchmark.yaml"
@@ -171,7 +179,7 @@ def _execute_stub_benchmark(
             return True
 
         def get_mcp_servers(self):
-            return []
+            return list(task_servers) if task_servers else []
 
         async def evaluate(self, result):
             return []
@@ -232,9 +240,11 @@ def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path)
         stub_agent,
         _load_overrides,
         tool_description_type=1,
+        task_servers=[{"name": "demo"}],
     )
 
-    assert stub_agent.initialize_calls == 2
+    assert stub_agent.change_servers_calls == 1
+    assert stub_agent.initialize_calls == stub_agent.change_servers_calls + 2
     assert stub_agent.execute_calls == 2
     assert stub_agent.description_history == [
         "Optimized tool description",
@@ -258,9 +268,41 @@ def test_runner_uses_specified_tool_description_components(monkeypatch, tmp_path
         _load_overrides,
         tool_description_type=1,
         tool_description_components=("Purpose", "Examples"),
+        task_servers=[{"name": "demo"}],
     )
 
     expected = "\n".join(parts[key] for key in ("Purpose", "Examples"))
+    assert stub_agent.description_history == [expected, expected]
+
+
+def test_runner_reapplies_component_overrides_after_reinit(monkeypatch, tmp_path):
+    stub_agent = StubAgent()
+    parts = {"Purpose": "Plan", "UsageGuideline": "Use responsibly"}
+
+    def _load_overrides(server_tools, db_url=None, component_keys=None):
+        assert component_keys == ("Purpose", "UsageGuideline")
+        description = "\n\n".join(parts[key] for key in component_keys)
+        return {"demo": {"dummy_tool": description}}
+
+    def _fake_additional_descriptions(*_, **__):
+        return {"demo": {"dummy_tool": "Example block that should stay hidden"}}
+
+    monkeypatch.setattr(
+        "mcpuniverse.utils.tool_descriptions.load_additional_tool_descriptions",
+        _fake_additional_descriptions,
+    )
+
+    _execute_stub_benchmark(
+        monkeypatch,
+        tmp_path,
+        stub_agent,
+        _load_overrides,
+        tool_description_type=1,
+        tool_description_components=("Purpose", "UsageGuideline"),
+        task_servers=[{"name": "demo"}],
+    )
+
+    expected = "\n".join(parts[key] for key in ("Purpose", "UsageGuideline"))
     assert stub_agent.description_history == [expected, expected]
 
 

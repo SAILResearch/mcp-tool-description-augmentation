@@ -265,7 +265,22 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
 
         outputs = []
         used_agents = []
-        agent_tool_overrides: Dict[BaseAgent, Mapping[str, Mapping[str, str]]] = {}
+        agent_tool_overrides: Dict[
+            BaseAgent, Tuple[Mapping[str, Mapping[str, str]], Tuple[str, ...]]
+        ] = {}
+
+        def _apply_agent_overrides(
+            agent_obj: BaseAgent,
+            stored: Tuple[Mapping[str, Mapping[str, str]], Tuple[str, ...]],
+        ) -> None:
+            overrides_map, component_tuple = stored
+            component_arg: Optional[Sequence[str]] = component_tuple or None
+            agent_obj.override_tool_descriptions(
+                overrides_map,
+                components=component_arg,
+                suppress_additional=bool(component_tuple),
+                suppress_performance=bool(component_tuple),
+            )
         for benchmark in self._benchmark_configs:
             agent: Executor = workflow.get_component(benchmark.agent)
             if isinstance(agent, BaseAgent) and truncate_tool_response is not None:
@@ -295,13 +310,12 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                     benchmark.agent,
                                     ", ".join(component_keys),
                                 )
-                            agent.override_tool_descriptions(
-                                overrides,
-                                components=component_keys,
-                                suppress_additional=bool(component_keys),
-                                suppress_performance=bool(component_keys),
+                            component_tuple = tuple(component_keys) if component_keys else tuple()
+                            _apply_agent_overrides(
+                                agent,
+                                (overrides, component_tuple),
                             )
-                            agent_tool_overrides[agent] = overrides
+                            agent_tool_overrides[agent] = (overrides, component_tuple)
                         else:
                             agent_tool_overrides.pop(agent, None)
                 else:
@@ -531,7 +545,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                     )
                                 overrides_for_agent = agent_tool_overrides.get(agent)
                                 if overrides_for_agent:
-                                    agent.override_tool_descriptions(overrides_for_agent)
+                                    _apply_agent_overrides(agent, overrides_for_agent)
                             elif target_source == "task_search":
                                 self._logger.info(
                                     "Recommended tools already active; keeping existing server configuration"
@@ -542,7 +556,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                                 current_server_state = normalised_target
                                 overrides_for_agent = agent_tool_overrides.get(agent)
                                 if overrides_for_agent:
-                                    agent.override_tool_descriptions(overrides_for_agent)
+                                    _apply_agent_overrides(agent, overrides_for_agent)
                         elif task.use_specified_server():
                             self._logger.warning(
                                 "Task requires specified servers but agent %s cannot change servers",
