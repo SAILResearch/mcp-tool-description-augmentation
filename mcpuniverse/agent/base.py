@@ -7,7 +7,18 @@ import os
 import uuid
 import json
 from abc import abstractmethod
-from typing import TYPE_CHECKING, List, Any, Dict, Union, Optional, Literal, Mapping
+from typing import (
+    TYPE_CHECKING,
+    List,
+    Any,
+    Dict,
+    Union,
+    Optional,
+    Literal,
+    Mapping,
+    Sequence,
+    Tuple,
+)
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from pydantic import BaseModel
@@ -186,6 +197,9 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         if self._tool_response_truncation_requested:
             self.configure_tool_response_truncation(True)
         self._tool_performance_scores_enabled: bool = False
+        self._suppress_additional_descriptions: bool = False
+        self._suppress_performance_scores: bool = False
+        self._tool_description_components: Dict[str, Tuple[str, ...]] = {}
 
     async def _initialize(self):
         """Initialize subclass."""
@@ -410,7 +424,11 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             return
 
         logger = self._logger or logging.getLogger(f"{self.__class__.__name__}:{self._name}")
-        additional_descriptions = load_additional_tool_descriptions()
+        additional_descriptions = (
+            {}
+            if self._suppress_additional_descriptions
+            else load_additional_tool_descriptions()
+        )
         scores: Dict[str, int] = {}
         tool_info_cls = None
         ranker = None
@@ -424,7 +442,10 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             tool_info_cls = _ToolInfo
             ranker = _rank
 
-        include_performance = bool(self._tool_performance_scores_enabled)
+        include_performance = (
+            bool(self._tool_performance_scores_enabled)
+            and not self._suppress_performance_scores
+        )
 
         if include_performance and tool_info_cls and ranker:
             tool_infos: List["ToolInfo"] = []
@@ -463,10 +484,25 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                         tool.name,
                         composed_description,
                     )
+                component_parts = self._tool_description_components.get(key)
+                if component_parts and logger.isEnabledFor(logging.INFO):
+                    logger.info(
+                        "Tool description for %s.%s assembled from components: %s",
+                        server_name,
+                        tool.name,
+                        ", ".join(component_parts),
+                    )
                 tool.description = composed_description
                 self._restore_tool_schema(tool, key)
 
-    def override_tool_descriptions(self, overrides: Mapping[str, Mapping[str, str]]) -> None:
+    def override_tool_descriptions(
+        self,
+        overrides: Mapping[str, Mapping[str, str]],
+        *,
+        components: Optional[Sequence[str]] = None,
+        suppress_additional: bool = False,
+        suppress_performance: bool = False,
+    ) -> None:
         """Replace base tool descriptions with external overrides.
 
         Parameters
@@ -476,8 +512,19 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
             present in ``overrides`` are updated.
         """
 
+        self._suppress_additional_descriptions = bool(suppress_additional)
+        self._suppress_performance_scores = bool(suppress_performance)
+
         if not overrides:
             return
+
+        component_tuple: Optional[Tuple[str, ...]] = None
+        if components is not None:
+            component_tuple = tuple(
+                str(component).strip()
+                for component in components
+                if str(component).strip()
+            )
 
         for server_name, tool_list in self._tools.items():
             server_overrides = overrides.get(server_name)
@@ -491,6 +538,12 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                 self._original_tool_descriptions[key] = new_description
                 tool.description = new_description
                 self._restore_tool_schema(tool, key)
+                if component_tuple is None:
+                    self._tool_description_components.pop(key, None)
+                elif component_tuple:
+                    self._tool_description_components[key] = component_tuple
+                else:
+                    self._tool_description_components.pop(key, None)
 
         self._refresh_tool_metadata()
 
@@ -582,6 +635,14 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                                     "Executing tool %s of server %s", tool_call["tool"], tool_call["server"])
                                 self._logger.info("With arguments: %s", str(tool_call["arguments"]))
                                 final_description = (tool.description or "").rstrip()
+                                component_parts = self._tool_description_components.get(
+                                    f"{tool_call['server']}__{tool_call['tool']}"
+                                )
+                                if component_parts:
+                                    self._logger.info(
+                                        "Tool description uses components: %s",
+                                        ", ".join(component_parts),
+                                    )
                                 self._logger.info(
                                     "Final tool description presented to the LLM:\n%s",
                                     final_description,

@@ -354,6 +354,7 @@ python tests/benchmark/test_benchmark_financial_analysis.py --task-search 1 --dr
 python tests/benchmark/test_benchmark_financial_analysis.py --truncate-tool-response 1
 # Use optimised tool descriptions from the database when calling the LLM
 python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1
+python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1 --components Purpose,Examples
 
 # Repository Management
 python tests/benchmark/test_benchmark_repository_management.py
@@ -632,7 +633,12 @@ Key options:
 
 When a database URL is provided, ensure the referenced instance contains the
 `tool_execution_records` table produced by MCP-Universe benchmarks so the CLI can
-evaluate tool performance accurately.
+evaluate tool performance accurately. Use the ``--components`` flag together with
+``--tool-description-type 1`` to limit the tool description passed to the LLM to
+specific entries from the ``tool_description_components`` column. Acceptable keys
+include ``Purpose``, ``Examples``, ``Limitation``, ``UsageGuideline``, and
+``Parameter_Explanation``. The default ``all`` value keeps the optimised
+description intact.
 
 ### Optimize MCP tool descriptions
 

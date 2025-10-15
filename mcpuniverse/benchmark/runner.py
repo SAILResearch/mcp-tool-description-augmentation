@@ -210,6 +210,7 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
             dry_run: bool = False,
             truncate_tool_response: Optional[bool] = None,
             tool_description_type: int = 0,
+            tool_description_components: Optional[Sequence[str]] = None,
     ) -> List[BenchmarkResult]:
         """
         Run specified benchmarks.
@@ -231,10 +232,23 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                 provided to the LLM. ``0`` keeps the descriptions returned by the
                 MCP servers, while ``1`` replaces them with entries stored in the
                 ``mcp_servers`` table when available.
+            tool_description_components (Sequence[str] | None): Optional list of
+                component names concatenated from the
+                ``tool_description_components`` column when
+                ``tool_description_type`` is ``1``. Provide ``None`` or an empty
+                sequence to use the optimised description verbatim.
         """
         task_search = bool(task_search)
         dry_run = bool(dry_run)
         tool_description_type = int(tool_description_type or 0)
+        component_keys: Optional[Tuple[str, ...]] = None
+        if tool_description_components:
+            filtered = tuple(
+                str(component).strip()
+                for component in tool_description_components
+                if str(component).strip()
+            )
+            component_keys = filtered or None
         db_url = (self._context.get_env("DB_URL", "")
                   or self._context.get_env("DATABASE_URL", ""))
 
@@ -269,12 +283,24 @@ class BenchmarkRunner(metaclass=AutodocABCMeta):
                         overrides = load_optimized_tool_descriptions(
                             server_tools,
                             db_url=db_url or None,
+                            component_keys=component_keys,
                         )
                         if overrides:
                             self._logger.info(
                                 "Applying optimised tool descriptions for agent %s", benchmark.agent
                             )
-                            agent.override_tool_descriptions(overrides)
+                            if component_keys:
+                                self._logger.info(
+                                    "Using tool description components for agent %s: %s",
+                                    benchmark.agent,
+                                    ", ".join(component_keys),
+                                )
+                            agent.override_tool_descriptions(
+                                overrides,
+                                components=component_keys,
+                                suppress_additional=bool(component_keys),
+                                suppress_performance=bool(component_keys),
+                            )
                             agent_tool_overrides[agent] = overrides
                         else:
                             agent_tool_overrides.pop(agent, None)

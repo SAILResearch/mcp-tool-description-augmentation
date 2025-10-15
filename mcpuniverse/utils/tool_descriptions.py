@@ -5,7 +5,7 @@ import json
 import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, Optional
+from typing import Dict, Iterable, Mapping, Optional, Tuple
 
 try:  # pragma: no cover - optional dependency
     import psycopg
@@ -105,6 +105,7 @@ def load_optimized_tool_descriptions(
     server_tools: Mapping[str, Iterable[str]],
     *,
     db_url: Optional[str] = None,
+    component_keys: Optional[Iterable[str]] = None,
 ) -> Dict[str, Dict[str, str]]:
     """Return optimised tool descriptions stored in the ``mcp_servers`` table."""
 
@@ -112,6 +113,12 @@ def load_optimized_tool_descriptions(
         return {}
 
     overrides: Dict[str, Dict[str, str]] = {}
+    components_tuple: Tuple[str, ...] = tuple(
+        str(component).strip()
+        for component in component_keys or []
+        if str(component).strip()
+    )
+    use_components = bool(components_tuple)
 
     try:  # pragma: no cover - depends on optional external service
         with psycopg.connect(db_url) as conn:
@@ -124,7 +131,8 @@ def load_optimized_tool_descriptions(
                         """
                         SELECT DISTINCT ON (tool_name)
                                tool_name,
-                               tool_optimized_description
+                               tool_optimized_description,
+                               tool_description_components
                           FROM mcp_servers
                          WHERE mcp_server_name = %s
                            AND tool_name = ANY(%s)
@@ -134,10 +142,39 @@ def load_optimized_tool_descriptions(
                         (server_name, tool_list),
                     )
                     rows = cur.fetchall()
-                    for tool_name, description in rows:
-                        if not description:
-                            continue
-                        overrides.setdefault(server_name, {})[tool_name] = str(description)
+                    for tool_name, description, components in rows:
+                        text: str = ""
+                        if use_components:
+                            component_map: Mapping[str, str] | None
+                            if isinstance(components, str):
+                                try:
+                                    component_map = json.loads(components)
+                                except Exception:  # pragma: no cover - defensive
+                                    component_map = None
+                            elif isinstance(components, Mapping):
+                                component_map = components
+                            else:
+                                component_map = None
+
+                            if isinstance(component_map, Mapping):
+                                parts = []
+                                for key in components_tuple:
+                                    value = component_map.get(key)
+                                    if value is None:
+                                        continue
+                                    if isinstance(value, str):
+                                        cleaned = value.strip()
+                                    else:
+                                        cleaned = str(value).strip()
+                                    if cleaned:
+                                        parts.append(cleaned)
+                                text = "\n\n".join(parts).strip()
+                        else:
+                            if description:
+                                text = str(description)
+
+                        if text:
+                            overrides.setdefault(server_name, {})[tool_name] = text
     except Exception as exc:  # pragma: no cover - defensive logging
         LOGGER.warning("Failed to load optimised tool descriptions: %s", exc)
         return {}

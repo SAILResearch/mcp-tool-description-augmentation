@@ -120,7 +120,13 @@ class StubAgent(BaseAgent):
         return None
 
 
-def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path):
+def _execute_stub_benchmark(
+    monkeypatch,
+    tmp_path,
+    stub_agent: StubAgent,
+    overrides_func,
+    **runner_kwargs,
+) -> None:
     config_path = tmp_path / "benchmark.yaml"
     config_path.write_text(textwrap.dedent(
         """
@@ -133,8 +139,6 @@ def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path)
             - task-two.json
         """
     ))
-
-    stub_agent = StubAgent()
 
     class DummyWorkflow:
         def __init__(self, *args, **kwargs):
@@ -200,9 +204,6 @@ def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path)
     def _send_message(*args, **kwargs):  # pragma: no cover - trivial in test
         return None
 
-    def _load_overrides(server_tools, db_url=None):
-        return {"demo": {"dummy_tool": "Optimized tool description"}}
-
     monkeypatch.setattr(runner_module, "WorkflowBuilder", DummyWorkflow)
     monkeypatch.setattr(runner_module, "Task", DummyTask)
     monkeypatch.setattr(runner_module, "Tracer", DummyTracer)
@@ -210,13 +211,28 @@ def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path)
     monkeypatch.setattr(runner_module, "send_message", _send_message)
     monkeypatch.setattr(runner_module, "record_tool_history", lambda *_, **__: None)
     monkeypatch.setattr(runner_module, "resolve_llm_model_name", lambda *_, **__: "model")
-    monkeypatch.setattr(runner_module, "load_optimized_tool_descriptions", _load_overrides)
+    monkeypatch.setattr(runner_module, "load_optimized_tool_descriptions", overrides_func)
 
     async def _run():
         runner = BenchmarkRunner(str(config_path))
-        await runner.run(tool_description_type=1)
+        await runner.run(**runner_kwargs)
 
     asyncio.run(_run())
+
+
+def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path):
+    stub_agent = StubAgent()
+
+    def _load_overrides(server_tools, db_url=None, component_keys=None):
+        return {"demo": {"dummy_tool": "Optimized tool description"}}
+
+    _execute_stub_benchmark(
+        monkeypatch,
+        tmp_path,
+        stub_agent,
+        _load_overrides,
+        tool_description_type=1,
+    )
 
     assert stub_agent.initialize_calls == 2
     assert stub_agent.execute_calls == 2
@@ -224,6 +240,28 @@ def test_runner_reinitializes_agent_for_specified_servers(monkeypatch, tmp_path)
         "Optimized tool description",
         "Optimized tool description",
     ]
+
+
+def test_runner_uses_specified_tool_description_components(monkeypatch, tmp_path):
+    stub_agent = StubAgent()
+    parts = {"Purpose": "Do the thing", "Examples": "Use it wisely"}
+
+    def _load_overrides(server_tools, db_url=None, component_keys=None):
+        assert component_keys == ("Purpose", "Examples")
+        description = "\n\n".join(parts[key] for key in component_keys)
+        return {"demo": {"dummy_tool": description}}
+
+    _execute_stub_benchmark(
+        monkeypatch,
+        tmp_path,
+        stub_agent,
+        _load_overrides,
+        tool_description_type=1,
+        tool_description_components=("Purpose", "Examples"),
+    )
+
+    expected = "\n".join(parts[key] for key in ("Purpose", "Examples"))
+    assert stub_agent.description_history == [expected, expected]
 
 
 if __name__ == "__main__":
