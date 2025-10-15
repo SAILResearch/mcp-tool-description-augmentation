@@ -59,6 +59,8 @@ Even state-of-the-art models show significant limitations in real-world MCP inte
 - [Utility Scripts](#utility-scripts)
     - [List tool performance scores](#list-tool-performance-scores)
     - [Optimize MCP tool descriptions](#optimize-mcp-tool-descriptions)
+    - [Dissect MCP tool descriptions](#dissect-mcp-tool-descriptions)
+    - [Backfill MCP tool schemas](#backfill-mcp-tool-schemas)
     - [Evaluate MCP tool description quality](#evaluate-mcp-tool-description-quality)
     - [Analyze tool description quality reports](#analyze-tool-description-quality-reports)
     - [Extract tool call metadata from logs](#extract-tool-call-metadata-from-logs)
@@ -668,6 +670,81 @@ Before running the CLI, ensure the destination database contains the
 `mcp_servers` table with the schema expected by the script. The tool logs which
 server/tool pairs were updated and exits with a non-zero status if no
 descriptions could be stored.
+
+### Dissect MCP tool descriptions
+
+Before dissecting descriptions, run the database migration that adds the
+`tool_description_components` column to the `mcp_servers` table:
+
+```bash
+python -m mcpuniverse.app.db.migration \
+  --db-url postgresql+asyncpg://user:pass@host:5432/dbname
+```
+
+The CLI reads the database URL from `--db-url` or from `DB_SOURCE`, `DB_URL`, or
+`DATABASE_URL`. Provide an async-compatible SQLAlchemy URL (for PostgreSQL, use
+the `postgresql+asyncpg://` scheme).
+
+Once the column exists, use the `dissect_tool_descriptions` CLI to split each
+tool description into the required documentation components:
+
+```bash
+python -m mcpuniverse.scripts.dissect_tool_descriptions \
+  --model <MODEL_ALIAS_OR_ALIAS:MODEL_NAME> \
+  --db-url postgresql://user:pass@host:5432/dbname \
+  [--additional-descriptions path/to/additional_tool_description.json] \
+  [--all-versions] \
+  [--include-existing] \
+  [--dry-run]
+```
+
+Key notes:
+
+- The CLI combines each row's `tool_optimized_description` with the
+  server/tool-specific examples stored in
+  `mcpuniverse/mcp/additional_tool_description.json`. The merged text and the
+  component description (when present) are passed to the LLM.
+- `--model` accepts the same alias or `alias:model_name` format used by the
+  other scripts. Configure the relevant provider credentials before running the
+  CLI.
+- Supply a standard psycopg-compatible connection string through `--db-url` (or
+  set `DB_URL`/`DATABASE_URL`). Only rows missing
+  `tool_description_components` are processed by default; use
+  `--include-existing` to reprocess populated rows.
+- Enable `--dry-run` to preview the structured output without persisting it.
+- Successful runs store a JSON object with the keys `Purpose`,
+  `UsageGuideline`, `Parameter_Explanation`, `Limitation`, and `Examples` for
+  each processed server/tool pair.
+
+### Compare structured components with the total description
+
+After populating `tool_description_components`, you can verify that the stored
+sections still capture the meaning of the full description by measuring their
+semantic distance. The `compare_tool_description_components` CLI merges the
+component values back into a single block of text, concatenates the optimized
+description with the additional example snippet, embeds both texts with OpenAI,
+and reports the cosine distance for each server/tool pair in a CSV file.
+
+```bash
+python -m mcpuniverse.scripts.compare_tool_description_components \
+  --db-url postgresql://user:pass@host:5432/dbname \
+  --output tool_description_distances.csv \
+  [--additional-description-file path/to/additional_tool_description.json] \
+  [--embedding-model text-embedding-3-large] \
+  [--limit 25]
+```
+
+Notes:
+
+- The script requires an OpenAI-compatible embeddings endpoint. Provide an API
+  key with `--api-key` or the `OPENAI_API_KEY` environment variable. Use
+  `--api-base` to target a compatible service.
+- Rows missing either the optimized description or the component object are
+  skipped by default. Include `--include-missing-descriptions` or
+  `--include-missing-components` to override that behaviour.
+- The resulting CSV lists `mcp_server_name`, `tool_name`, and the cosine
+  distance. Lower values indicate closer semantic alignment between the merged
+  components and the total description.
 
 ### Backfill MCP tool schemas
 
