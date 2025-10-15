@@ -1,11 +1,12 @@
-"""
-Utilities for database migration.
-"""
-import os
+"""Utilities for database migration."""
+import argparse
 import asyncio
+import os
 import threading
-from typing import Dict, List
+from typing import Dict, List, Sequence
+
 from sqlalchemy import text
+
 from mcpuniverse.app.db.database import sessionmanager
 
 
@@ -55,3 +56,55 @@ def run_migration(folder: str = ""):
     thread = threading.Thread(target=asyncio.run, args=(_migrate(),))
     thread.start()
     thread.join()
+
+
+def _resolve_db_url(cli_value: str | None) -> str | None:
+    """Return the database URL from CLI or environment variables."""
+
+    if cli_value:
+        return cli_value
+
+    for env_var in ("DB_SOURCE", "DB_URL", "DATABASE_URL"):
+        value = os.getenv(env_var)
+        if value:
+            return value
+    return None
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Command-line interface for running database migrations."""
+
+    parser = argparse.ArgumentParser(description="Apply SQL migrations for MCP-Universe.")
+    parser.add_argument(
+        "--db-url",
+        default=None,
+        help=(
+            "Database connection string. Defaults to DB_SOURCE, DB_URL, or DATABASE_URL environment variables."
+        ),
+    )
+    parser.add_argument(
+        "--folder",
+        default="",
+        help="Directory containing migration SQL files (default: built-in migrations).",
+    )
+
+    args = parser.parse_args(argv)
+    db_url = _resolve_db_url(args.db_url)
+    if not db_url:
+        parser.error(
+            "Database URL not provided. Use --db-url or set DB_SOURCE/DB_URL/DATABASE_URL."
+        )
+
+    sessionmanager.init(db_url)
+    try:
+        run_migration(folder=args.folder)
+    finally:
+        asyncio.run(sessionmanager.close())
+
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover - manual execution helper
+    import sys
+
+    sys.exit(main())
