@@ -1,7 +1,11 @@
 import os
 import unittest
 from mcpuniverse.mcp.manager import MCPManager
-from mcpuniverse.agent.utils import get_tools_description, build_system_prompt
+from mcpuniverse.agent.utils import (
+    get_tools_description,
+    build_system_prompt,
+    format_tool_description_block,
+)
 
 
 class TestAgentUtils(unittest.IsolatedAsyncioTestCase):
@@ -12,6 +16,16 @@ class TestAgentUtils(unittest.IsolatedAsyncioTestCase):
         tools = await client.list_tools()
         description = get_tools_description({"weather": tools})
         print(description)
+        await client.cleanup()
+
+    async def test_single_block_matches_aggregate_format(self):
+        manager = MCPManager()
+        client = await manager.build_client(server_name="weather", transport="stdio")
+        tools = await client.list_tools()
+        self.assertTrue(tools, "Weather server should expose at least one tool")
+        block = format_tool_description_block("weather", tools[0])
+        aggregate = get_tools_description({"weather": [tools[0]]})
+        self.assertEqual(block, aggregate)
         await client.cleanup()
 
     async def test_build_system_prompt(self):

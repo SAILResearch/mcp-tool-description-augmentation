@@ -42,6 +42,7 @@ from mcpuniverse.utils.tool_descriptions import (
     compose_tool_description,
     load_additional_tool_descriptions,
 )
+from mcpuniverse.agent.utils import format_tool_description_block
 
 if TYPE_CHECKING:
     from mcpuniverse.utils.task_search import ToolInfo
@@ -643,6 +644,14 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                                         "Tool description uses components: %s",
                                         ", ".join(component_parts),
                                     )
+                                tool_prompt_snapshot = format_tool_description_block(
+                                    tool_call["server"],
+                                    tool,
+                                )
+                                self._logger.info(
+                                    "Tool prompt context shown to the LLM when choosing this tool:\n%s",
+                                    tool_prompt_snapshot,
+                                )
                                 self._logger.info(
                                     "Final tool description presented to the LLM:\n%s",
                                     final_description,
