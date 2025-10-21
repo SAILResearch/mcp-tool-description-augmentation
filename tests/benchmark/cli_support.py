@@ -20,6 +20,12 @@ the same switches:
     Select the strategy for providing tool descriptions to the LLM.  ``0`` keeps
     the descriptions returned by the MCP servers, while ``1`` replaces them
     with optimised entries stored in the ``mcp_servers`` database table.
+
+``--components``
+    When used with ``--tool-description-type 1``, restrict the tool description
+    to the comma-separated component names stored in the
+    ``tool_description_components`` column.  Defaults to ``all`` (use the full
+    optimised description).
 """
 
 from __future__ import annotations
@@ -48,6 +54,7 @@ class BenchmarkCLIConfig:
     dry_run: bool = False
     truncate_tool_response: bool = False
     tool_description_type: int = 0
+    tool_description_components: tuple[str, ...] = ()
 
     def runner_kwargs(self) -> dict[str, bool | int]:
         """Return keyword arguments compatible with ``BenchmarkRunner.run``."""
@@ -57,6 +64,9 @@ class BenchmarkCLIConfig:
             "dry_run": self.dry_run,
             "truncate_tool_response": self.truncate_tool_response,
             "tool_description_type": self.tool_description_type,
+            "tool_description_components": (
+                self.tool_description_components or None
+            ),
         }
 
 
@@ -75,12 +85,19 @@ def _parse_cli_args(argv: Sequence[str] | None = None) -> tuple[BenchmarkCLIConf
     parser.add_argument("--dry-run", type=int, default=0)
     parser.add_argument("--truncate-tool-response", type=int, default=0)
     parser.add_argument("--tool-description-type", type=int, default=0)
+    parser.add_argument("--components", type=str, default="all")
     parsed, remaining = parser.parse_known_args(argv)
+    components_value = str(parsed.components or "").strip()
     config = BenchmarkCLIConfig(
         task_search=bool(parsed.task_search),
         dry_run=bool(parsed.dry_run),
         truncate_tool_response=bool(parsed.truncate_tool_response),
         tool_description_type=int(parsed.tool_description_type),
+        tool_description_components=tuple(
+            component.strip()
+            for component in components_value.split(",")
+            if component.strip() and components_value.lower() != "all"
+        ),
     )
     return config, remaining
 

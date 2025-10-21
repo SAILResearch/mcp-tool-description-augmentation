@@ -11,6 +11,39 @@ from jinja2 import Environment
 from mcp.types import Tool
 
 
+def _collect_argument_blocks(tool: Tool) -> List[str]:
+    """Return formatted argument blocks for a tool's input schema."""
+
+    args: List[str] = []
+    schema = getattr(tool, "inputSchema", None)
+    if schema is None:
+        schema = getattr(tool, "input_schema", None)
+    if isinstance(schema, dict) and "properties" in schema:
+        for param_name, param_info in schema["properties"].items():
+            info = "\n".join(
+                ["    " + line for line in yaml.dump(param_info, sort_keys=False, indent=2).split("\n")]
+            )
+            arg = f"- {param_name}:\n{info}".strip()
+            if param_name in schema.get("required", []):
+                arg += "\n    required: true"
+            args.append(arg.strip())
+    return args
+
+
+def format_tool_description_block(server_name: str, tool: Tool) -> str:
+    """Format a single tool description block exactly as seen by the LLM."""
+
+    args = _collect_argument_blocks(tool)
+    lines = [line for line in (tool.description or "").split("\n") if line.strip()]
+    arguments = f"\n{chr(10).join(args)}" if args else " No arguments"
+    return (
+        f"Server: {server_name}\n"
+        f"Tool: {tool.name}\n"
+        f"Description:\n{chr(10).join(lines)}\n"
+        f"Arguments:{arguments}"
+    )
+
+
 def get_tools_description(tools: Dict[str, List[Tool]]) -> str:
     """
     Generate a formatted description of the specified tools.
@@ -28,25 +61,7 @@ def get_tools_description(tools: Dict[str, List[Tool]]) -> str:
     descriptions = []
     for server_name, tool_list in tools.items():
         for tool in tool_list:
-            args = []
-            schema = getattr(tool, "inputSchema", None)
-            if schema is None:
-                schema = getattr(tool, "input_schema", None)
-            if isinstance(schema, dict) and "properties" in schema:
-                for param_name, param_info in schema["properties"].items():
-                    info = "\n".join(["    " + line for line in
-                                      yaml.dump(param_info, sort_keys=False, indent=2).split("\n")])
-                    arg = f"- {param_name}:\n{info}".strip()
-                    if param_name in schema.get("required", []):
-                        arg += "\n    required: true"
-                    args.append(arg.strip())
-            lines = [line for line in tool.description.split("\n") if line.strip()]
-            arguments = f"\n{chr(10).join(args)}" if args else " No arguments"
-            description = (f"Server: {server_name}\n"
-                           f"Tool: {tool.name}\n"
-                           f"Description:\n{chr(10).join(lines)}\n"
-                           f"Arguments:{arguments}")
-            descriptions.append(description)
+            descriptions.append(format_tool_description_block(server_name, tool))
     return "\n\n".join(descriptions).strip()
 
 

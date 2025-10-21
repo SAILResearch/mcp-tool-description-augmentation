@@ -1,0 +1,434 @@
+arguments,response_text,server,tool_name
+"{""children"": [""The first paper title: BLIP: Bootstrapping Language-Image Pre-training for Unified Vision-Language Understanding and Generation"", ""The second paper title: Delving into Out-of-Distribution Detection with Vision-Language Pretraining""], ""parent"": {""page_id"": ""a338e9f693c644b0aa1b3c1ebd4a6254""}, ""properties"": {""title"": [{""text"": {""content"": ""Papers-VLP""}, ""type"": ""text""}], ""type"": ""title""}}","{""status"":400,""object"":""error"",""code"":""validation_error"",""message"":""body failed validation: body.children[0] should be an object, instead was `\""The first paper title: BLIP: Bootstrapping Language-Im...`."",""request_id"":""4afc1456-00c2-4de9-8faf-e6afa0c2c979""}",notion,API-post-page
+"{""children"": [{""paragraph"": {""rich_text"": [{""text"": {""content"": ""The first paper title: BLIP: Bootstrapping Language-Image Pre-training for Unified Vision-Language Understanding and Generation. The second paper title: Unable to definitively identify a 2-author EMNLP 2019 VLP paper matching all criteria (Adobe, Shanghai, VLP) from public search results. If you have more clues (author name, partial title), I can help further!""}, ""type"": ""text""}]}, ""type"": ""paragraph""}], ""parent"": {""page_id"": ""a338e9f693c644b0aa1b3c1ebd4a6254""}, ""properties"": {""title"": [{""text"": {""content"": ""Papers-VLP""}, ""type"": ""text""}]}}","{""status"":404,""object"":""error"",""code"":""object_not_found"",""message"":""Could not find page with ID: a338e9f6-93c6-44b0-aa1b-3c1ebd4a6254. Make sure the relevant pages and databases are shared with your integration."",""request_id"":""2e659d41-1832-465c-ac92-19cfd8de3a04""}",notion,API-post-page
+"{""children"": [{""paragraph"": {""rich_text"": [{""text"": {""content"": ""The first paper title: GOAT-Bench: Safety Insights to Large Multimodal Models through Meme-Based Social Abuse""}, ""type"": ""text""}]}, ""type"": ""paragraph""}, {""paragraph"": {""rich_text"": [{""text"": {""content"": ""The second paper title: Meme Trojan: Backdoor Attacks Against Hateful Meme Detection via Cross-Modal Triggers""}, ""type"": ""text""}]}, ""type"": ""paragraph""}], ""parent"": {""page_id"": ""a338e9f693c644b0aa1b3c1ebd4a6254""}, ""properties"": {""title"": [{""text"": {""content"": ""Papers-Meme""}, ""type"": ""text""}], ""type"": ""title""}}","{""object"":""page"",""id"":""2891a76c-f60c-812f-a541-fb70332f4961"",""created_time"":""2025-10-11T05:18:00.000Z"",""last_edited_time"":""2025-10-11T05:18:00.000Z"",""created_by"":{""object"":""user"",""id"":""0baf88d4-89d1-4e0e-902f-18e0b71be22d""},""last_edited_by"":{""object"":""user"",""id"":""0baf88d4-89d1-4e0e-902f-18e0b71be22d""},""cover"":null,""icon"":null,""parent"":{""type"":""page_id"",""page_id"":""a338e9f6-93c6-44b0-aa1b-3c1ebd4a6254""},""archived"":false,""in_trash"":false,""is_locked"":false,""properties"":{""title"":{""id"":""title"",""type"":""title"",""title"":[{""type"":""text"",""text"":{""content"":""Papers-Meme"",""link"":null},""annotations"":{""bold"":false,""italic"":false,""strikethrough"":false,""underline"":false,""code"":false,""color"":""default""},""plain_text"":""Papers-Meme"",""href"":null}]}},""url"":""https://www.notion.so/Papers-Meme-2891a76cf60c812fa541fb70332f4961"",""public_url"":null,""request_id"":""215a6989-3004-43a4-94ad-c022af1d7f4b""}",notion,API-post-page
+"{""children"": [{""paragraph"": {""rich_text"": [{""text"": {""content"": ""The first paper title: GOAT-Bench: Safety Insights to Large Multimodal Models through Meme-Based Social Abuse""}, ""type"": ""text""}]}}, {""paragraph"": {""rich_text"": [{""text"": {""content"": ""The second paper title: Meme Trojan: Backdoor Attacks Against Hateful Meme Detection via Cross-Modal Triggers""}, ""type"": ""text""}]}}], ""parent"": {""page_id"": ""a338e9f693c644b0aa1b3c1ebd4a6254""}, ""properties"": {""title"": [{""text"": {""content"": ""Papers-Meme""}, ""type"": ""text""}]}}","{""status"":404,""object"":""error"",""code"":""object_not_found"",""message"":""Could not find page with ID: a338e9f6-93c6-44b0-aa1b-3c1ebd4a6254. Make sure the relevant pages and databases are shared with your integration."",""request_id"":""66800a88-4b90-4f3d-b83e-4930b95af0bc""}",notion,API-post-page
+"{""dateRestrict"": ""m1"", ""num_results"": 5, ""query"": ""Kenyan author Sh20 million royalties changed name inspiration"", ""resultType"": ""news""}","Search results for ""Kenyan author Sh20 million royalties changed name inspiration"":
+
+Categories: Co (1)
+
+Showing page 1 of approximately 1 results
+
+1. Kenya Avocado Export Prices 2025 - Farmers Trend Ltd.
+   URL: https://farmerstrend.co.ke/trending/kenya-avocado-export-prices-2025/
+   Sep 20, 2025 ... Did you know that avocados were once a luxury food reserved for the tables of royalty. But now avocados are enjoyed around the world by people from all ...
+
+",google-search-new,google_search
+"{""filter"": {""property"": ""object"", ""value"": ""page""}, ""page_size"": 10, ""query"": """"}","{""object"":""list"",""results"":[],""next_cursor"":null,""has_more"":false,""type"":""page_or_database"",""page_or_database"":{},""request_id"":""1d68114a-b782-4304-918f-f8c9230c8557""}",notion,API-post-search
+"{""format"": ""markdown"", ""url"": ""http://majingcuhk.github.io/pages/mypublications/""}","Content from: http://majingcuhk.github.io/pages/mypublications/
+
+Title: Home
+
+Stats: 2336 words, 21223 characters
+
+Summary: ...
+
+Content Preview:
+Publications
+
+Research papers (journals, conferences, workshops)
+
+## 2025
+
+* MemeArena: Automating Context-Aware Unbiased Evaluation of Harmfulness Understanding for Multimodal Large Language Models 
+ Zixin Chen, Hongzhan Lin, Kaixin Li, Ziyang Luo, Yayue Deng, **Jing Ma** 
+ **EMNLP 2025**: The 2025 Conference on Empirical Methods in Natural Language Processing, Nov 2025, Suzhou, China.
+ 
+* MM-CRITIC: A Holistic Evaluation of Large Multimodal Models as Multimodal Critique 
+ Gailun Zeng, Ziyang L...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""format"": ""markdown"", ""url"": ""https://arxiv.org/abs/2411.13281""}","Content from: https://arxiv.org/abs/2411.13281
+
+Title: [2411.13281] VideoAutoArena: An Automated Arena for Evaluating Large Multimodal Models in Video Analysis through User Simulationopen searchopen navigation menucontact arXivsubscribe to arXiv mailings
+Description: Abstract page for arXiv paper 2411.13281: VideoAutoArena: An Automated Arena for Evaluating Large Multimodal Models in Video Analysis through User Simulation
+
+Stats: 291 words, 2533 characters
+
+Summary: [View PDF](/pdf/2411.13281) [HTML (experimental)](https://arxiv.org/html/2411.13281v2)
+
+> Abstract:Large multimodal models (LMMs) with advanced video analysis capabilities have recently garnered significant attention....
+
+Content Preview:
+[View PDF](/pdf/2411.13281) [HTML (experimental)](https://arxiv.org/html/2411.13281v2)
+
+> Abstract:Large multimodal models (LMMs) with advanced video analysis capabilities have recently garnered significant attention. However, most evaluations rely on traditional methods like multiple-choice questions in benchmarks such as VideoMME and LongVideoBench, which are prone to lack the depth needed to capture the complex demands of real-world users. To address this limitation-and due to the prohibitive...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search,extract_webpage_content
+"{""format"": ""markdown"", ""url"": ""https://www.lemonde.fr/en/sport/jo-2024/results/athletics/100m-m/""}","Content from: https://www.lemonde.fr/en/sport/jo-2024/results/athletics/100m-m/
+
+Title: Results 100m Paris 2024 Olympics results: athletics qualifications at the Olympic Games
+Description: Explore the scores and performances of each 100m in athletics. Follow the full results of the Paris 2024 Olympics with « Le Monde ».
+
+Stats: 1864 words, 24316 characters
+
+Summary: ...
+
+Content Preview:
+Perf
+
+![](https://www.lemonde.fr/en/bucket/static/img/flags/cfi/3x2/US.svg)
+
+Noah Lyles
+
+9.79s
+
+![](https://www.lemonde.fr/en/bucket/static/img/flags/cfi/3x2/JM.svg)
+
+Kishane Thompson
+
+9.79s
+
+![](https://www.lemonde.fr/en/bucket/static/img/flags/cfi/3x2/US.svg)
+
+Fred Kerley
+
+9.81s
+
+4
+
+![](https://www.lemonde.fr/en/bucket/static/img/flags/cfi/3x2/ZA.svg)
+
+Akani Simbine
+
+9.82s
+
+5
+
+![](https://www.lemonde.fr/en/bucket/static/img/flags/cfi/3x2/IT.svg)
+
+Marcell Jacobs
+
+9.85s
+
+6
+
+![](https://www.lemon...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""format"": ""markdown"", ""url"": ""https://www.reddit.com/r/tipofmytongue/comments/1bq908j/tomt_tv_series_19701990s_western_drama_series/""}","Content from: https://www.reddit.com/r/tipofmytongue/comments/1bq908j/tomt_tv_series_19701990s_western_drama_series/
+
+Title: Reddit - The heart of the internet
+
+Stats: 15 words, 116 characters
+
+Summary: Open navigation [](/)Go to Reddit Home
+
+[Log In](https://www.reddit.com/login/) Log in to Reddit
+
+Open settings menu
+
+Content Preview:
+Open navigation [](/)Go to Reddit Home
+
+[Log In](https://www.reddit.com/login/) Log in to Reddit
+
+Open settings menu
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""format"": ""markdown"", ""url"": ""https://www.sciencedirect.com/science/article/pii/S2666833525001601""}","Failed to fetch webpage: Request failed with status code 400
+
+Common issues:
+- Check if the URL is accessible in a browser
+- Ensure the webpage is public
+- Try again if it's a temporary network issue",google-search-new,extract_webpage_content
+"{""format"": ""markdown"", ""urls"": [""http://thechels.info/wiki/Ben_Chilwell"", ""https://en.wikipedia.org/wiki/2024%E2%80%9325_Chelsea_F.C._season""]}","Content from 2 webpages:
+
+URL: https://en.wikipedia.org/wiki/2024%E2%80%9325_Chelsea_F.C._season
+Title: 2024–25 Chelsea F.C. season - Wikipedia
+Stats: 21857 words
+Summary: [Chelsea](/wiki/Chelsea_F.C....
+Preview: [Chelsea](/wiki/Chelsea_F.C. ""Chelsea F.C."")
+
+[2024–25](/wiki/2024%E2%80%9325_in_English_football ""2024–25 in English football"") season
+
+[![](//upload...
+
+URL: http://thechels.info/wiki/Ben_Chilwell
+Title: Ben Chilwell - TheChels.info - The Chelsea Football Club Wiki
+Stats: 1306 words
+Summary: ...
+Preview: ### From TheChels.info - The Chelsea Football Club Wiki
+
+Jump to: [navigation](# mw-head), [search](# p-search)
+
+**Ben Chilwell**
+
+[![Ben-chilwell.jpg...
+
+Note: These are previews of the content. To analyze the full content of a specific URL, use the extract_webpage_content tool with that URL.",google-search-new,extract_multiple_webpages
+"{""format"": ""markdown"", ""urls"": [""https://www.basketball-reference.com/international/players/hansen-yang-1.html"", ""https://www.proballers.com/basketball/player/272492/hansen-yang""]}","Content from 2 webpages:
+
+URL: https://www.proballers.com/basketball/player/272492/hansen-yang
+Error: Failed to fetch webpage: Request failed with status code 403
+
+URL: https://www.basketball-reference.com/international/players/hansen-yang-1.html
+Title: Hansen Yang International Stats | Basketball-Reference.com
+Stats: 570 words
+Summary: ...
+Preview: Per Game Table 
+
+Season
+
+Team
+
+League
+
+G
+
+MP
+
+FG
+
+FGA
+
+FG%
+
+3P
+
+3PA
+
+3P%
+
+2P
+
+2PA
+
+2P%
+
+FT
+
+FTA
+
+FT%
+
+ORB
+
+DRB
+
+TRB
+
+AST
+
+STL
+
+BLK
+
+TOV
+
+PF
+
+PTS
+
+[202...
+
+Note: These are previews of the content. To analyze the full content of a specific URL, use the extract_webpage_content tool with that URL.",google-search-new,extract_multiple_webpages
+"{""format"": ""text"", ""url"": ""https://history.berkeley.edu/sites/default/files/general/cv_aperi_jan_2020.pdf""}","Content from: https://history.berkeley.edu/sites/default/files/general/cv_aperi_jan_2020.pdf
+
+Title: 
+
+Stats: 6594 words, 164541 characters
+
+Summary: ...
+
+Content Preview:
+%PDF-1.3
+%���������
+4 0 obj
+<< /Length 5 0 R /Filter /FlateDecode >>
+stream
+x�\ے��}�W�S��W��me�%�${�8��+�iI�k)����ONO�s���U�C�*s����s�{�Y}�~V�QݩF�jە�7��W�����V����%.�ϊ���ݜ5�n˳�Q�7��*[�->�����ݨ���VZ�ު�Z�ݿ���Jϝ���F�	��,��J�.��m���i�q�T��o�j�U�_��ѭ~��:#E6�f'�C��_�i��?i��ݟ�ŏ�y3�Y����]W+�̙;j�C��D�jL]9�xa�M֙��#T��=�F<<�Ln���t]Ƕ�<`X��&b<����hՍj��9� �x��]ר���=�n2v�)�V���l�}uc�̎�o�B�m�g�����""S��Qy���u��δ���J�$��GgRW�M��ۉ��kL�g��6j����spc]��`���&����gk�+���a�T...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""format"": ""text"", ""url"": ""https://openaccess.thecvf.com/content/CVPR2025/html/Luo_VideoAutoArena_An_Automated_Arena_for_Evaluating_Large_Multimodal_Models_in_CVPR_2025_paper.html""}","Content from: https://openaccess.thecvf.com/content/CVPR2025/html/Luo_VideoAutoArena_An_Automated_Arena_for_Evaluating_Large_Multimodal_Models_in_CVPR_2025_paper.html
+
+Title: CVPR 2025 Open Access Repository
+
+Stats: 316 words, 2413 characters
+
+Summary: Abstract
+
+ Large multimodal models (LMMs) with advanced video analysis capabilities have recently garnered significant attention....
+
+Content Preview:
+Abstract
+
+ Large multimodal models (LMMs) with advanced video analysis capabilities have recently garnered significant attention. However, most evaluations rely on traditional methods like multiple-choice question answering in benchmarks such as VideoMME and LongVideoBench, which are prone to lack the depth needed to capture the complex demands of real-world users. To address this limitation--and due to the prohibitive cost and slow pace of human annotation for video tasks--we introduce VideoAut...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""format"": ""text"", ""url"": ""https://pmc.ncbi.nlm.nih.gov/articles/PMC9335201/""}","Content from: https://pmc.ncbi.nlm.nih.gov/articles/PMC9335201/
+
+Title: 
+            Gregor Johann Mendel: From peasant to priest, pedagogue, and prelate - PMC
+        Lock
+Description: Gregor Mendel was an Augustinian priest in the Monastery of St. Thomas in Brünn (Brno, Czech Republic) as well as a civilian employee who taught natural history and physics in the Brünn Modern School. The monastery’s secular function was to provide ...
+
+Stats: 6665 words, 41681 characters
+
+Summary: Abstract
+Gregor Mendel was an Augustinian priest in the Monastery of St. Thomas in Brünn (Brno, Czech Republic) as well as a civilian employee who taught natural history and physics in the Brünn Modern School....
+
+Content Preview:
+Abstract
+Gregor Mendel was an Augustinian priest in the Monastery of St. Thomas in Brünn (Brno, Czech Republic) as well as a civilian employee who taught natural history and physics in the Brünn Modern School. The monastery’s secular function was to provide teachers for the public schools across Moravia. It was a cultural, educational, and artistic center with an elite core of friar-teachers with a well-stocked library and other amenities including a gourmet kitchen. It was wealthy, with far-flu...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""format"": ""text"", ""url"": ""https://vaanoel.com/wp-content/uploads/2020/05/may-2020-vernelle-a.pdf""}","Content from: https://vaanoel.com/wp-content/uploads/2020/05/may-2020-vernelle-a.pdf
+
+Title: 
+
+Stats: 5676 words, 228266 characters
+
+Summary: ...
+
+Content Preview:
+%PDF-1.6
+%����
+1637 0 obj
+<>
+endobj
+ 
+1659 0 obj
+<>/Filter/FlateDecode/ID[<322ABFA8F434FE43826CE0B17181F956>]/Index[1637 34]/Info 1636 0 R/Length 107/Prev 299681/Root 1638 0 R/Size 1671/Type/XRef/W[1 3 1]>>stream
+h�bbd```b``N������d��L`Y�H09L:�ec����E����`qK��2��(��,[$3XA��@l}[&H��4����Hh?���?���S
+endstream
+endobj
+startxref
+0
+%%EOF
+ 
+1670 0 obj
+<>stream
+h�b```����3�@��(���1�L���e����Lr
+g?h8pt2�1�N�/`��x�!�b֙3'gΙ9���H�\�� ϒ�1?5
+��=ߒ��=ߣ!��
+���vmA�\�&��aR...
+
+Note: This is a preview of the content. For specific information, please ask about particular aspects of this webpage.",google-search-new,extract_webpage_content
+"{""max_length"": 10000, ""start_index"": 15000, ""url"": ""https://autre.love/interviewsmain/marie-vs-the-machine-an-interview-of-marie-davidson""}","Contents of https://autre.love/interviewsmain/marie-vs-the-machine-an-interview-of-marie-davidson:
+<error>No more content available.</error>",fetch,fetch
+"{""max_length"": 10000, ""url"": ""https://www.transfermarkt.com/harry-kane/profil/spieler/132098""}","Contents of https://www.transfermarkt.com/harry-kane/profil/spieler/132098:
+## Youth clubs
+
+Ridgeway Rovers (1999-2001), Arsenal FC (2001-2002), Ridgeway Rovers (2002-2004), Watford FC (2004), Tottenham Hotspur (2004-2010)",fetch,fetch
+"{""max_length"": 1500, ""url"": ""https://paulettahansel.wordpress.com/2017/03/15/photograph/""}",Failed to fetch https://paulettahansel.wordpress.com/2017/03/15/photograph/ - status code 404,fetch,fetch
+"{""max_length"": 2000, ""url"": ""https://arxiv.org/pdf/2508.14704""}","Content type application/pdf cannot be simplified to markdown, but here is the raw content:
+Contents of https://arxiv.org/pdf/2508.14704:
+%PDF-1.5
+%����
+1 0 obj
+<< /Metadata 3 0 R /Names 4 0 R /OpenAction 5 0 R /Outlines 6 0 R /PageMode /UseOutlines /Pages 7 0 R /Type /Catalog >>
+endobj
+2 0 obj
+<< /Author (Ziyang Luo; Zhiqi Shen; Wenzhuo Yang; Zirui Zhao; Prathyusha Jwalapuram; Amrita Saha; Doyen Sahoo; Silvio Savarese; Caiming Xiong; Junnan Li) /Creator (arXiv GenPDF \(tex2pdf:\)) /DOI (https://doi.org/10.48550/arXiv.2508.14704) /License (http://arxiv.org/licenses/nonexclusive-distrib/1.0/) /PTEX.Fullbanner (This is pdfTeX, Version 3.141592653-2.6-1.40.25 \(TeX Live 2023\) kpathsea version 6.3.5) /Producer (pikepdf 8.15.1) /Title (MCP-Universe: Benchmarking Large Language Models with Real-World Model Context Protocol Servers) /Trapped /False /arXivID (https://arxiv.org/abs/2508.14704v1) >>
+endobj
+3 0 obj
+<< /Subtype /XML /Type /Metadata /Length 1880 >>
+stream
+<?xpacket begin=""﻿"" id=""W5M0MpCehiHzreSzNTczkc9d""?>
+<x:xmpmeta xmlns:x=""adobe:ns:meta/"" x:xmptk=""pikepdf"">
+ <rdf:RDF xmlns:rdf=""http://www.w3.org/1999/02/22-rdf-syntax-ns#"">
+ <rdf:Description rdf:about=""""><dc:title xmlns:dc=""http://purl.org/dc/elements/1.1/""><rdf:Alt><rdf:li xml:lang=""x-default"">MCP-Universe: Benchmarking Large Language Models with Real-World Model Context Protocol Servers</rdf:li></rdf:Alt></dc:title></rdf:Description><rdf:Description rdf:about=""""><dc:creator xmlns:dc=""http://purl.org/dc/elements/1.1/""><rdf:Seq><rdf:li>Ziyang Luo</rdf:li><rdf:li>Zhiqi Shen</rdf:li><rdf:li>Wenzhuo Yang</rdf:li><rdf:li>Zirui Zhao</rdf:li><rdf:li>Prathyusha Jwalapuram</rdf:li><rdf:li>Amrita Saha</rdf:li><rdf:li>Doyen Sahoo</rdf:li><rdf:li>Silvio Savarese</rdf:li><rdf:li>Caiming Xiong</rdf:li><rdf:li>Junnan Li</rdf:li></rdf:Seq></dc:creator></rdf:Description><rdf:Description xmlns:dc=""http://purl.org/dc/elements/1.1/"" rdf:about="""" dc:publisher=""arXiv""/><rdf:Description xmlns:xmp=""http://ns.adobe.com/xap/1.0/"" rdf:about="""" xmp:CreatorTool=""arXiv GenPDF (tex2pdf:)""/><rdf:Description rdf:about=""""><dc:rights xmlns:dc=""http://purl.org/dc/elements/1.1/"">
+
+<error>Content truncated. Call the fetch tool with a start_index of 2000 to get more content.</error>",fetch,fetch
+"{""max_length"": 2000, ""url"": ""https://www.espncricinfo.com/cricketers/nitish-rana-412717""}",Failed to fetch https://www.espncricinfo.com/cricketers/nitish-rana-412717 - status code 403,fetch,fetch
+"{""max_length"": 2000, ""url"": ""https://www.facebook.com/groups/michianahistory/posts/2500367670148555/""}","Contents of https://www.facebook.com/groups/michianahistory/posts/2500367670148555/:
+<error>Page failed to be simplified from HTML</error>",fetch,fetch
+"{""max_length"": 2000, ""url"": ""https://www.onthisday.com/music/birthdays/date/1970""}","Contents of https://www.onthisday.com/music/birthdays/date/1970:
+Year1970
+
+* [January](1970/january)
+* [February](1970/february)
+* [March](1970/march)
+* [April](1970/april)
+* [May](1970/may)
+* [June](1970/june)
+* [July](1970/july)
+* [August](1970/august)
+* [September](1970/september)
+* [October](1970/october)
+* [November](1970/november)
+* [December](1970/december)
+
+* [Events](/music/events/date/1970)
+* [Birthdays](#)
+* [Deaths](/music/deaths/date/1970)
+
+* [Jan 2](/music/birthdays/january/2) Eric Whitacre, American Grammy Award-winning choral conductor and composer (Lux Aurumque; Deep Field), born in Reno, Nevada
+* **Jan 2** Robert Fertitta, American operatic countertenor, born in New York City
+* **Jan 2** Sanda Ladoşi, Romanian pop singer (""I Admit""), born in Târgu Mureș, Transylvania, Romania
+
+* [Jan 5](/music/birthdays/january/5) Jeffrey Jey [Gianfranco Randone], Italian pop and dance singer-songwriter, and multi-instrumentalist (Eiffel 65), born in Lentini, Italy
+* **Jan 5** Troy Van Leeuwen, American guitarist (Queens of the Stone Age; Gone Is Gone), born in Los Angeles, California
+* [Jan 9](/music/birthdays/january/9) Alex Staropoli, Italian keyboardist (Rhapsody Of Fire), born in Trieste, Italy
+* **Jan 9** Lara Fabian, Canadian-Belgian singer, born in Etterbeek, Belgium
+* [Jan 11](/music/birthdays/january/11) Joy Nilo, Filipino pianist, conductor, and composer, chiefly of choral music, born in Oriental Mindoro, Philippines
+* [Jan 12](/music/birthdays/january/12) MiG [Miguel Ayesa], Filipino-Australian rock and theatrical singer and actor (We Will Rock You), born in Manila, Philippines
+* **Jan 12** Raekwon [Corey Woods], American rapper (Wu-Tang Clan), born in Brooklyn, New York
+* **Jan 12** Zack de la Rocha, American rock musician (Rage Against the Machine), born in Long Beach, California
+* [Jan 14](/music/birthdays/january/14) Fazil Say, Turkish pianist and contemporary classical composer (Thinking Einstein; Watercolor; Şahmeran), born in Ankara, Turkey
+* [Jan 18](/music/birthdays/january/18) DJ Quik [David Marvin Blake], 
+
+<error>Content truncated. Call the fetch tool with a start_index of 2000 to get more content.</error>",fetch,fetch
+"{""max_length"": 2500, ""start_index"": 2500, ""url"": ""https://www.stilljournal.net/pauletta-hansel-poetry2021.php""}","Contents of https://www.stilljournal.net/pauletta-hansel-poetry2021.php:
+idow appeal was down to one cow, two hogs, borrowed a mule to plow. At least nobody owned anyone anymore.  My mother, when she died, owned the family graveyard though she had lost the deed, and made us promise not to plant her there. What I’m saying? I come from survivors, from what’s sewn too deep in the seams to be picked out clean.
+
+*Complicit (A Brief History)*
+
+Stories, like languages, 
+
+depend upon patterns
+
+for the forming of words 
+
+and for connecting them 
+
+in ways that can be understood.
+
+Some words are made
+
+by a process known as 
+
+backformation,
+
+a part of a longer word
+
+plied away. 
+
+“Complicit,” for example,
+
+with its roots, like those of “complicated,” 
+
+embedded in the Latin *com/plicare*,
+
+                                    together / folded,
+
+came straggling in 
+
+around the time my family 
+
+staked what little claim we could
+
+here in these Appalachian mountains
+
+where already the weight
+
+of millions of years of life and death 
+
+had folded one into the other
+
+down and down into the seams.
+
+Bituminous coal 
+
+appears smooth when first you see it
+
+but look closer and you’ll find 
+
+many layers in a past 
+
+to which we can only be
+
+*accomplice*. 
+
+*Sources:*",fetch,fetch
