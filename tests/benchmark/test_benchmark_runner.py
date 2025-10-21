@@ -126,6 +126,18 @@ class StubAgent(BaseAgent):
         return None
 
 
+class LazyStubAgent(StubAgent):
+    async def initialize(self, mcp_servers: list[dict[str, Any]] | None = None):
+        if mcp_servers:
+            return await super().initialize(mcp_servers=mcp_servers)
+        self.initialize_calls += 1
+        self._tools = {}
+        self._original_tool_descriptions = {}
+        self._tool_input_schemas = {}
+        self._initialized = True
+        return None
+
+
 def _execute_stub_benchmark(
     monkeypatch,
     tmp_path,
@@ -304,6 +316,34 @@ def test_runner_reapplies_component_overrides_after_reinit(monkeypatch, tmp_path
 
     expected = "\n".join(parts[key] for key in ("Purpose", "UsageGuideline"))
     assert stub_agent.description_history == [expected, expected]
+
+
+def test_runner_fetches_overrides_after_dynamic_server_activation(monkeypatch, tmp_path):
+    lazy_agent = LazyStubAgent()
+    parts = {"Purpose": "Navigate", "UsageGuideline": "Follow the route"}
+    load_calls: list[dict[str, list[str]]] = []
+
+    def _load_overrides(server_tools, db_url=None, component_keys=None):
+        load_calls.append(server_tools)
+        assert component_keys == ("Purpose", "UsageGuideline")
+        description = "\n\n".join(parts[key] for key in component_keys)
+        return {"demo": {"dummy_tool": description}}
+
+    _execute_stub_benchmark(
+        monkeypatch,
+        tmp_path,
+        lazy_agent,
+        _load_overrides,
+        tool_description_type=1,
+        tool_description_components=("Purpose", "UsageGuideline"),
+        task_servers=[{"name": "demo"}],
+    )
+
+    assert load_calls, "load_optimized_tool_descriptions should be invoked once tools are available"
+    assert load_calls[-1] == {"demo": ["dummy_tool"]}
+    assert all(call == {"demo": ["dummy_tool"]} for call in load_calls)
+    expected = "\n".join(parts[key] for key in ("Purpose", "UsageGuideline"))
+    assert lazy_agent.description_history == [expected, expected]
 
 
 if __name__ == "__main__":
