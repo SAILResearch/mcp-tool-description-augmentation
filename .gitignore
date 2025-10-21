@@ -200,3 +200,4 @@ tests/cursor/
 tests/benchmark/*_run_many_llms*.py
 credentials.json
 token.json
+analysis_output/

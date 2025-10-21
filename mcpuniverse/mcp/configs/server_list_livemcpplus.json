@@ -1,0 +1,44 @@
+{
+  "playwright": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y", "@executeautomation/playwright-mcp-server"
+      ]
+    }
+  },
+"firecrawl-mcp": {
+   "stdio": {
+     "command": "npx",
+     "args": [
+       "-y", "firecrawl-mcp"
+     ]
+   },
+   "env": {
+     "FIRECRAWL_API_KEY": "{{FIRECRAWL_API_KEY}}"
+   }
+ },
+
+
+"paypal": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y", "@paypal/mcp", "--tools=all"
+      ]
+    },
+    "env": {
+      "PAYPAL_ACCESS_TOKEN": "{{PAYPAL_ACCESS_TOKEN}}",
+      "PAYPAL_ENVIRONMENT": "SANDBOX"
+    }
+  },
+
+"supabase": {
+    "stdio": {
+      "command": "npx",
+      "args":["mcp-remote", "https://mcp.supabase.com/mcp"]
+    }
+  }
+
+  
+}
