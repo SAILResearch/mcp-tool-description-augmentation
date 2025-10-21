@@ -195,6 +195,12 @@ def load_optimized_tool_descriptions(
                     tool_list = [tool for tool in tools if tool]
                     if not server_name or not tool_list:
                         continue
+                    LOGGER.info(
+                        "\x1b[31mQuerying optimised descriptions for %s (%s) with components: %s\x1b[0m",
+                        server_name,
+                        ", ".join(tool_list),
+                        ", ".join(components_tuple) if components_tuple else "all",
+                    )
                     cur.execute(
                         """
                         SELECT DISTINCT ON (tool_name)
@@ -210,6 +216,9 @@ def load_optimized_tool_descriptions(
                         (server_name, tool_list),
                     )
                     rows = cur.fetchall()
+                    LOGGER.info(
+                        "\x1b[31mFetched %d rows for %s\x1b[0m", len(rows), server_name
+                    )
                     for tool_name, description, components in rows:
                         text: str = ""
                         if use_components:
@@ -225,9 +234,24 @@ def load_optimized_tool_descriptions(
                                 component_map = None
 
                             if isinstance(component_map, Mapping):
+                                LOGGER.info(
+                                    "\x1b[31mRaw component payload for %s.%s: %s\x1b[0m",
+                                    server_name,
+                                    tool_name,
+                                    json.dumps(component_map, ensure_ascii=False)
+                                    if not isinstance(components, str)
+                                    else components,
+                                )
                                 parts, missing, resolved = _extract_component_sections(
                                     component_map,
                                     components_tuple,
+                                )
+                                available_keys = list(component_map.keys())
+                                LOGGER.info(
+                                    "\x1b[31mAvailable component keys for %s.%s: %s\x1b[0m",
+                                    server_name,
+                                    tool_name,
+                                    ", ".join(available_keys) if available_keys else "<none>",
                                 )
                                 if missing:
                                     LOGGER.info(
@@ -245,6 +269,13 @@ def load_optimized_tool_descriptions(
                                             tool_name,
                                             ", ".join(resolved),
                                         )
+                                LOGGER.info(
+                                    "\x1b[31mConcatenated component description for %s.%s:%s%s\x1b[0m",
+                                    server_name,
+                                    tool_name,
+                                    "\n" if text else " ",
+                                    text or "<empty>",
+                                )
                         else:
                             if description:
                                 text = str(description)
