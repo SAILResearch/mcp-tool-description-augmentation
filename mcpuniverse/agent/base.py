@@ -42,7 +42,7 @@ from mcpuniverse.utils.tool_descriptions import (
     compose_tool_description,
     load_additional_tool_descriptions,
 )
-from mcpuniverse.agent.utils import format_tool_description_block
+from mcpuniverse.agent.utils import format_tool_description_block, parse_first_json_object
 
 if TYPE_CHECKING:
     from mcpuniverse.utils.task_search import ToolInfo
@@ -615,12 +615,15 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
         """
         tracer = tracer if tracer else Tracer()
         with tracer.sprout() as t:
+            tool_call: Dict[str, Any] | Dict = {}
             try:
                 if isinstance(llm_response, str):
-                    _response = llm_response.strip().strip('`').strip()
-                    if _response.startswith("json"):
-                        _response = _response[4:].strip()
-                    tool_call = json.loads(_response)
+                    tool_call, remainder = parse_first_json_object(llm_response)
+                    if remainder and self._logger is not None:
+                        self._logger.debug(
+                            "Discarding trailing content after first JSON object: %s",
+                            remainder,
+                        )
                 else:
                     tool_call = llm_response
 
@@ -685,8 +688,8 @@ class BaseAgent(Executor, ExportConfigMixin, metaclass=ComponentABCMeta):
                 t.add({
                     "type": "tool",
                     "class": self.__class__.__name__,
-                    "tool_name": tool_call["tool"],
-                    "arguments": tool_call["arguments"],
+                    "tool_name": tool_call.get("tool") if isinstance(tool_call, dict) else None,
+                    "arguments": tool_call.get("arguments") if isinstance(tool_call, dict) else None,
                     "response": "",
                     "error": str(e)
                 })

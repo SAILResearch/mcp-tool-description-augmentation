@@ -23,7 +23,7 @@ from mcpuniverse.callbacks.base import (
     MessageType
 )
 from .base import BaseAgentConfig, BaseAgent
-from .utils import build_system_prompt
+from .utils import build_system_prompt, parse_first_json_object
 from .types import AgentResponse
 
 DEFAULT_CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
@@ -150,10 +150,12 @@ class ReAct(BaseAgent):
                 callbacks=callbacks
             )
             try:
-                response = response.strip().strip('`').strip()
-                if response.startswith("json"):
-                    response = response[4:].strip()
-                parsed_response = json.loads(response)
+                parsed_response, remainder = parse_first_json_object(response)
+                if remainder and self._logger is not None:
+                    self._logger.debug(
+                        "Discarding trailing content after first JSON object: %s",
+                        remainder,
+                    )
                 if "thought" not in parsed_response:
                     raise ValueError("Invalid response format")
                 self._add_history(

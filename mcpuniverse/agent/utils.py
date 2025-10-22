@@ -4,8 +4,9 @@ Utility functions for agent-related operations.
 This module provides functions for handling tool descriptions,
 building system prompts, and rendering prompt templates.
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple, Any
 
+import json
 import yaml
 from jinja2 import Environment
 from mcp.types import Tool
@@ -42,6 +43,40 @@ def format_tool_description_block(server_name: str, tool: Tool) -> str:
         f"Description:\n{chr(10).join(lines)}\n"
         f"Arguments:{arguments}"
     )
+
+
+def parse_first_json_object(text: str) -> Tuple[Any, str]:
+    """Return the first complete JSON object contained in *text*.
+
+    The language model may sometimes concatenate multiple JSON documents in a
+    single message.  Existing code expects a single JSON object that describes
+    the next tool invocation, so we parse only the first object and return any
+    remaining content so callers can log or inspect it if desired.
+
+    Args:
+        text: Raw text from the LLM, potentially wrapped in code fences or
+            containing multiple JSON objects.
+
+    Returns:
+        A tuple ``(obj, remainder)`` where ``obj`` is the first decoded JSON
+        structure and ``remainder`` contains any trailing characters after the
+        parsed object (with leading whitespace stripped).
+
+    Raises:
+        json.JSONDecodeError: If no valid JSON object can be decoded from the
+        beginning of ``text``.
+    """
+
+    cleaned = text.strip()
+    cleaned = cleaned.strip('`').strip()
+    if cleaned.startswith("json"):
+        cleaned = cleaned[4:].strip()
+
+    decoder = json.JSONDecoder()
+    cleaned = cleaned.lstrip()
+    obj, end = decoder.raw_decode(cleaned)
+    remainder = cleaned[end:].lstrip()
+    return obj, remainder
 
 
 def get_tools_description(tools: Dict[str, List[Tool]]) -> str:

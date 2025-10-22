@@ -21,7 +21,7 @@ from mcpuniverse.callbacks.base import (
     MessageType
 )
 from .base import BaseAgentConfig, BaseAgent
-from .utils import build_system_prompt
+from .utils import build_system_prompt, parse_first_json_object
 from .types import AgentResponse
 
 DEFAULT_CONFIG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
@@ -278,15 +278,16 @@ class FunctionCall(BaseAgent):
 
             # Try to parse as JSON response
             # Handle cases where JSON might be embedded in other text
-            response_text = content.strip().strip('`').strip()
-
-            # Remove "json" prefix if present
-            if response_text.startswith("json"):
-                response_text = response_text[4:].strip()
+            response_text = content.strip()
 
             # Try to extract JSON from the text
             json_text = self._extract_json_from_text(response_text)
-            parsed_response = json.loads(json_text)
+            parsed_response, remainder = parse_first_json_object(json_text)
+            if remainder and self._logger is not None:
+                self._logger.debug(
+                    "Discarding trailing content after first JSON object: %s",
+                    remainder,
+                )
 
             # Check if this is a final answer
             if "answer" in parsed_response:
