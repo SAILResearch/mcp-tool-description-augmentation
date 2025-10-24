@@ -266,7 +266,8 @@ class FunctionCall(BaseAgent):
         messages: List[Dict[str, Any]],
         iter_num: int,
         callbacks: List[Any],
-        tracer: Tracer
+        tracer: Tracer,
+        output_format: Optional[Union[str, Dict]] = None,
     ) -> Optional[AgentResponse]:
         """Handle content-based responses from LLM."""
         try:
@@ -290,7 +291,7 @@ class FunctionCall(BaseAgent):
                 )
 
             # Check if this is a final answer
-            if "answer" in parsed_response:
+            if isinstance(parsed_response, dict) and "answer" in parsed_response:
                 self._add_history(
                     history_type="answer",
                     message=parsed_response["answer"]
@@ -319,7 +320,65 @@ class FunctionCall(BaseAgent):
                     trace_id=tracer.trace_id
                 )
 
-            # If no answer field, treat entire response as thought
+            schema_valid = False
+            if isinstance(output_format, dict):
+                try:
+                    from jsonschema import validate  # type: ignore
+                    from jsonschema.exceptions import ValidationError, SchemaError  # type: ignore
+                except ImportError:
+                    if self._logger is not None:
+                        self._logger.debug(
+                            "jsonschema is not available; skipping schema validation for structured output"
+                        )
+                else:
+                    try:
+                        validate(instance=parsed_response, schema=output_format)
+                        schema_valid = True
+                    except (ValidationError, SchemaError) as exc:
+                        if self._logger is not None:
+                            self._logger.debug(
+                                "Parsed JSON did not satisfy provided schema: %s",
+                                exc,
+                            )
+
+            has_answer = isinstance(parsed_response, dict) and "answer" in parsed_response
+            if schema_valid or not has_answer:
+                if isinstance(parsed_response, dict):
+                    final_payload: Union[dict, str] = parsed_response
+                    final_text = json.dumps(parsed_response, ensure_ascii=False)
+                else:
+                    final_text = json.dumps(parsed_response, ensure_ascii=False)
+                    final_payload = final_text
+
+                self._add_history(
+                    history_type="answer",
+                    message=final_text
+                )
+                await send_message_async(
+                    callbacks,
+                    message=CallbackMessage(
+                        source=__file__,
+                        type=MessageType.LOG,
+                        metadata={
+                            "event": "plain_text",
+                            "data": "".join([
+                                f"{'=' * 66}\n",
+                                f"Iteration: {iter_num + 1}\n",
+                                f"{'-' * 66}\n",
+                                "\033[32mStructured response received.\033[0m\n",
+                                f"\033[31mOutput: {final_text}\n\033[0m",
+                            ])
+                        }
+                    )
+                )
+                return AgentResponse(
+                    name=self._name,
+                    class_name=self.__class__.__name__,
+                    response=final_payload,
+                    trace_id=tracer.trace_id
+                )
+
+            # If the response is JSON but doesn't include a final answer, treat as thought
             self._add_history(
                 history_type="thought",
                 message=content
@@ -340,7 +399,6 @@ class FunctionCall(BaseAgent):
                     }
                 )
             )
-            # Continue to next iteration
             return None
 
         except json.JSONDecodeError as e:
@@ -487,7 +545,14 @@ class FunctionCall(BaseAgent):
                     continue
                 if has_content:
                     content = message_obj.content.strip()
-                    result = await self._handle_content_response(content, messages, iter_num, callbacks, tracer)
+                    result = await self._handle_content_response(
+                        content,
+                        messages,
+                        iter_num,
+                        callbacks,
+                        tracer,
+                        output_format=output_format,
+                    )
                     if result is not None:
                         return result
                     continue
