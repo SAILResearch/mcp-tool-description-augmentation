@@ -1,0 +1,89 @@
+python scripts/extract_tool_usage.py log/3d_design-Oct-6-backup.log --output log/3d-design-tools.csv
+
+python scripts/analyze_tools.py --input mcpuniverse/scripts/tool-quality-and-consolidation-all-tools.csv --outdir ./analysis_output --score-threshold 70
+
+python scripts/analyze_tools.py --input mcpuniverse/scripts/tool-quality-and-consolidation-all-tools.csv --outdir ./analysis_output --score-threshold 70  --use-llm yes --openai-model gpt-4.1-mini --llm-batch-size 50  --llm-max-retries 3
+
+
+'get_historical_stock_prices','get_option_chain','calculate','get_financial_statement','get_holder_info','get_option_expiration_dates','get_stock_actions','get_stock_info','get_timestamp','get_today_date','get_current_datetime_utc'
+
+
+'create_repository','create_pull_request','create_issue','create_or_update_file','create_branch','push_files','list_issues','search_issues','search_code','get_file_contents','fork_repository','list_branches','search_repositories'
+
+'maps_geocode', 'maps_directions', 'maps_distance_matrix', 'maps_reverse_geocode', 'maps_search_places', 'maps_elevation', 'maps_place_details', 'get_forecast'
+
+'create_object', 'download_polyhaven_asset', 'search_polyhaven_assets', 'execute_blender_code', 'set_material', 'get_object_info', 'get_scene_info', 'clear_scene_and_polyhaven_materials' 
+
+'API-post-page', 'google_search', 'API-post-search', 'extract_webpage_content', 'extract_multiple_webpages', 'fetch' 
+
+
+'create_object', 'execute_blender_code', 'get_object_info', 'get_scene_info', 'search_polyhaven_assets', 'set_material', 'calculate', 'get_current_datetime_utc', 'get_date_in_timezone', 'get_timestamp', 'get_today_date', 'echo_tool', 'fetch', 'edit_file', 'list_directory', 'move_file', 'read_multiple_files', 'search_files', 'write_file', 'create_branch', 'create_or_update_file', 'create_pull_request', 'create_repository', 'delete_file', 'fork_repository', 'get_file_contents', 'get_issue', 'list_branches', 'list_commits', 'list_issues', 'push_files', 'search_issues', 'search_repositories', 'maps_directions', 'maps_elevation', 'maps_geocode', 'maps_place_details', 'maps_reverse_geocode', 'maps_search_places', 'extract_multiple_webpages', 'extract_webpage_content', 'google_search', 'batch_update_cells', 'copy_sheet', 'get_spreadsheet_info', 'update_cells', 'add_issue_comment', 'create_and_submit_pull_request_review', 'get_discussion_comments', 'manage_notification_subscription', 'API-patch-page', 'API-post-page', 'API-post-search', 'slack_post_message', 'get_forecast', 'get_historical_stock_prices', 'get_holder_info', 'get_option_chain', 'get_option_expiration_dates', 'get_recommendations' 
+
+
+=COUNTIFS('task_wise_evaluator-with-example'!E2:E1008,">=0.8", 'task_wise_evaluator-with-example'!E2:E1008,"<1") 
++ COUNTIFS('task_wise_evaluator-with-example'!L2:L1008,">=0.8", 'task_wise_evaluator-with-example'!L2:L1008,"<1") 
++ COUNTIFS('task_wise_evaluator-with-example'!H2:H1008,">=0.8", 'task_wise_evaluator-with-example'!H2:H1008,"<1") 
++ COUNTIFS(task_wise_evaluator_with_purpose_guide_limitation!G2:G1008,">=0.8", task_wise_evaluator_with_purpose_guide_limitation!G2:G1008,"<1")
+
+
+npx analyze-optimized-tool-description --model gpt-4.1-mini --output data/optimized-description-quality.csv
+
+
+python -m mcpuniverse.scripts.optimize_tool_descriptions --model gpt-4.1-mini --config mcpuniverse/mcp/configs/paypal-server.json
+
+
+
+
+2025-11-19 19:17:25,612.612 63419 CodeFlowExecutor WARNING [_execute_generated_code():560] No code blocks found in response
+
+BenchmarkResult(benchmark=BenchmarkConfig(description='Test agent for yfinance tasks.', agent='FunctionCall-agent', tasks=['test/financial_analysis/yfinance_task_0001.json']), task_results={'test/financial_analysis/yfinance_task_0001.json': {'evaluation_results': [EvaluationResult(config=EvaluatorConfig(func='json', op='yfinance.check_portfolio_task_output', value=None, op_args={'tickers': ['MSFT'], 'start_date': '2023-01-09', 'end_date': '2025-01-08', 'initial_investment': 25000.0, 'split': [1.0]}, desc='Whether the final value and the total percentage return are correct.'), response="'Tracer' object has no attribute 'metadata'", passed=False, reason='JSON decoding error', error='Expecting value: line 1 column 1 (char 0)')]}}, task_trace_ids={'test/financial_analysis/yfinance_task_0001.json': 'b5600282-584c-4358-bd48-01767a9c99c0'})]
+
+
+python mcpuniverse/scripts.evaluate_db_tool_descriptions \
+  --model openai:gpt-4o-mini \
+  --output /tmp/mcp_tool_db_audit.csv \
+  --limit 100
+
+
+  python -m mcpuniverse.scripts.evaluate_csv_tool_descriptions \
+  --model openai:gpt-4o-mini \
+  --provider openai \
+  --input path/to/tools.csv \
+  --output /tmp/mcp_tool_csv_audit.csv
+
+  
+  python mcpuniverse/scripts/evaluate_csv_tool_descriptions.py --provider ClaudeModel --model claude-3-5-haiku-20241022 --input /Users/mohammedmehedihasan/personal/codes/claude-flow-test/mcp-preference-benchmark/data/baseline-tools.csv --output mcpuniverse/scripts/rubric-eval-livemcpbench-haiku-35.csv
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider ClaudeModel --model claude-3-5-haiku-20241022 --config mcpuniverse/mcp/configs/server_list_mcptoolbenchplus.json --output mcpuniverse/scripts/rubric-eval-mcptoolbenchplus-haiku-35.csv
+
+  python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider openai --model gpt-4.1-mini --config mcpuniverse/mcp/configs/server_list_mcp_eval.json --output mcpuniverse/scripts/rubric-eval-mcp-eval-gpt-41-mini-02.csv
+
+
+  python mcpuniverse/scripts/evaluate_csv_tool_descriptions.py --provider openai --model gpt-4.1-mini --input mcpuniverse/mcp/configs/mcp-eval-tool-description.csv --output mcpuniverse/scripts/rubric-eval-mcp-eval-gpt-41-mini-01.csv
+
+
+  python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider ClaudeModel --model claude-3-5-haiku-20241022 --config mcpuniverse/mcp/configs/server_list_mcp_eval.json --output mcpuniverse/scripts/rubric-eval-mcp-eval-haiku-35-02.csv
+
+python mcpuniverse/scripts/evaluate_csv_tool_descriptions.py --provider ClaudeModel --model claude-3-5-haiku-20241022 --input mcpuniverse/mcp/configs/mcp-eval-tool-description.csv --output mcpuniverse/scripts/rubric-eval-mcp-eval-haiku-35-01.csv
+
+
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --config mcpuniverse/mcp/configs/server_list.json --output mcpuniverse/scripts/rubric-eval-mcp-universe-qwen3.csv
+python mcpuniverse/scripts/evaluate_csv_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --input mcpuniverse/mcp/configs/mcp-eval-tool-description.csv --output mcpuniverse/scripts/rubric-eval-mcp-eval-qwen3-01.csv
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --config mcpuniverse/mcp/configs/server_list_mcp_eval.json --output mcpuniverse/scripts/rubric-eval-mcp-qwen3-02.csv
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --config mcpuniverse/mcp/configs/server_list_mcptoolbenchplus.json --output mcpuniverse/scripts/rubric-eval-mcptoolbenchplus-qwen3.csv
+python mcpuniverse/scripts/evaluate_csv_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --input mcpuniverse/mcp/configs/livemcpbench-too-description.csv --output mcpuniverse/scripts/rubric-eval-livemcpbench-qwen3.csv
+
+
+mcpuniverse.scripts.calc_icc_tool_quality --input path/to/quality_scores.csv 
+  
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider openai --model gpt-4.1-mini --config mcpuniverse/mcp/configs/server_list_Zhiling_Luo.json --output mcpuniverse/scripts/rubric-eval-server_list_Zhiling_Luo-gpt-41-mini.csv
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --config mcpuniverse/mcp/configs/server_list_Zhiling_Luo.json --output mcpuniverse/scripts/rubric-eval-server_list_Zhiling_Luo-qwen3.csv
+python mcpuniverse/scripts/evaluate_tool_descriptions.py --provider ClaudeModel --model claude-3-5-haiku-20241022 --config mcpuniverse/mcp/configs/server_list_Zhiling_Luo.json --output mcpuniverse/scripts/rubric-eval-server_list_Zhiling_Luo-haiku-35.csv
+
+
+
+python mcpuniverse/scripts/evaluate_db_tool_descriptions.py --provider openrouter --model qwen/qwen3-30b-a3b-instruct-2507 --output mcpuniverse/scripts/optimized-tool-description-by-rubric-qwen3.csv
+
+python mcpuniverse/scripts/evaluate_db_tool_descriptions.py --provider ClaudeModel --model claude-3-5-haiku-20241022 --output mcpuniverse/scripts/optimized-tool-description-by-rubric-haiku_35.csv
+
+
+python schema_generator/repo_analyzer.py --repo https://github.com/microsoft/playwright --server playwright --config mcpuniverse/mcp/configs/output_schema_generator_servers.json --provider openai --model gpt-4.1

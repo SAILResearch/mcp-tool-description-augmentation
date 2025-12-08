@@ -42,7 +42,7 @@ class OpenAIConfig(BaseConfig):
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
     max_completion_tokens: int = 10000
-    reasoning_effort: str = "medium"
+    reasoning_effort: str = "minimal"
     seed: int = 12345
 
 

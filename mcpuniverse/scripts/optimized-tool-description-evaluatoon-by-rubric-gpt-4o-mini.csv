@@ -1,0 +1,281 @@
+mcp_server_name,tool_name,description_label,description_quality_score,description_reason,description_improvement_needed,purpose_score,usage_guideline_score,limitation_score,parameter_explanation_score,examples_balance_score,length_completeness_score
+blender,clear_scene_and_polyhaven_materials,Good,75,"The tool description is clear and detailed, but lacks parameter explanation.",parameter_explanation,5,5,4,1,4,4
+blender,create_object,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,delete_object,Good,93,"The description is comprehensive, clearly outlining the purpose, usage guidelines, and parameter details.",limitation,5,5,4,5,5,5
+blender,download_polyhaven_asset,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,execute_blender_code,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,get_object_info,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,get_polyhaven_categories,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,get_polyhaven_status,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+blender,get_scene_info,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,modify_object,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,search_polyhaven_assets,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+blender,set_material,Good,87,"The description is comprehensive and well-structured, covering all necessary aspects with minor limitations in clarity.",limitation; parameter_explanation; examples_balance,5,5,4,4,4,5
+blender,set_texture,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+calculator,calculate,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+date,get_current_datetime,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+date,get_current_datetime_utc,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+date,get_date_in_timezone,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+date,get_timestamp,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+date,get_today_date,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+echo,echo_tool,Good,83,"The description is clear and comprehensive, but lacks parameter explanation.",parameter_explanation,5,5,4,1,5,5
+fetch,fetch,Good,90,"The tool description is comprehensive and well-structured, covering all necessary aspects with minor limitations.",limitation; parameter_explanation,5,5,4,4,5,5
+filesystem,create_directory,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,directory_tree,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,edit_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,get_file_info,Good,90,"The tool description is comprehensive and well-structured, clearly outlining its purpose, usage guidelines, and limitations.",limitation (4); parameter_explanation (4),5,5,4,4,5,5
+filesystem,list_allowed_directories,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,list_directory,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,list_directory_with_sizes,Good,83,"The description is comprehensive and well-structured, covering all necessary aspects with minor omissions.",limitation; parameter_explanation; examples_balance,5,5,4,4,4,5
+filesystem,move_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects effectively.",,5,5,5,5,5,5
+filesystem,read_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,read_media_file,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanation.",parameter_explanation,5,5,5,2,5,5
+filesystem,read_multiple_files,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,read_text_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,search_files,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+filesystem,write_file,Good,92,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and parameters, with a good balance of examples.",parameter_explanation,5,5,5,4,5,5
+github,add_comment_to_pending_review,Bad,66,"The parameter explanation is lacking, which is critical for understanding how to use the tool effectively.",parameter_explanation (2),5,5,4,2,3,4
+github,add_issue_comment,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,add_sub_issue,Good,73,"The description is clear and detailed, but lacks specific parameter explanations.",parameter_explanation,5,5,4,2,5,4
+github,assign_copilot_to_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,cancel_workflow_run,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,create_and_submit_pull_request_review,Good,90,"The description is comprehensive and well-structured, clearly outlining the tool's purpose, usage guidelines, and limitations.",limitation (4); parameter_explanation (4),5,5,4,4,5,5
+github,create_branch,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,create_gist,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,create_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,create_or_update_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,create_pending_pull_request_review,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,create_pull_request,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,4,5,5
+github,create_repository,Good,66,"The description provides a clear purpose and usage guidelines, but lacks clarity on parameters and has some reliance on examples.",parameter_explanation (2); examples_balance (3),4,5,4,2,3,4
+github,delete_file,Good,90,"The description is comprehensive and well-structured, covering all necessary aspects with minor omissions.",limitation (4); parameter_explanation (4),5,5,4,4,5,5
+github,delete_pending_pull_request_review,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,delete_workflow_run_logs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,dismiss_notification,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,download_workflow_run_artifact,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation (3),5,5,4,3,5,5
+github,fork_repository,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_code_scanning_alert,Good,88,"The description is comprehensive and covers all necessary aspects, but lacks clarity on parameter explanation.",parameter_explanation (3),5,5,5,3,5,5
+github,get_commit,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanations.",parameter_explanation,5,5,5,2,5,5
+github,get_dependabot_alert,Good,93,"The description is comprehensive and clearly outlines the tool's purpose, usage guidelines, limitations, and parameters, with a good balance of examples.",parameter_explanation,5,5,5,4,5,5
+github,get_discussion,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation (3),5,5,4,3,5,5
+github,get_discussion_comments,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_file_contents,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_issue_comments,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+github,get_job_logs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_me,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+github,get_notification_details,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects effectively.",,5,5,4,5,5,5
+github,get_pull_request,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_pull_request_comments,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and context, with minor omissions in parameter explanation.",parameter_explanation (4),5,5,5,4,5,5
+github,get_pull_request_diff,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_pull_request_files,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation,5,5,4,3,4,5
+github,get_pull_request_reviews,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+github,get_pull_request_status,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_secret_scanning_alert,Good,83,"The description is comprehensive and clear, but lacks explicit parameter definitions.",parameter_explanation,5,5,4,3,4,5
+github,get_tag,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_workflow_run,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,get_workflow_run_logs,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation,5,5,4,3,5,5
+github,get_workflow_run_usage,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_branches,Good,90,"The tool description is comprehensive and well-structured, covering all necessary aspects with minor ambiguities.",limitation (4); examples_balance (4),5,5,4,5,4,5
+github,list_code_scanning_alerts,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanations.",parameter_explanation (2),5,5,5,2,5,5
+github,list_commits,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanations.",parameter_explanation,5,5,5,1,4,5
+github,list_dependabot_alerts,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+github,list_discussion_categories,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+github,list_discussions,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_gists,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_issues,Good,83,"The description is comprehensive and clear, but the parameter explanation lacks detail.",parameter_explanation,5,5,5,3,4,5
+github,list_notifications,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+github,list_pull_requests,Good,83,The description is comprehensive and clear in most areas but lacks parameter explanation.,parameter_explanation (1),5,5,5,1,5,5
+github,list_secret_scanning_alerts,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_sub_issues,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation (1),5,5,5,1,5,5
+github,list_tags,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_workflow_jobs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_workflow_run_artifacts,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,list_workflow_runs,Good,83,"The description is comprehensive and clear, but lacks clarity on input parameters.",parameter_explanation,5,5,5,1,5,5
+github,list_workflows,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,manage_notification_subscription,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,manage_repository_notification_subscription,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,mark_all_notifications_read,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,merge_pull_request,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,push_files,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,remove_sub_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,reprioritize_sub_issue,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation (3),5,5,4,3,5,5
+github,request_copilot_review,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,rerun_failed_jobs,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+github,rerun_workflow_run,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of parameters.",parameter_explanation,5,5,5,1,5,5
+github,run_workflow,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+github,search_code,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,search_issues,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,search_orgs,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, and limitations.",limitation,5,5,4,5,5,5
+github,search_pull_requests,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,4,5
+github,search_repositories,Good,92,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and examples, with only minor omissions in parameter explanation.",parameter_explanation,5,5,5,4,5,5
+github,search_users,Good,83,"The description is comprehensive and clear, but lacks explicit parameter explanations.",parameter_explanation,5,5,5,1,5,5
+github,submit_pending_pull_request_review,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,update_gist,Good,93,The description is comprehensive and covers all necessary aspects with minor omissions in parameter explanation.,parameter_explanation (4),5,5,5,4,5,5
+github,update_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+github,update_pull_request,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and providing a good balance of examples and explanations.",parameter_explanation,5,5,5,4,4,5
+github,update_pull_request_branch,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+google-maps,maps_directions,Good,87,"The description is comprehensive and well-structured, covering all necessary aspects with minor omissions.",limitation (4); parameter_explanation (4); examples_balance (4),5,5,4,4,4,5
+google-maps,maps_distance_matrix,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-maps,maps_elevation,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-maps,maps_geocode,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-maps,maps_place_details,Good,90,"The description is comprehensive and well-structured, covering all necessary aspects with minor limitations.",limitation (4),5,5,4,5,4,5
+google-maps,maps_reverse_geocode,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-maps,maps_search_places,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-search,search,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-search-new,extract_multiple_webpages,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-search-new,extract_webpage_content,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-search-new,google_search,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,add_columns,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,add_rows,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, and parameters, with minor limitations noted.",limitation,5,5,4,5,5,5
+google-sheets,batch_update_cells,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,copy_sheet,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,create_sheet,Good,93,"The tool description is comprehensive, clearly outlining its purpose, usage guidelines, and parameters, with minor limitations noted.",limitation,5,5,4,5,5,5
+google-sheets,create_spreadsheet,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,get_sheet_data,Good,90,"The description is comprehensive and well-structured, covering all necessary aspects with minor limitations.",limitation (4); examples_balance (4),5,5,4,5,4,5
+google-sheets,get_spreadsheet_info,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,list_sheets,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,list_spreadsheets,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,rename_sheet,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+google-sheets,update_cells,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+markitdown,convert_to_markdown,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,add_comment_to_pending_review,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,add_issue_comment,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,add_sub_issue,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+no_hub,assign_copilot_to_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,cancel_workflow_run,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,create_and_submit_pull_request_review,Good,83,"The description is clear and comprehensive, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,4,1,5,5
+no_hub,create_branch,Good,83,The description is comprehensive and clear in most areas but lacks clarity on parameter explanation.,parameter_explanation (1),5,5,5,1,5,5
+no_hub,create_gist,Good,83,"The description is clear and comprehensive, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+no_hub,create_issue,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanations.",parameter_explanation,5,5,5,2,5,5
+no_hub,create_or_update_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,create_pending_pull_request_review,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+no_hub,create_pull_request,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,create_repository,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,delete_file,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,delete_pending_pull_request_review,Good,83,"The description is clear and comprehensive, but lacks parameter explanation since there are no parameters to explain.",parameter_explanation,5,5,5,1,5,5
+no_hub,delete_workflow_run_logs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,dismiss_notification,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,download_workflow_run_artifact,Good,75,"The description is clear and detailed in most areas, but lacks clarity on parameter explanations.",parameter_explanation (2),5,5,4,2,5,4
+no_hub,fork_repository,Good,93,"The description is comprehensive, clearly outlining the purpose, usage guidelines, limitations, and examples, with only minor omissions in parameter explanation.",parameter_explanation,5,5,5,4,5,5
+no_hub,get_code_scanning_alert,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation,5,5,4,3,5,5
+no_hub,get_commit,Good,83,"The description is comprehensive and clear, but lacks specific parameter explanations.",parameter_explanation,5,5,5,1,5,5
+no_hub,get_dependabot_alert,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation (3),5,5,4,3,5,5
+no_hub,get_discussion,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation,5,5,4,3,5,5
+no_hub,get_discussion_comments,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_file_contents,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_issue_comments,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_job_logs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_me,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,get_notification_details,Good,100,"The tool description is comprehensive, clear, and covers all necessary aspects effectively.",,5,5,5,5,5,5
+no_hub,get_pull_request,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, and parameter explanations.",limitation,5,5,4,5,5,5
+no_hub,get_pull_request_comments,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation,5,5,4,3,5,5
+no_hub,get_pull_request_diff,Good,83,"The description is comprehensive and clear, but lacks parameter explanation since there are no parameters to explain.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,get_pull_request_files,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_pull_request_reviews,Good,83,"The description is comprehensive and clear, but lacks explicit parameter explanations.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,get_pull_request_status,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_secret_scanning_alert,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanations.",parameter_explanation,5,5,5,2,5,5
+no_hub,get_tag,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_workflow_run,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_workflow_run_logs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,get_workflow_run_usage,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_branches,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_code_scanning_alerts,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_commits,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects effectively.",,5,5,5,5,5,5
+no_hub,list_dependabot_alerts,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_discussion_categories,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_discussions,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_gists,Bad,66,"The parameter explanation is missing, which is critical for understanding tool usage.",parameter_explanation,4,5,4,1,5,4
+no_hub,list_issues,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_notifications,Good,75,"The description is clear and comprehensive, but lacks detailed parameter explanations.",parameter_explanation (2),5,5,4,2,4,5
+no_hub,list_pull_requests,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,list_secret_scanning_alerts,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_workflow_jobs,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and providing a well-structured explanation.",parameter_explanation,5,5,5,4,5,5
+no_hub,list_workflow_run_artifacts,Good,83,"The description is comprehensive and clear, but lacks explicit parameter documentation.",parameter_explanation (2),5,5,4,2,4,5
+no_hub,list_workflow_runs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,list_workflows,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,manage_notification_subscription,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanations.",parameter_explanation (3),5,5,4,3,4,5
+no_hub,manage_repository_notification_subscription,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,mark_all_notifications_read,Good,83,"The description is clear and comprehensive, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+no_hub,merge_pull_request,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+no_hub,push_files,Good,100,"The tool description is comprehensive, clear, and covers all necessary aspects effectively.",,5,5,5,5,5,5
+no_hub,remove_sub_issue,Good,83,"The description is clear and comprehensive, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+no_hub,reprioritize_sub_issue,Good,75,The description is clear and comprehensive in most areas but lacks parameter explanation.,parameter_explanation,5,5,4,1,5,5
+no_hub,request_copilot_review,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+no_hub,rerun_failed_jobs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,rerun_workflow_run,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,run_workflow,Good,83,"The description is clear and comprehensive, but lacks parameter explanation.",parameter_explanation,5,5,4,1,5,5
+no_hub,search_code,Good,83,"The description is comprehensive and clear in most areas, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,4,5
+no_hub,search_issues,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,search_orgs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects effectively.",,5,5,5,5,5,5
+no_hub,search_pull_requests,Good,83,"The description is comprehensive and clear, but the parameter explanation could be more detailed.",parameter_explanation (3),5,5,5,3,4,5
+no_hub,search_repositories,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,search_users,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,submit_pending_pull_request_review,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,update_gist,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and parameters, with a good balance of examples and sufficient length.",parameter_explanation,5,5,5,4,5,5
+no_hub,update_issue,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+no_hub,update_pull_request,Good,83,"The description is comprehensive and clear, with minor improvements needed in parameter explanation.",parameter_explanation (3),5,5,4,3,4,5
+no_hub,update_pull_request_branch,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,4,1,5,5
+notion,API-create-a-comment,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+notion,API-create-a-database,Good,83,The description is comprehensive and clear in most areas but lacks parameter explanation due to the absence of parameters.,parameter_explanation,5,5,5,1,5,5
+notion,API-delete-a-block,Good,100,"The tool description is comprehensive, clear, and covers all necessary aspects effectively.",,5,5,5,5,5,5
+notion,API-get-block-children,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and parameters, with a good balance of examples.",parameter_explanation,5,5,5,4,5,5
+notion,API-get-self,Good,100,"The description is comprehensive, clear, and covers all necessary aspects effectively.",,5,5,5,5,5,5
+notion,API-get-user,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-get-users,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-patch-block-children,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-patch-page,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-post-database-query,Good,83,"The description is comprehensive and clear, but lacks detailed parameter explanation.",parameter_explanation,5,5,5,2,5,5
+notion,API-post-page,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,4,5
+notion,API-post-search,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-retrieve-a-block,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and parameters, with a good balance of examples.",parameter_explanation,5,5,5,4,5,5
+notion,API-retrieve-a-comment,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-retrieve-a-database,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+notion,API-retrieve-a-page,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-retrieve-a-page-property,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-update-a-block,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+notion,API-update-a-database,Good,93,"The description is comprehensive, clearly outlining the tool's purpose, usage guidelines, limitations, and providing a well-structured explanation.",parameter_explanation,5,5,5,4,5,5
+paypal,create_invoice,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+paypal,list_transactions,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation,5,5,5,1,5,5
+playwright,browser_click,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+playwright,browser_close,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+playwright,browser_console_messages,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_drag,Good,83,"The description is comprehensive and clear, but lacks parameter explanation since there are no parameters.",parameter_explanation,5,5,5,1,5,5
+playwright,browser_evaluate,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+playwright,browser_file_upload,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,4,5
+playwright,browser_fill_form,Good,83,"The description is clear and comprehensive, but lacks detailed parameter explanations.",parameter_explanation (2),5,5,5,2,4,5
+playwright,browser_handle_dialog,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+playwright,browser_hover,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_install,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_navigate,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,4,5,5
+playwright,browser_navigate_back,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_network_requests,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+playwright,browser_press_key,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,4,5
+playwright,browser_resize,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_select_option,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,4,5
+playwright,browser_snapshot,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+playwright,browser_tabs,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_take_screenshot,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+playwright,browser_type,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation (1),5,5,5,1,5,5
+playwright,browser_wait_for,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,4,5
+postgres,query,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+slack,slack_add_reaction,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+slack,slack_get_channel_history,Good,83,"The description is comprehensive and clear, but lacks parameter explanation due to the absence of input parameters.",parameter_explanation (1),5,5,5,1,5,5
+slack,slack_get_thread_replies,Good,90,"The description is comprehensive and well-structured, covering all necessary aspects with minor omissions.",limitation (4); parameter_explanation (4),5,5,4,4,5,5
+slack,slack_get_user_profile,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+slack,slack_get_users,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+slack,slack_list_channels,Good,83,"The description is comprehensive and clear, but lacks parameter explanation.",parameter_explanation,5,5,5,1,5,5
+slack,slack_post_message,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,4,5
+slack,slack_reply_to_thread,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+weather,get_alerts,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+weather,get_forecast,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+wikipedia,search,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects effectively.",,5,5,5,5,5,5
+yfinance,get_financial_statement,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_historical_stock_prices,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_holder_info,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_option_chain,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_option_expiration_dates,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_recommendations,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_stock_actions,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_stock_info,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5
+yfinance,get_yahoo_finance_news,Good,100,"The tool description is comprehensive, clear, and well-structured, covering all necessary aspects.",,5,5,5,5,5,5

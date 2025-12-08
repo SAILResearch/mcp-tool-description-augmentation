@@ -1,9 +1,11 @@
-"""Analyze MCP tool description quality CSVs and emit reports and figures."""
+"""Analyze MCP tool description quality CSVs and emit reports and figures (LLM smells)."""
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -12,19 +14,46 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+# --- NEW: OpenAI client import (optional provider swap-in) ---
+try:
+    from openai import OpenAI
+except Exception:  # pragma: no cover
+    OpenAI = None  # lazy guard; we validate at runtime if LLM is enabled
 
+# ------------------------------
+# Canonical smell names (6 themes)
+# ------------------------------
+SMELL_LABELS = [
+    "too brief/short",
+    "no guidance",
+    "no examples",
+    "no purpose",
+    "missing parameter explanation",
+    "no limitations",
+]
+
+# For backward compatibility: keep but unused in LLM path
 DEFAULT_THEME_PATTERNS = {
-    "too brief/short": r"\\b(too\\s+)?brief\\b|\\bvery\\s+brief\\b|\\bshort\\b",
-    "vague/unclear": r"\\bvague\\b|\\bunclear\\b|\\bgeneric\\b|\\bambiguous\\b",
+    "too brief/short": r"\b(too\s+)?brief\b|\bvery\s+brief\b|\bshort\b",
+    "vague/unclear": r"\bvague\b|\bunclear\b|\bgeneric\b|\bambiguous\b",
     "no usage guidance/examples": r"when to use|not use|usage|examples?",
     "no warnings/limitations": r"limitations|warnings?|caveats?|what is not returned",
     "lacks purpose/what it does": r"purpose|what the tool does|objective",
     "missing parameter explanation": r"parameters?|args?|fields?.*(explain|meaning|effect|format)",
 }
 
+# Put this near your other helpers (top of file with imports)
+_EXAMPLES_REGEX = re.compile(
+    r"\bexamples?\b|for example|e\.g\.|such as|sample(?:s)?|usage example|walkthrough|demonstration|code snippet|snippet",
+    flags=re.IGNORECASE
+)
+
+def _reason_mentions_examples(text: str) -> bool:
+    return bool(_EXAMPLES_REGEX.search(text or ""))
+
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Analyze MCP tool description quality data.")
+    parser = argparse.ArgumentParser(description="Analyze MCP tool description quality data (LLM smells).")
     parser.add_argument("--input", type=Path, required=True, help="Path to input CSV file")
     parser.add_argument("--outdir", type=Path, required=True, help="Directory for analysis outputs")
     parser.add_argument("--score-col", default="description_quality_score", help="Column for quality scores")
@@ -38,7 +67,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--figure-dpi", type=int, default=200, help="Figure DPI (resolution)")
     parser.add_argument("--figure-fontsize", type=int, default=16, help="Base matplotlib font size")
     parser.add_argument("--max-servers", type=int, default=10, help="Maximum servers to show in boxplot")
+    # --- NEW LLM options ---
+    parser.add_argument("--use-llm", default="yes", help="Use LLM to detect smells from reasons (yes/no)")
+    parser.add_argument("--openai-model", default="gpt-4o-mini", help="OpenAI chat model name")
+    parser.add_argument("--llm-batch-size", type=int, default=50, help="Batch size for LLM calls")
+    parser.add_argument("--llm-max-retries", type=int, default=3, help="Max retries per LLM batch")
+    parser.add_argument("--augmented-out-csv", default="augmented_with_smells.csv",
+                    help="Filename for the output CSV that includes detected_smells")
+
     return parser.parse_args()
+
+def write_augmented_csv(outdir: Path, df: pd.DataFrame, filename: str) -> None:
+    df.to_csv(outdir / filename, index=False)
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -46,9 +86,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
     for col in df.select_dtypes(include=["object"]).columns:
         normalized = df[col].fillna("").astype(str).str.strip()
-        normalized = normalized.replace(
-            {"None": "", "none": "", "NA": "", "na": "", "N/A": "", "n/a": ""}
-        )
+        normalized = normalized.replace({"None": "", "none": "", "NA": "", "na": "", "N/A": "", "n/a": ""})
         df[col] = normalized
     return df
 
@@ -86,8 +124,8 @@ def compute_basic_stats(df: pd.DataFrame, score_col: str, threshold: float) -> D
 def split_items(cell: object) -> List[str]:
     if not isinstance(cell, str) or not cell:
         return []
-    tokens = re.split(r"[;,\\n]+", cell.lower())
-    cleaned = [re.sub(r"\\s+", " ", token).strip(" .;:,") for token in tokens]
+    tokens = re.split(r"[;,\n]+", cell.lower())
+    cleaned = [re.sub(r"\s+", " ", token).strip(" .;:,") for token in tokens]
     cleaned = [token for token in cleaned if token and token not in {"none", "n/a", "na"}]
     return sorted(set(cleaned))
 
@@ -142,40 +180,221 @@ def top_k_items(
     return rows[:k]
 
 
-def classify_reasons(
-    df: pd.DataFrame, reason_col: str, theme_patterns: Dict[str, str]
-) -> Tuple[pd.DataFrame, Counter]:
-    df = df.copy()
-    theme_counts: Counter[str] = Counter()
-    row_theme_hits: List[List[str]] = []
-    for text in df[reason_col].fillna(""):
-        text_lower = str(text).lower()
-        hits: List[str] = []
-        for theme, pattern in theme_patterns.items():
-            if re.search(pattern, text_lower):
-                theme_counts[theme] += 1
-                hits.append(theme)
-        row_theme_hits.append(hits)
-    df["reason_themes"] = row_theme_hits
-    return df, theme_counts
+# ------------------------------
+# NEW: LLM-based smell detection
+# ------------------------------
 
+# --- Replace helpers + classify_reasons_llm with this ---
+
+def _ensure_openai_client(model_name: str):
+    if OpenAI is None:
+        raise RuntimeError("OpenAI SDK not installed. Run `pip install openai`.")
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing OPENAI_API_KEY in environment.")
+    return OpenAI(), model_name
+
+def _build_llm_prompt_json_array(reasons: List[str]) -> List[Dict[str, str]]:
+    system = (
+        "You are a strict multi-label classifier for tool description quality smells.\n"
+        "Allowed labels ONLY:\n"
+        f"{', '.join(SMELL_LABELS)}\n\n"
+        "Labeling rules (very important):\n"
+        "1) If the rationale states that examples are missing, assign \"no examples\".\n"
+        "2) If the rationale states that examples ARE provided, do NOT assign \"no examples\".\n"
+        "3) If the rationale does NOT mention examples at all (no words like 'example', 'examples', 'e.g.', "
+        "'for example', 'sample', 'usage example', 'walkthrough', 'demonstration', 'code snippet'), "
+        "ASSIGN \"no examples\" by default.\n"
+        "4) Other labels follow their plain meaning.\n\n"
+        "Output format:\n"
+        "- Return a JSON array with the same length as the number of inputs; each element is an array of 0..N labels.\n"
+        "- Use ONLY the exact allowed label strings.\n"
+        "- If none apply, return an empty array for that item."
+    )
+    user = (
+        "Classify the following judge rationales according to the rules above.\n\n"
+        "Inputs (JSON array of strings):\n"
+        + json.dumps(reasons, ensure_ascii=False)
+        + "\nReturn ONLY the JSON array."
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+def _build_llm_prompt_jsonl(reasons: List[str]) -> List[Dict[str, str]]:
+    system = (
+        "You are a strict multi-label classifier for tool description quality smells.\n"
+        "Allowed labels ONLY:\n"
+        f"{', '.join(SMELL_LABELS)}\n\n"
+        "Labeling rules (very important):\n"
+        "1) If the rationale states that examples are missing, assign \"no examples\".\n"
+        "2) If the rationale states that examples ARE provided, do NOT assign \"no examples\".\n"
+        "3) If the rationale does NOT mention examples at all (no words like 'example', 'examples', 'e.g.', "
+        "'for example', 'sample', 'usage example', 'walkthrough', 'demonstration', 'code snippet'), "
+        "ASSIGN \"no examples\" by default.\n"
+        "4) Other labels follow their plain meaning.\n\n"
+        "Output format:\n"
+        "- Return JSON Lines: one line per input; each line is a JSON array of 0..N labels using ONLY the allowed strings.\n"
+        "- No prose, no extra lines."
+    )
+    user_lines = "\n".join([json.dumps(r, ensure_ascii=False) for r in reasons])
+    user = "Inputs (one JSON string per line):\n" + user_lines + "\nReturn JSON Lines, one per input."
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+def _normalize_labels(labels: Iterable[str]) -> List[str]:
+    alias_map = {
+        "too brief": "too brief/short",
+        "brief": "too brief/short",
+        "short": "too brief/short",
+        "no usage guidance": "no guidance",
+        "no guidance/examples": "no guidance",
+        "missing examples": "no examples",
+        "no example": "no examples",
+        "no examples provided": "no examples",
+        "no purpose/what it does": "no purpose",
+        "missing parameter details": "missing parameter explanation",
+        "missing parameter": "missing parameter explanation",
+        "missing parameters": "missing parameter explanation",
+        "no parameter explanation": "missing parameter explanation",
+        "missing limitations": "no limitations",
+        "no caveats": "no limitations",
+    }
+    normed = []
+    for lab in labels:
+        s = alias_map.get(str(lab).strip().lower(), str(lab).strip().lower())
+        if s in SMELL_LABELS and s not in normed:
+            normed.append(s)
+    return normed
+
+def _parse_json_array_or_raise(text: str, expected_len: int) -> List[List[str]]:
+    data = json.loads(text)
+    if not isinstance(data, list) or any(not isinstance(x, list) for x in data):
+        raise ValueError("Malformed JSON structure (expected list of lists).")
+    # length guard (pad/truncate)
+    if len(data) < expected_len:
+        data = data + [[] for _ in range(expected_len - len(data))]
+    elif len(data) > expected_len:
+        data = data[:expected_len]
+    return data
+
+def _parse_jsonl_or_raise(text: str, expected_len: int) -> List[List[str]]:
+    rows = [ln for ln in text.splitlines() if ln.strip()]
+    parsed = []
+    for ln in rows[:expected_len]:
+        try:
+            arr = json.loads(ln)
+            if not isinstance(arr, list):
+                arr = []
+        except Exception:
+            arr = []
+        parsed.append(arr)
+    if len(parsed) < expected_len:
+        parsed += [[] for _ in range(expected_len - len(parsed))]
+    return parsed
+
+def classify_reasons_llm(
+    df: pd.DataFrame,
+    reason_col: str,
+    model_name: str,
+    batch_size: int = 20,        # smaller default
+    max_retries: int = 3,
+) -> Tuple[pd.DataFrame, Counter]:
+    if df.empty:
+        df = df.copy()
+        df["detected_smells"] = ""
+        return df, Counter()
+
+    client, model = _ensure_openai_client(model_name)
+    reasons = df[reason_col].fillna("").astype(str).tolist()
+    all_labels_per_row: List[List[str]] = []
+
+    i = 0
+    while i < len(reasons):
+        batch = reasons[i : i + batch_size]
+        # First try: strict JSON array using response_format
+        attempt = 0
+        succeeded = False
+        while attempt < max_retries and not succeeded:
+            attempt += 1
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    temperature=0,
+                    messages=_build_llm_prompt_json_array(batch),
+                    response_format={"type": "json_object"},  # forces valid JSON
+                    max_tokens=2048,
+                )
+                content = resp.choices[0].message.content.strip()
+                # If response_format=json_object, model may wrap in {"data": [...]}
+                try:
+                    obj = json.loads(content)
+                    if isinstance(obj, dict) and "data" in obj:
+                        parsed = obj["data"]
+                        if not isinstance(parsed, list):
+                            raise ValueError("data is not a list")
+                        data = parsed
+                    else:
+                        data = _parse_json_array_or_raise(content, len(batch))
+                except Exception:
+                    # If it’s not an object, parse as raw array
+                    data = _parse_json_array_or_raise(content, len(batch))
+                for labels in data:
+                    all_labels_per_row.append(_normalize_labels(labels))
+                succeeded = True
+            except Exception as e:
+                if attempt >= max_retries:
+                    print(f"LLM strict-JSON batch failed after {attempt} attempts: {e}", flush=True)
+
+        # Fallback: JSONL (line-per-item), no response_format
+        if not succeeded:
+            attempt = 0
+            while attempt < max_retries and not succeeded:
+                attempt += 1
+                try:
+                    resp = client.chat.completions.create(
+                        model=model,
+                        temperature=0,
+                        messages=_build_llm_prompt_jsonl(batch),
+                        max_tokens=2048,
+                    )
+                    content = resp.choices[0].message.content.strip()
+                    data = _parse_jsonl_or_raise(content, len(batch))
+                    for labels in data:
+                        all_labels_per_row.append(_normalize_labels(labels))
+                    succeeded = True
+                except Exception as e:
+                    if attempt >= max_retries:
+                        print(f"LLM JSONL fallback failed after {attempt} attempts: {e}", flush=True)
+                        # Graceful degrade: no labels for this batch
+                        all_labels_per_row.extend([[] for _ in batch])
+
+        i += batch_size
+
+    df = df.copy()
+    df["detected_smells"] = [", ".join(lbls) for lbls in all_labels_per_row]
+
+    smell_counts: Counter = Counter()
+    for labels in all_labels_per_row:
+        smell_counts.update(labels)
+
+    return df, smell_counts
+
+
+
+# ------------------------------
+# Figures and reporting (unchanged)
+# ------------------------------
 
 def ensure_outdir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def figure_score_distribution(
-    df: pd.DataFrame, score_col: str, outpath: Path, dpi: int
-) -> None:
+def figure_score_distribution(df: pd.DataFrame, score_col: str, outpath: Path, dpi: int) -> None:
     plt.figure(figsize=(12, 8), dpi=dpi)
     scores = df[score_col].dropna()
     plt.hist(scores, bins=20, color="#4C72B0", edgecolor="white")
     mean = scores.mean()
     median = scores.median()
     plt.axvline(mean, color="red", linestyle="--", linewidth=2, label=f"Mean: {mean:.1f}")
-    plt.axvline(
-        median, color="green", linestyle=":", linewidth=2, label=f"Median: {median:.1f}"
-    )
+    plt.axvline(median, color="green", linestyle=":", linewidth=2, label=f"Median: {median:.1f}")
     plt.xlabel("Description quality score")
     plt.ylabel("Count")
     plt.title("Score distribution")
@@ -185,9 +404,7 @@ def figure_score_distribution(
     plt.close()
 
 
-def figure_missing_vs_score(
-    df: pd.DataFrame, score_col: str, outpath: Path, dpi: int
-) -> None:
+def figure_missing_vs_score(df: pd.DataFrame, score_col: str, outpath: Path, dpi: int) -> None:
     plt.figure(figsize=(12, 8), dpi=dpi)
     rng = np.random.default_rng(42)
     x = df["missing_count"].to_numpy()
@@ -267,25 +484,17 @@ def figure_server_boxplot(
 def build_notes(stats: Dict[str, float], top_items: pd.DataFrame, theme_df: pd.DataFrame) -> List[str]:
     notes: List[str] = []
     if stats["pct_below_threshold"] >= 50:
-        notes.append(
-            "More than half of tool descriptions fall below the quality threshold; prioritize broad documentation improvements."
-        )
+        notes.append("More than half of tool descriptions fall below the quality threshold; prioritize broad documentation improvements.")
     elif stats["pct_below_threshold"] >= 25:
-        notes.append(
-            "A sizable minority of descriptions are underperforming; focus remediation on the weakest tools first."
-        )
+        notes.append("A sizable minority of descriptions are underperforming; focus remediation on the weakest tools first.")
     top_missing = top_items.head(1)
     if not top_missing.empty:
         item = top_missing.iloc[0]
-        notes.append(
-            f"The most common gap is '{item['item']}' affecting {item['tool_pct']:.1f}% of tools."
-        )
+        notes.append(f"The most common gap is '{item['item']}' affecting {item['tool_pct']:.1f}% of tools.")
     top_theme = theme_df.head(1)
     if not top_theme.empty:
         theme = top_theme.iloc[0]
-        notes.append(
-            f"Judges most frequently cite '{theme['theme']}' ({theme['pct']:.1f}% of tools)."
-        )
+        notes.append(f"Judges most frequently cite '{theme['theme']}' ({theme['pct']:.1f}% of tools).")
     if not notes:
         notes.append("Tool descriptions generally meet expectations with no dominant deficiencies detected.")
     return notes
@@ -339,13 +548,9 @@ def write_report(
         lines.append("No missing items reported.\n")
     else:
         for _, row in top_df.iterrows():
-            server_pct = (
-                f", servers: {row['server_pct']:.1f}%" if pd.notna(row.get("server_pct")) else ""
-            )
-            lines.append(
-                f"- {row['item']}: tools {row['tool_pct']:.1f}%{server_pct}" + "\n"
-            )
-    lines.append("\n## Reason themes\n")
+            server_pct = (f", servers: {row['server_pct']:.1f}%" if pd.notna(row.get("server_pct")) else "")
+            lines.append(f"- {row['item']}: tools {row['tool_pct']:.1f}%{server_pct}\n")
+    lines.append("\n## Reason themes (LLM-detected smells)\n")
     if theme_df.empty:
         lines.append("No recurring themes detected.\n")
     else:
@@ -403,16 +608,29 @@ def main() -> None:
     top_rows = top_k_items(tool_item_counts, len(df), server_pct_map, args.top_k)
     top_df = pd.DataFrame(top_rows, columns=["item", "tool_count", "tool_pct", "server_pct"])
 
-    df, theme_counts = classify_reasons(df, colmap["reason"], DEFAULT_THEME_PATTERNS)
-    theme_total = len(df)
-    theme_data = [
-        (theme, count, count / theme_total * 100.0 if theme_total else 0.0)
-        for theme, count in theme_counts.items()
-    ]
-    theme_df = pd.DataFrame(theme_data, columns=["theme", "count", "pct"]).sort_values(
-        "pct", ascending=False
-    )
+    # --- NEW: LLM smells instead of regex ---
+    use_llm = str(args.use_llm).strip().lower() in {"yes", "true", "1"}
+    if use_llm:
+        df, smell_counts = classify_reasons_llm(
+            df, colmap["reason"], model_name=args.openai_model,
+            batch_size=args.llm_batch_size, max_retries=args.llm_max_retries
+        )
+    else:
+        # Fallback: no smells detected
+        df = df.copy()
+        df["detected_smells"] = ""
+        smell_counts = Counter()
 
+    # Build theme_df (percent of tools with the smell)
+    theme_total = len(df)
+    theme_data = []
+    for smell in SMELL_LABELS:
+        count = smell_counts.get(smell, 0)
+        pct = (count / theme_total * 100.0) if theme_total else 0.0
+        theme_data.append((smell, count, pct))
+    theme_df = pd.DataFrame(theme_data, columns=["theme", "count", "pct"]).sort_values("pct", ascending=False)
+
+    # Per-server stats (unchanged)
     server_stats_df = pd.DataFrame()
     if by_server:
         grouped = df.groupby(colmap["server"])[colmap["score"]]
@@ -427,6 +645,7 @@ def main() -> None:
             }
         ).sort_values("mean", ascending=False)
 
+    # Figures
     plt.rcParams.update({"font.size": args.figure_fontsize})
     figure_score_distribution(df, colmap["score"], args.outdir / "score_distribution.png", args.figure_dpi)
     figure_missing_vs_score(df, colmap["score"], args.outdir / "missing_vs_score.png", args.figure_dpi)
@@ -459,6 +678,12 @@ def main() -> None:
         "figure_fontsize": args.figure_fontsize,
         "max_servers": args.max_servers,
         "server_count": server_count,
+        # NEW: LLM config
+        "use_llm": use_llm,
+        "openai_model": args.openai_model,
+        "llm_batch_size": args.llm_batch_size,
+        "llm_max_retries": args.llm_max_retries,
+        "smell_labels": SMELL_LABELS,
     }
 
     write_summary_json(args.outdir, stats, config)
@@ -467,6 +692,7 @@ def main() -> None:
     write_server_stats_csv(args.outdir, server_stats_df)
 
     notes = build_notes(stats, top_df, theme_df)
+    write_augmented_csv(args.outdir, df, args.augmented_out_csv)
     write_report(args.outdir, stats, top_df, theme_df, server_stats_df, notes, config)
 
     print(f"Analysis complete. Outputs written to {args.outdir}")

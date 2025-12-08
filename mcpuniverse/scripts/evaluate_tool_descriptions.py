@@ -20,13 +20,14 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
-from openai import OpenAI
-
+from mcpuniverse.llm.manager import ModelManager
 from mcpuniverse.mcp.manager import MCPManager
 from mcpuniverse.scripts.list_tool_performance import _list_server_tools, _select_transport
 from mcpuniverse.utils.task_search import ToolInfo
+
+from description_evaluation_prompt import DESCRIPTION_QUALITY_PROMPT
 
 
 LOGGER = logging.getLogger(__name__)
@@ -34,74 +35,148 @@ LOGGER = logging.getLogger(__name__)
 CSV_COLUMNS = [
     "mcp_server_name",
     "tool_name",
-    "is_consolidated",
-    "consolidation_reason",
-    "quality_score",
-    "quality_reason",
     "description_label",
     "description_quality_score",
     "description_reason",
-    "description_missing_points",
+    "description_improvement_needed",
+    "purpose_score",
+    "usage_guideline_score",
+    "limitation_score",
+    "parameter_explanation_score",
+    "examples_balance_score",
+    "length_completeness_score",
 ]
 
+_MODEL_PREFIX_ALIASES: tuple[tuple[str, str], ...] = (
+    ("gpt-", "openai"),
+    ("o1-", "openai"),
+    ("o3-", "openai"),
+    ("o4-", "openai"),
+    ("claude-", "claude"),
+    ("sonnet", "claude"),
+    ("haiku", "claude"),
+    ("opus", "claude"),
+    ("mistral", "mistral"),
+    ("ministral", "mistral"),
+    ("codestral", "mistral"),
+    ("deepseek", "deepseek"),
+    ("grok-", "grok"),
+    ("gemini", "gemini"),
+)
 
-class ChatLLM:
-    """Simple wrapper around the OpenAI Chat Completions API."""
 
-    def __init__(
-        self,
-        *,
-        provider: str,
-        model: str,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
-    ) -> None:
-        provider_normalized = (provider or "openai").strip().lower()
-        if provider_normalized != "openai":
-            raise ValueError(
-                f"Unsupported provider '{provider}'. Only 'openai' is currently supported."
-            )
+def _guess_model_alias(model_spec: str) -> Optional[str]:
+    """Best-effort guess of the provider alias from the model name."""
 
-        api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "An OpenAI API key is required. Supply --api-key or set OPENAI_API_KEY."
-            )
+    lowered = model_spec.strip().lower()
+    if lowered.startswith("openrouter/"):
+        return "openrouter"
+    for prefix, alias in _MODEL_PREFIX_ALIASES:
+        if lowered.startswith(prefix):
+            return alias
+    return None
 
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
-        self.model = model
-        self.temperature = temperature
-        self.max_tokens = max_tokens
 
-    def generate(self, prompt: str) -> str:
-        """Generate a completion for ``prompt`` using chat.completions."""
+def _override_model_name(llm: Any, model_name: str) -> None:
+    """Try to set ``model_name`` on the LLM config when available."""
 
+    config = getattr(llm, "config", None)
+    if config is None or not hasattr(config, "model_name"):
+        LOGGER.warning(
+            "Unable to apply requested model '%s' because this provider does not expose a 'model_name' config attribute.",
+            model_name,
+        )
+        return
+    setattr(config, "model_name", model_name)
+    LOGGER.info("Using provider %s with requested model '%s'.", llm.__class__.__name__, model_name)
+
+
+def _build_llm(model_manager: ModelManager, provider: Optional[str], model_spec: str):
+    """Instantiate an LLM using ModelManager with provider/model inputs."""
+
+    available = model_manager.available_models()
+    alias = (provider or "").strip() or None
+    requested_model = model_spec
+
+    if ":" in model_spec:
+        alias, _, requested_model = model_spec.partition(":")
+        alias = alias.strip().lower() or alias
+    elif not alias:
+        alias = _guess_model_alias(model_spec)
+
+    if not alias:
+        available_str = ", ".join(sorted(available))
+        raise AssertionError(
+            f"Unable to determine provider for model '{model_spec}'. "
+            f"Specify --provider explicitly or use 'alias:model_name'. Known providers: {available_str}"
+        )
+    if alias not in available:
+        available_str = ", ".join(sorted(available))
+        raise AssertionError(
+            f"Provider '{alias}' is not registered. Choose from: {available_str}"
+        )
+
+    llm = model_manager.build_model(alias)
+    if requested_model and requested_model != alias:
+        _override_model_name(llm, requested_model)
+    return llm
+
+
+def _apply_config_overrides(
+    llm: Any,
+    *,
+    api_key: Optional[str],
+    base_url: Optional[str],
+    temperature: Optional[float],
+    max_tokens: Optional[int],
+) -> None:
+    """Set common config overrides on ``llm`` when supported."""
+
+    config = getattr(llm, "config", None)
+    if config is None:
+        return
+    if api_key and hasattr(config, "api_key"):
+        setattr(config, "api_key", api_key)
+    if base_url and hasattr(config, "base_url"):
+        setattr(config, "base_url", base_url)
+    if temperature is not None and hasattr(config, "temperature"):
+        setattr(config, "temperature", temperature)
+    if max_tokens is not None:
+        if hasattr(config, "max_completion_tokens"):
+            setattr(config, "max_completion_tokens", max_tokens)
+        elif hasattr(config, "max_tokens"):
+            setattr(config, "max_tokens", max_tokens)
+
+
+def _extract_text(response: Any) -> str:
+    """Normalise a variety of LLM response shapes to plain text."""
+
+    if response is None:
+        return ""
+    if isinstance(response, str):
+        return response
+    if hasattr(response, "choices"):
+        choices = getattr(response, "choices")
+        if choices:
+            message = getattr(choices[0], "message", None)
+            if message is not None:
+                content = getattr(message, "content", None)
+                if isinstance(content, str):
+                    return content
+                if isinstance(content, list):
+                    text_parts = [
+                        part.get("text", "")
+                        for part in content
+                        if isinstance(part, dict) and part.get("type") == "text"
+                    ]
+                    return "\n".join(text_parts)
+    if hasattr(response, "model_dump"):
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
-        except Exception as exc:  # pragma: no cover - network interaction
-            raise RuntimeError(f"OpenAI API request failed: {exc}") from exc
-
-        choice = response.choices[0]
-        content = choice.message.content
-        if isinstance(content, str):
-            return content
-        if isinstance(content, Iterable):
-            parts: List[str] = []
-            for item in content:
-                text = getattr(item, "text", None)
-                if text:
-                    parts.append(text)
-            return "".join(parts)
-        return str(content or "")
-
-
+            data = response.model_dump(mode="json")  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover - defensive
+            data = response.model_dump()  # type: ignore[attr-defined]
+        return json.dumps(data)
+    return str(response)
 def sanitize_text(text: Optional[str]) -> str:
     """Strip code fences, quotes, and surrounding whitespace."""
 
@@ -128,6 +203,13 @@ def extract_json_object(text: str) -> dict:
         if match:
             return json.loads(match.group(0))
         raise
+
+
+def _run_prompt(llm: Any, prompt: str) -> str:
+    """Send a single-user-message prompt to ``llm`` and return plain text."""
+
+    response = llm.generate(messages=[{"role": "user", "content": prompt}])
+    return _extract_text(response)
 
 
 def normalize_boolean(value) -> Optional[bool]:
@@ -213,122 +295,9 @@ def create_description_quality_prompt(tool: ToolInfo) -> str:
         },
         indent=2,
     )
+    prompt =DESCRIPTION_QUALITY_PROMPT.replace("{tool_payload}", tool_payload)
 
-    return f"""# Prompt:
-Judge Whether a Tool Description Is Good or Bad
-You are grading a tool description inside a tool definition (usually JSON). Decide if it is Good or Bad strictly by the criteria below. Then return a concise justification and list which required points are missing. Also provide a quality_score from 0 (very poor description) to 100 (excellent, fully compliant description).
-What a Good description MUST do (from the guidelines)
-Explain what the tool does (purpose + behavior).
-Say when to use it—and when not to use it.
-Explain every parameter (type, meaning, how it changes behavior; defaults/required).
-State caveats/limitations, including what the tool does not return and any disambiguation needed if the tool name could be unclear.
-Provide at least 3–4 sentences of explanatory prose (more if complex).
-Prioritize description over examples: examples may appear, but the description itself must already be clear and complete.
-If any one of (1)–(5) is missing, or if examples replace the description (violating 6), the description is Bad.
-Input
-{tool_payload}
-Output format (JSON)
-{{
-  "label": "Good" | "Bad",
-  "quality_score": 0-100,
-  "reason": "One sentence justification.",
-  "missing_points": ["list the absent required elements from 1–6"]
-}}
-Few-Shot Examples
-Example A — Good
-Input
-{{
-  "name": "get_stock_price",
-  "description": "Retrieves the current stock price for a given ticker symbol. The ticker symbol must be a valid symbol for a publicly traded company on a major US exchange like NYSE or NASDAQ. The tool returns the latest trade price in USD only, not historical data or company fundamentals. Use it when the user asks for the current or most recent price of a specific stock; do not use it for crypto, ETFs, or historical time series.",
-  "input_schema": {{
-    "type": "object",
-    "properties": {{
-      "ticker": {{
-        "type": "string",
-        "description": "The stock ticker symbol, e.g., AAPL for Apple Inc."
-      }}
-    }},
-    "required": ["ticker"]
-  }}
-}}
-Output
-{{
-  "label": "Good",
-  "quality_score": 100,
-  "reason": "It explains purpose, when/when not to use, return data, and the parameter meaning in 4+ sentences.",
-  "missing_points": []
-}}
-Example B — Bad
-Input
-{{
-  "name": "get_stock_price",
-  "description": "Gets the stock price for a ticker.",
-  "input_schema": {{
-    "type": "object",
-    "properties": {{
-      "ticker": {{ "type": "string" }}
-    }},
-    "required": ["ticker"]
-  }}
-}}
-Output
-{{
-  "label": "Bad",
-  "quality_score": 15,
-  "reason": "Too short and vague: no guidance on usage boundaries, return data, or parameter meaning.",
-  "missing_points": ["when to use/not use", "parameter meaning and effect", "caveats/limitations and what is not returned", "3–4 sentence minimum"]
-}}
-Example C — Good (shows caveats & name clarity)
-Input
-{{
-  "name": "lookup_user",
-  "description": "Returns public profile metadata for a single platform user. Use it when you already have an immutable user_id; do not use it to search by name or email. It returns non-sensitive fields only (display_name, creation_date, follower_count) and never returns email, password, or private messages. If the name 'lookup_user' is ambiguous, note that this tool does not search: it only fetches by user_id; for name search use the 'search_users' tool instead.",
-  "input_schema": {{
-    "type": "object",
-    "properties": {{
-      "user_id": {{
-        "type": "string",
-        "description": "The unique account identifier; required to fetch a single profile."
-      }},
-      "fields": {{
-        "type": "array",
-        "items": {{ "type": "string" }},
-        "description": "Optional whitelist of fields to return; reduces payload and latency."
-      }}
-    }},
-    "required": ["user_id"]
-  }}
-}}
-Output
-{{
-  "label": "Good",
-  "quality_score": 95,
-  "reason": "Provides purpose, usage and non-usage, parameter effects, and explicit limitations including what is not returned.",
-  "missing_points": []
-}}
-Example D — Bad (examples overshadow description)
-Input
-{{
-  "name": "translate_text",
-  "description": "Use like: translate_text('Hello','es'). Example: translate_text('Good morning','fr').",
-  "input_schema": {{
-    "type": "object",
-    "properties": {{
-      "text": {{ "type": "string" }},
-      "target_lang": {{ "type": "string" }}
-    }},
-    "required": ["text", "target_lang"]
-  }}
-}}
-Output
-{{
-  "label": "Bad",
-  "quality_score": 10,
-  "reason": "Relies on examples instead of a descriptive, multi-sentence explanation and omits usage guidance and caveats.",
-  "missing_points": ["what the tool does", "when to use/not use", "parameter meaning and effect", "caveats/limitations", "3–4 sentence minimum"]
-}}
-"""
-
+    return prompt
 
 def normalize_description_label(value: Optional[str]) -> Optional[str]:
     if not isinstance(value, str):
@@ -340,10 +309,25 @@ def normalize_description_label(value: Optional[str]) -> Optional[str]:
         return "Bad"
     return None
 
+def extract_rubric_score(scores: dict, key: str, normalize_fn) -> int | None:
+    """
+    Safely extract and normalize a rubric score from the scores object.
 
-def evaluate_tool_consolidation(llm: ChatLLM, tool: ToolInfo) -> dict:
+    scores: dict returned by the model under "scores"
+    key: name of the rubric field
+    normalize_fn: reference to normalize_score
+
+    Returns a normalized integer or None.
+    """
+    if not isinstance(scores, dict):
+        return None
+    value = scores.get(key)
+    return normalize_fn(value) if value is not None else None
+
+
+def evaluate_tool_consolidation(llm: Any, tool: ToolInfo) -> dict:
     prompt = create_consolidation_prompt(tool)
-    raw = llm.generate(prompt)
+    raw = _run_prompt(llm, prompt)
     try:
         parsed = extract_json_object(raw)
     except Exception as exc:  # pragma: no cover - depends on LLM output
@@ -376,9 +360,9 @@ def evaluate_tool_consolidation(llm: ChatLLM, tool: ToolInfo) -> dict:
     }
 
 
-def evaluate_description_quality(llm: ChatLLM, tool: ToolInfo) -> dict:
+def evaluate_description_quality(llm: Any, tool: ToolInfo) -> dict:
     prompt = create_description_quality_prompt(tool)
-    raw = llm.generate(prompt)
+    raw = _run_prompt(llm, prompt)
     try:
         parsed = extract_json_object(raw)
     except Exception as exc:  # pragma: no cover - depends on LLM output
@@ -388,21 +372,43 @@ def evaluate_description_quality(llm: ChatLLM, tool: ToolInfo) -> dict:
             "description_quality_score": "",
             "description_reason": message,
             "description_missing_points": "",
+            "purpose_score": "",
+            "usage_guideline_score": "",
+            "limitation_score": "",
+            "parameter_explanation_score": "",
+            "examples_balance_score": "",
+            "length_completeness_score": "",
         }
 
     label = normalize_description_label(parsed.get("label"))
-    quality_score = normalize_score(parsed.get("quality_score"))
+    quality_score = normalize_score(parsed.get("overall_quality_score"))
     reason = format_reason(parsed.get("reason"), "No justification provided")
-    missing_points = ""
-    if isinstance(parsed.get("missing_points"), list):
-        formatted = [format_reason(item, "") for item in parsed["missing_points"]]
-        missing_points = "; ".join(filter(None, formatted))
+    improvement_needed = ""
+    improvements = parsed.get("improvement_needed")
+    if isinstance(improvements, list):
+        formatted = [format_reason(item, "") for item in improvements]
+        improvement_needed = "; ".join(filter(None, formatted))
+    
+    scores = parsed.get("scores") or {}
+    purpose_score = extract_rubric_score(scores, "purpose", normalize_score)
+    usage_guideline_score = extract_rubric_score(scores, "usage_guideline", normalize_score)
+    limitation_score = extract_rubric_score(scores, "limitation", normalize_score)
+    parameter_explanation_score = extract_rubric_score(scores, "parameter_explanation", normalize_score)
+    examples_balance_score = extract_rubric_score(scores, "examples_balance", normalize_score)
+    length_completeness_score = extract_rubric_score(scores, "length_completeness", normalize_score)
+    
 
     return {
         "description_label": label or "",
         "description_quality_score": quality_score if quality_score is not None else "",
         "description_reason": reason,
-        "description_missing_points": missing_points,
+        "description_improvement_needed": improvement_needed,
+        "purpose_score": purpose_score if purpose_score is not None else "",
+        "usage_guideline_score": usage_guideline_score if usage_guideline_score is not None else "",
+        "limitation_score": limitation_score if limitation_score is not None else "",
+        "parameter_explanation_score": parameter_explanation_score if parameter_explanation_score is not None else "",
+        "examples_balance_score": examples_balance_score if examples_balance_score is not None else "",
+        "length_completeness_score": length_completeness_score if length_completeness_score is not None else "",
     }
 
 
@@ -565,12 +571,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "-m",
         "--model",
         required=True,
-        help="Target LLM model identifier (e.g., gpt-4o).",
+        help=(
+            "Target model name (e.g., gpt-4o, claude-3.5-sonnet) or alias:model_name "
+            "pair like openai:gpt-4o-mini. If no alias is provided, the provider is "
+            "taken from --provider or inferred from the model name."
+        ),
     )
     parser.add_argument(
         "--provider",
         default="openai",
-        help="LLM provider name (currently only 'openai' is supported).",
+        help="LLM provider alias registered with ModelManager (e.g., openai, openrouter, claude, gemini).",
     )
     parser.add_argument(
         "--api-key",
@@ -681,90 +691,93 @@ async def async_main(args: argparse.Namespace) -> int:
         tools = tools[: args.limit]
         LOGGER.info("Limiting evaluation to the first %d tools", len(tools))
 
-    rows: List[dict] = []
-    llm: Optional[ChatLLM] = None
+    llm: Optional[Any] = None
     if not args.dry_run:
+        model_manager = ModelManager()
         try:
-            llm = ChatLLM(
-                provider=args.provider,
-                model=args.model,
-                api_key=args.api_key,
-                base_url=args.base_url,
-                temperature=0.0,
-                max_tokens=700,
-            )
-        except ValueError as exc:
+            llm = _build_llm(model_manager, args.provider, args.model)
+        except AssertionError as exc:
             LOGGER.error("Failed to initialize LLM: %s", exc)
             return 1
+        _apply_config_overrides(
+            llm,
+            api_key=args.api_key,
+            base_url=args.base_url,
+            temperature=0.0,
+            max_tokens=2048,
+        )
 
-    for index, tool in enumerate(tools, start=1):
-        prefix = f"[{index}/{len(tools)}]"
-        LOGGER.info("%s Evaluating %s :: %s", prefix, tool.server, tool.name)
+    output_path = Path(args.output).expanduser().resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=CSV_COLUMNS)
+        writer.writeheader()
 
-        if args.dry_run or llm is None:
-            rows.append(
-                {
+        for index, tool in enumerate(tools, start=1):
+            prefix = f"[{index}/{len(tools)}]"
+            LOGGER.info("%s Evaluating %s :: %s", prefix, tool.server, tool.name)
+
+            if args.dry_run or llm is None:
+                row = {
                     "mcp_server_name": tool.server,
                     "tool_name": tool.name,
-                    "is_consolidated": "",
-                    "consolidation_reason": "Dry run",
-                    "quality_score": "",
-                    "quality_reason": "Dry run",
                     "description_label": "",
                     "description_quality_score": "",
                     "description_reason": "Dry run",
-                    "description_missing_points": "",
+                    "description_improvement_needed": "",
+                    "purpose_score": "",
+                    "usage_guideline_score": "",
+                    "limitation_score": "",
+                    "parameter_explanation_score": "",
+                    "examples_balance_score": "",
+                    "length_completeness_score": "",
                 }
-            )
-            continue
+                writer.writerow(row)
+                handle.flush()
+                continue
 
-        try:
-            consolidation = evaluate_tool_consolidation(llm, tool)
-            description_quality = evaluate_description_quality(llm, tool)
-        except Exception as exc:  # pragma: no cover - depends on LLM behavior
-            LOGGER.warning(
-                "%s Failed to analyze %s :: %s: %s",
-                prefix,
-                tool.server,
-                tool.name,
-                exc,
-            )
-            rows.append(
-                {
+            try:
+                description_quality = evaluate_description_quality(llm, tool)
+                row = {
                     "mcp_server_name": tool.server,
                     "tool_name": tool.name,
-                    "is_consolidated": "",
-                    "consolidation_reason": f"Error: {exc}",
-                    "quality_score": "",
-                    "quality_reason": f"Error: {exc}",
+                    "description_label": description_quality.get("description_label", ""),
+                    "description_quality_score": description_quality.get("description_quality_score", ""),
+                    "description_reason": description_quality.get("description_reason", ""),
+                    "description_improvement_needed": description_quality.get("description_improvement_needed", ""),
+                    "purpose_score": description_quality.get("purpose_score", ""),
+                    "usage_guideline_score": description_quality.get("usage_guideline_score", ""),
+                    "limitation_score": description_quality.get("limitation_score", ""),
+                    "parameter_explanation_score": description_quality.get("parameter_explanation_score", ""),
+                    "examples_balance_score": description_quality.get("examples_balance_score", ""),
+                    "length_completeness_score": description_quality.get("length_completeness_score", ""),
+                }
+            except Exception as exc:  # pragma: no cover - depends on LLM behavior
+                LOGGER.warning(
+                    "%s Failed to analyze %s :: %s: %s",
+                    prefix,
+                    tool.server,
+                    tool.name,
+                    exc,
+                )
+                row = {
+                    "mcp_server_name": tool.server,
+                    "tool_name": tool.name,
                     "description_label": "",
                     "description_quality_score": "",
                     "description_reason": f"Error: {exc}",
-                    "description_missing_points": "",
+                    "description_improvement_needed": "",
+                    "purpose_score": "",
+                    "usage_guideline_score": "",
+                    "limitation_score": "",
+                    "parameter_explanation_score": "",
+                    "examples_balance_score": "",
+                    "length_completeness_score": "",
                 }
-            )
-            continue
 
-        row = {
-            "mcp_server_name": tool.server,
-            "tool_name": tool.name,
-            "is_consolidated": consolidation["is_consolidated"],
-            "consolidation_reason": consolidation["consolidation_reason"],
-            "quality_score": consolidation["quality_score"],
-            "quality_reason": consolidation["quality_reason"],
-            "description_label": description_quality["description_label"],
-            "description_quality_score": description_quality[
-                "description_quality_score"
-            ],
-            "description_reason": description_quality["description_reason"],
-            "description_missing_points": description_quality[
-                "description_missing_points"
-            ],
-        }
-        rows.append(row)
+            writer.writerow(row)
+            handle.flush()
 
-    output_path = Path(args.output).expanduser().resolve()
-    write_csv(output_path, rows)
     LOGGER.info("Wrote analysis to %s", output_path)
     return 0
 

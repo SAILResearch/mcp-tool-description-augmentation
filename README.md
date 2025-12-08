@@ -858,6 +858,90 @@ using a compatible proxy. Each tool evaluation spawns the corresponding MCP
 server through its stdio transport, lists available tools, and records both LLM
 assessments in the output CSV.
 
+### Export tool metadata to CSV
+
+Use `export_tools_to_csv` to connect to every MCP server in a config file and write a CSV with the tool name, description, and input schema. The output path defaults to the config filename with `.csv` instead of `.json`.
+
+```bash
+python -m mcpuniverse.scripts.export_tools_to_csv \
+  --config mcpuniverse/mcp/configs/server_list_Zhiling_Luo.json \
+  --transport stdio
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--config PATH` | MCP server configuration file (default: `mcpuniverse/mcp/configs/server_list.json`). |
+| `--output PATH` | Optional custom output CSV path (default: `tool_description_<config_stem>.csv` in the same directory). |
+| `--transport {stdio,sse,auto}` | Preferred transport; `auto` falls back between stdio/SSE. |
+
+Columns written: `server_name`, `tool.name`, `tool.description`, `tool.input_schema`.
+
+### Evaluate stored MCP tool descriptions from the database
+
+If you already have `tool_description_components` stored in the `mcp_servers`
+table, use `evaluate_db_tool_descriptions` to score them without launching MCP
+servers. The script runs the same rubric used by `evaluate_tool_descriptions`,
+but pulls rows directly from Postgres.
+
+```bash
+export DB_URL=postgresql://user:pass@host:5432/dbname
+export OPENAI_API_KEY=sk-...  # or pass --api-key
+
+python -m mcpuniverse.scripts.evaluate_db_tool_descriptions \
+  --model openai:gpt-4o-mini \
+  --output /tmp/mcp_tool_db_audit.csv \
+  --limit 100
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--model MODEL_NAME` | Required. Target model alias or alias:model_name pair (same as other CLIs). |
+| `--output PATH` | Required. Destination CSV path for the scores. |
+| `--server NAME` | Optional. Restrict to specific `mcp_server_name` values (repeatable). |
+| `--limit N` | Optional. Evaluate only the first `N` rows returned by the query. |
+| `--dry-run` | Skip LLM calls and emit placeholder rows. |
+
+### Compare GPT vs Sonnet quality score alignment
+
+To measure agreement between GPT- and Sonnet-generated quality scores, compute Kendall's τ and Spearman's ρ using:
+
+```bash
+python -m mcpuniverse.scripts.compare_quality_score_correlations \
+  --input path/to/scores.csv \
+  --output /tmp/score_correlations.csv
+```
+
+The input CSV must contain the columns `description_quality_score_from_gpt` and `description_quality_score_from_sonnet` by default (custom column names can be provided via flags).
+
+### Evaluate tool descriptions from a CSV file
+
+If you already have a CSV of tool metadata, you can score descriptions without starting MCP servers:
+
+```bash
+python -m mcpuniverse.scripts.evaluate_csv_tool_descriptions \
+  --model openai:gpt-4o-mini \
+  --provider openai \
+  --input path/to/tools.csv \
+  --output /tmp/mcp_tool_csv_audit.csv
+```
+
+The input CSV must include columns for server, tool name, and description. Defaults are `server_name`, `tool.name`, and `tool.description`; override with `--server-col`, `--name-col`, and `--desc-col` if needed. The output CSV matches the schema used by `evaluate_tool_descriptions`.
+
+### Compute ICC across multiple raters
+
+To measure agreement across three quality score columns (default: `gpt-41-mini`, `haiku-35`, `qwen3-32b`), run:
+
+```bash
+python -m mcpuniverse.scripts.calc_icc_tool_quality \
+  --input path/to/quality_scores.csv
+```
+
+Override column names with `--gpt-col`, `--haiku-col`, and `--qwen-col` if your CSV uses different headers. The script prints ICC(2,1) to stdout.
+
 ### Analyze tool description quality reports
 
 After collecting audit results (for example, via `evaluate_tool_descriptions`),

@@ -1,0 +1,8 @@
+{
+  "paypal": {
+    "stdio": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://mcp.paypal.com/sse"]
+    }
+  }
+}

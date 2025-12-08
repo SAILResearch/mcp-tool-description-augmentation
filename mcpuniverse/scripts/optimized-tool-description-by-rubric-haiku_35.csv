@@ -1,0 +1,203 @@
+mcp_server_name,tool_name,description_label,description_quality_score,description_reason,description_improvement_needed,purpose_score,usage_guideline_score,limitation_score,parameter_explanation_score,examples_balance_score,length_completeness_score
+blender,clear_scene_and_polyhaven_materials,Good,83,Comprehensive description with clear usage guidelines and thorough explanation of tool's function.,parameter_explanation,4,5,4,3,4,5
+blender,create_object,Good,100,Comprehensive description with exceptional depth and clarity across all evaluation dimensions.,,5,5,5,5,5,5
+blender,delete_object,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more specificity on edge cases for limitations,5,5,4,5,5,5
+blender,download_polyhaven_asset,Good,100,Comprehensive description with exceptional clarity across all evaluation dimensions,,5,5,5,5,5,5
+blender,execute_blender_code,Good,100,Comprehensive description with exceptional clarity across all dimensions.,,5,5,5,5,5,5
+blender,get_object_info,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+blender,get_polyhaven_categories,Good,100,"Comprehensive description with precise, clear, and thorough explanation of tool functionality.",,5,5,5,5,5,5
+blender,get_polyhaven_status,Good,100,Comprehensive description with exceptional clarity across all evaluation dimensions.,,5,5,5,5,5,5
+blender,get_scene_info,Good,100,"Comprehensive, clear, and thorough tool description covering all key aspects",,5,5,5,5,5,5
+blender,modify_object,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+blender,search_polyhaven_assets,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+blender,set_material,Good,87,Comprehensive description with clear explanations and robust documentation,Clarify inconsistent material color array documentation,4,5,4,5,5,5
+blender,set_texture,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+calculator,calculate,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+date,get_current_datetime,Good,100,Comprehensive description covering all aspects with exceptional clarity and precision.,,5,5,5,5,5,5
+date,get_current_datetime_utc,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+date,get_date_in_timezone,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+date,get_timestamp,,,Failed to parse description assessment: Extra data: line 16 column 1 (char 343),,,,,,,
+date,get_today_date,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+echo,echo_tool,Good,87,"Comprehensive description with clear, detailed explanation of tool's purpose and behavior",Clarify potential encoding or input length limitations,5,5,4,4,5,5
+fetch,fetch,Good,96,"Comprehensive, precise, and well-structured tool description",Clarify markdown extraction parameter specifics,5,5,4,5,5,5
+filesystem,create_directory,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter type details,5,5,5,4,5,5
+filesystem,directory_tree,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+filesystem,edit_file,Good,95,"Comprehensive description with precise, detailed explanation of tool functionality and constraints.",Slightly more explicit parameter type details,5,5,5,4,5,5
+filesystem,get_file_info,Good,87,"Comprehensive description with clear purpose, usage guidelines, and detailed explanations.",parameter_explanation could be more precise about parameter constraints,5,5,4,4,5,5
+filesystem,list_allowed_directories,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+filesystem,list_directory,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+filesystem,list_directory_with_sizes,Good,79,Comprehensive description with clear tool behavior explanation,parameter_explanation; precise parameter names,4,5,4,3,5,4
+filesystem,move_file,Good,100,Comprehensive description covering all aspects with exceptional clarity and detail.,,5,5,5,5,5,5
+filesystem,read_file,Good,87,Comprehensive description with clear usage guidelines and limitations,parameter_explanation could be slightly more precise,4,5,5,4,5,5
+filesystem,read_media_file,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+filesystem,read_multiple_files,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+filesystem,read_text_file,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Clarify default encoding behavior,5,5,4,5,5,5
+filesystem,search_files,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+filesystem,write_file,Good,87,Comprehensive description with clear usage guidelines and thorough explanations,parameter_explanation could be more precise about parameter types,4,5,4,4,5,5
+github,add_comment_to_pending_review,Good,75,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,4,5,4,2,4,4
+github,add_issue_comment,Good,95,"Comprehensive description with clear, precise explanations across all dimensions",,5,5,5,5,4,5
+github,add_sub_issue,Bad,50,Description lacks clear parameter details and has significant limitations in explaining tool mechanics.,parameter_explanation; limitation; purpose clarification,3,4,2,1,4,4
+github,assign_copilot_to_issue,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,cancel_workflow_run,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,create_and_submit_pull_request_review,Good,87,Comprehensive description with clear usage guidelines and thorough explanations,parameter_explanation could be slightly more precise,4,5,4,4,5,5
+github,create_branch,Good,100,Comprehensive description with exceptional depth across all evaluation dimensions.,,5,5,5,5,5,5
+github,create_gist,Good,87,Comprehensive description with clear guidelines and thorough explanation of tool constraints.,parameter_explanation,4,5,5,4,5,5
+github,create_issue,Good,87,Comprehensive description with clear guidelines and detailed explanations,parameter schema clarification,4,5,4,4,4,5
+github,create_or_update_file,Good,100,Comprehensive description with exceptional clarity and depth across all evaluation dimensions.,,5,5,5,5,5,5
+github,create_pending_pull_request_review,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+github,create_pull_request,Good,92,Comprehensive description with clear guidelines and thorough explanations,Clarify how contextual parameters are actually set,4,5,5,4,5,5
+github,create_repository,Good,71,Comprehensive description with strong usage guidelines and completeness,parameter_explanation; examples_consistency,4,5,4,2,3,5
+github,delete_file,Good,83,Comprehensive description with clear usage guidelines and detailed contextual information,examples_balance,4,5,4,4,3,5
+github,delete_pending_pull_request_review,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,delete_workflow_run_logs,Good,95,"Comprehensive description with clear, detailed explanation of tool's function and constraints",,5,5,5,4,5,5
+github,dismiss_notification,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",,4,5,5,5,5,5
+github,download_workflow_run_artifact,Good,75,Comprehensive description with clear purpose and usage guidelines,parameter_explanation; limitation_details,4,4,3,2,4,4
+github,fork_repository,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Minor clarification on authentication parameters,5,5,5,4,5,5
+github,get_code_scanning_alert,Good,75,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,4,4,4,2,5,5
+github,get_commit,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+github,get_dependabot_alert,Good,88,"Comprehensive description with clear purpose, usage guidelines, and detailed explanations",parameter_explanation could be more explicit about exact environment keys,5,5,4,4,5,5
+github,get_discussion,Good,83,Comprehensive description with clear purpose and detailed usage guidelines,parameter_explanation,4,4,4,3,5,5
+github,get_discussion_comments,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",,4,5,5,5,5,5
+github,get_file_contents,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,get_issue,Good,88,"Comprehensive description with clear purpose, usage guidelines, and detailed explanations.",parameter_explanation could be more explicit about exact parameter formats,5,5,4,4,5,5
+github,get_issue_comments,Good,96,"Comprehensive, precise description covering all tool aspects",Specify exact types for external issue identification parameters,5,5,5,4,5,5
+github,get_job_logs,Good,88,"Comprehensive description with clear purpose, usage guidelines, and detailed explanations.",parameter_explanation could be slightly more precise about parameter types,5,5,4,4,5,5
+github,get_me,Good,100,Comprehensive description covering all aspects with exceptional clarity and detail.,,5,5,5,5,5,5
+github,get_notification_details,Good,83,Comprehensive description with clear usage guidelines and detailed explanations,parameter_explanation could be more precise about notification_id format,4,5,4,4,5,5
+github,get_pull_request,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter type details,5,5,5,4,5,5
+github,get_pull_request_comments,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+github,get_pull_request_diff,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,5,5,4,5
+github,get_pull_request_files,Bad,67,Lacks precise parameter explanation and has some vague limitations,Define exact parameter types and formats; Clarify metadata and pagination details; Provide more specific limitation constraints,4,5,3,2,4,4
+github,get_pull_request_reviews,Good,87,Comprehensive description with clear functionality and usage guidelines,parameter_explanation,4,5,5,3,5,5
+github,get_pull_request_status,Good,95,"Comprehensive description with clear, precise explanations across all dimensions",Slightly more explicit parameter type details,5,5,5,4,5,5
+github,get_secret_scanning_alert,Good,83,Comprehensive description with clear usage guidelines and purpose,parameter_explanation,4,5,4,3,4,5
+github,get_tag,Good,95,"Comprehensive description with clear, precise explanations across all dimensions",,5,5,5,5,4,5
+github,get_workflow_run,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,get_workflow_run_logs,Good,83,Comprehensive description with clear usage guidelines and thorough explanation,parameter_explanation,4,5,4,3,5,5
+github,get_workflow_run_usage,Good,95,"Comprehensive description with clear, precise explanations across all dimensions",parameter_explanation could be slightly more explicit about run identification mechanism,5,5,5,4,5,5
+github,list_branches,Good,83,Comprehensive description with strong usage guidelines and examples,Clarify branch metadata details; Resolve parameter input inconsistency,4,5,3,4,5,5
+github,list_code_scanning_alerts,Good,87,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,5,5,4,3,5,5
+github,list_commits,Good,87,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,5,5,4,3,4,5
+github,list_dependabot_alerts,Good,100,Comprehensive description covering all key aspects with exceptional clarity and detail.,,5,5,5,5,5,5
+github,list_discussion_categories,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",,4,5,5,5,5,5
+github,list_discussions,Good,92,"Comprehensive description with clear, precise explanations of tool functionality",Provide more granular parameter details,4,5,5,4,5,5
+github,list_gists,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+github,list_issues,Good,88,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,5,5,4,3,5,5
+github,list_notifications,Good,87,"Comprehensive description with clear purpose, usage guidelines, and balanced explanation",Add more specific details about potential parameter filtering,5,5,4,4,5,5
+github,list_pull_requests,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,list_secret_scanning_alerts,Good,83,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,4,4,4,3,4,5
+github,list_sub_issues,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+github,list_tags,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,list_workflow_jobs,Good,96,"Comprehensive, precise description covering all critical aspects of tool functionality",Minor parameter explanation enhancement,5,5,5,4,5,5
+github,list_workflow_run_artifacts,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,list_workflow_runs,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter details,5,5,5,4,5,5
+github,list_workflows,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,4,5,5,5
+github,manage_notification_subscription,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,manage_repository_notification_subscription,Good,83,Comprehensive description with clear usage guidelines and strong explanatory prose,limitation details,4,5,3,4,5,5
+github,mark_all_notifications_read,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,merge_pull_request,Good,88,"Comprehensive description with clear purpose, usage, and limitations",Slightly more explicit parameter details,5,5,5,4,5,5
+github,push_files,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions.",Clarify parameter sourcing ambiguity,5,5,4,5,5,5
+github,remove_sub_issue,Good,83,Comprehensive description with clear purpose and detailed limitations,parameter_explanation,4,4,5,3,4,5
+github,reprioritize_sub_issue,Good,83,Comprehensive description with clear purpose and usage guidelines,limitation details; parameter type specificity,4,4,3,4,4,5
+github,request_copilot_review,Good,87,Comprehensive description with clear purpose and usage guidelines,purpose could be slightly more precise,4,5,4,4,5,5
+github,rerun_failed_jobs,Good,100,Comprehensive description covering all aspects with exceptional clarity,,5,5,5,5,5,5
+github,rerun_workflow_run,Good,100,Comprehensive description covering all aspects with exceptional clarity and detail.,,5,5,5,5,5,5
+github,run_workflow,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,search_code,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,search_issues,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,search_orgs,Good,83,Comprehensive description with clear purpose and usage guidelines,parameter_explanation,4,5,4,3,5,5
+github,search_pull_requests,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,search_repositories,Good,87,"Comprehensive description with clear purpose, usage guidelines, and well-balanced examples.",Clarify parameter documentation ambiguity,5,5,4,4,5,5
+github,search_users,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions.",parameter_explanation could be slightly more explicit about query context,5,5,5,4,5,5
+github,submit_pending_pull_request_review,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+github,update_gist,Good,83,Comprehensive description with clear usage guidelines and thorough explanation of tool functionality.,parameter_explanation,4,5,4,3,4,5
+github,update_issue,Good,88,"Comprehensive description with clear purpose, usage guidelines, and detailed parameter explanations.",Slightly more specificity on limitations regarding unsupported fields,5,5,4,5,4,5
+github,update_pull_request,Good,83,Comprehensive description with clear usage guidelines and thorough explanations,parameter_explanation,4,5,4,3,4,5
+github,update_pull_request_branch,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-maps,maps_directions,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Clarify undefined route preferences parameter,5,5,4,5,5,5
+google-maps,maps_distance_matrix,Good,96,"Comprehensive description with clear, detailed guidance",clarify default routing preferences,5,5,4,5,5,5
+google-maps,maps_elevation,Good,100,Exceptional tool description covering all critical aspects with clarity and precision,,5,5,5,5,5,5
+google-maps,maps_geocode,Good,100,"Comprehensive, precise, and well-structured tool description",,5,5,5,5,5,5
+google-maps,maps_place_details,Good,96,"Comprehensive, precise, and well-structured tool description",Resolve coordinate description ambiguity,5,5,4,5,5,5
+google-maps,maps_reverse_geocode,Good,100,Comprehensive description with exceptional detail across all evaluation dimensions.,,5,5,5,5,5,5
+google-maps,maps_search_places,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-search,search,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,4,5,5,5
+google-search-new,extract_multiple_webpages,Good,96,"Comprehensive, precise, and well-structured tool description",Slightly more detailed parameter type specification,5,5,5,4,5,5
+google-search-new,extract_webpage_content,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-search-new,google_search,Good,100,"Comprehensive, clear, and well-structured tool description covering all key aspects.",,5,5,5,5,5,5
+google-sheets,add_columns,Good,87,Comprehensive description with clear explanations and precise usage guidance,,4,5,4,5,4,5
+google-sheets,add_rows,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit limitation details about potential edge cases,5,5,4,5,5,5
+google-sheets,batch_update_cells,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-sheets,copy_sheet,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-sheets,create_sheet,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Clarify potential edge cases around sheet title conflicts,5,5,4,5,5,5
+google-sheets,create_spreadsheet,Good,96,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,5,5,4,5
+google-sheets,get_sheet_data,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,4,5,5,5
+google-sheets,get_spreadsheet_info,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-sheets,list_sheets,Good,100,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,5,5,5,5
+google-sheets,list_spreadsheets,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-sheets,rename_sheet,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+google-sheets,update_cells,Good,95,"Comprehensive description with clear, precise explanations across all dimensions",,5,5,5,5,4,5
+markitdown,convert_to_markdown,Good,100,"Comprehensive, precise, and clear description covering all aspects of the tool",,5,5,5,5,5,5
+notion,API-create-a-comment,Good,83,Comprehensive description with clear usage guidelines and thorough explanation of tool constraints.,parameter_explanation,4,5,4,3,4,5
+notion,API-create-a-database,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",,4,5,5,5,5,5
+notion,API-delete-a-block,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more explicit parameter type details,5,5,5,4,5,5
+notion,API-get-block-children,Good,88,"Comprehensive description with clear purpose, usage guidelines, and technical details.",parameter_explanation could be more explicit about parameter constraints,5,5,4,4,5,5
+notion,API-get-self,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+notion,API-get-user,Good,100,Comprehensive description covering all aspects with exceptional clarity and precision.,,5,5,5,5,5,5
+notion,API-get-users,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+notion,API-patch-block-children,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions.",,5,5,4,5,5,5
+notion,API-patch-page,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more precise parameter type definitions,5,5,5,4,5,5
+notion,API-post-database-query,Good,100,"Comprehensive description with precise, clear explanations across all dimensions",,5,5,5,5,5,5
+notion,API-post-page,Good,87,Comprehensive description with clear usage guidelines and thorough limitations,parameter_explanation could be slightly more explicit about implicit requirements,4,5,5,4,5,5
+notion,API-post-search,Good,100,Comprehensive description with exceptional clarity across all evaluation dimensions.,,5,5,5,5,5,5
+notion,API-retrieve-a-block,Good,87,"Comprehensive description with clear purpose, usage, and technical details",Slightly more precise parameter schema details,5,5,4,4,5,5
+notion,API-retrieve-a-comment,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+notion,API-retrieve-a-database,Good,88,"Comprehensive description with clear purpose, usage, and limitations",parameter_explanation,5,5,5,3,5,5
+notion,API-retrieve-a-page,Good,87,"Comprehensive description with clear, detailed explanations across all dimensions",parameter_explanation could be more explicit about specific parameter types,5,5,4,4,5,5
+notion,API-retrieve-a-page-property,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+notion,API-update-a-block,Good,95,"Comprehensive description with clear, detailed explanations across all dimensions",parameter_explanation could be slightly more explicit about specific update types,5,5,5,4,5,5
+notion,API-update-a-database,Good,88,"Comprehensive description with clear purpose, usage guidelines, and detailed explanations.",parameter_explanation could be more explicit about exact parameter formats,5,5,4,4,5,5
+paypal,create_invoice,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+paypal,list_transactions,Good,100,Comprehensive description covering all aspects with exceptional clarity and detail.,,5,5,5,5,5,5
+playwright,browser_click,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_close,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_console_messages,Good,87,Comprehensive description with clear usage guidelines and thorough explanations,parameter_explanation could be more precise about message structure,4,5,4,4,4,5
+playwright,browser_drag,Good,100,Comprehensive description covering all aspects of the browser_drag tool with exceptional clarity and detail.,,5,5,5,5,5,5
+playwright,browser_evaluate,Good,83,Comprehensive description with clear usage guidelines and nuanced explanations,parameter_explanation,4,5,4,3,4,5
+playwright,browser_file_upload,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_fill_form,Good,83,Comprehensive description with clear usage guidelines and limitations,parameter_explanation,4,5,4,3,5,5
+playwright,browser_handle_dialog,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_hover,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_install,Good,87,Comprehensive description with clear guidelines and thorough explanation,,4,5,4,5,5,5
+playwright,browser_navigate,Good,100,Comprehensive description covering all aspects with exceptional clarity and depth.,,5,5,5,5,5,5
+playwright,browser_navigate_back,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_network_requests,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",minor clarification of limitations,5,5,4,5,5,5
+playwright,browser_press_key,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_resize,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_select_option,Good,87,"Comprehensive description with clear, detailed explanations across all dimensions",parameter_explanation could be more explicit about option selection mechanism,5,5,4,4,5,5
+playwright,browser_snapshot,Good,100,Comprehensive description covering all aspects with exceptional clarity,,5,5,5,5,5,5
+playwright,browser_tabs,Good,87,Comprehensive description with clear explanations across all dimensions,purpose could be slightly more precise,4,5,4,4,5,5
+playwright,browser_take_screenshot,Good,87,Comprehensive description with clear usage guidelines and thorough limitations,Slightly reduce redundancy in description,4,5,5,5,4,5
+playwright,browser_type,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+playwright,browser_wait_for,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",parameter_explanation could be slightly more precise,5,5,4,4,5,5
+postgres,query,Good,100,Comprehensive description covering all aspects with exceptional clarity and precision.,,5,5,5,5,5,5
+slack,slack_add_reaction,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+slack,slack_get_channel_history,Good,87,Comprehensive description with clear usage guidelines and thorough limitations,parameter_explanation,4,5,5,3,5,5
+slack,slack_get_thread_replies,Good,83,Comprehensive description with clear usage guidelines and purpose,parameter_explanation,4,5,4,3,4,5
+slack,slack_get_user_profile,Good,100,Comprehensive description covering all key aspects with exceptional clarity and precision.,,5,5,5,5,5,5
+slack,slack_get_users,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+slack,slack_list_channels,Good,88,"Comprehensive description with clear purpose, usage guidelines, and limitations",Add more specific details about pagination parameters,5,5,4,4,5,5
+slack,slack_post_message,Good,83,"Comprehensive description with clear purpose, usage guidelines, and technical details.",parameter_explanation; limitation,4,5,4,4,5,5
+slack,slack_reply_to_thread,Good,88,"Comprehensive description with clear, detailed explanations across all dimensions",Slightly more precision on thread timestamp format limitations,5,5,4,5,5,5
+weather,get_alerts,Good,96,"Comprehensive description with clear, detailed explanations across all dimensions",,5,5,5,5,4,5
+weather,get_forecast,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+wikipedia,search,Good,83,Comprehensive description with clear guidelines and thorough explanation,purpose could be slightly more precise,4,5,4,4,5,5
+yfinance,get_financial_statement,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+yfinance,get_historical_stock_prices,Good,100,Comprehensive description with exceptional depth and clarity across all dimensions.,,5,5,5,5,5,5
+yfinance,get_holder_info,Good,100,Comprehensive description with exceptional clarity and detail across all dimensions.,,5,5,5,5,5,5
+yfinance,get_option_chain,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+yfinance,get_option_expiration_dates,Good,100,"Comprehensive, precise, and well-structured tool description covering all key aspects.",,5,5,5,5,5,5
+yfinance,get_recommendations,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+yfinance,get_stock_actions,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+yfinance,get_stock_info,Good,100,Comprehensive description with exceptional clarity across all dimensions,,5,5,5,5,5,5
+yfinance,get_yahoo_finance_news,Good,100,"Comprehensive description with clear, precise explanations across all dimensions",,5,5,5,5,5,5

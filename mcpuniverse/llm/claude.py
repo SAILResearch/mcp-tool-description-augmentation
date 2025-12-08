@@ -101,7 +101,7 @@ class ClaudeModel(BaseLLM):
                 model=self.config.model_name,
                 max_tokens=self.config.max_completion_tokens,
                 temperature=self.config.temperature,
-                top_p=self.config.top_p,
+                # top_p=self.config.top_p,
                 timeout=int(kwargs.get("timeout", 30)),
                 system=system_message,
                 messages=formatted_messages,

@@ -31,14 +31,14 @@ DEFAULT_RUBRIC = textwrap.dedent(
     when to call each tool.
 
     Best practices for tool definitions:
-    - Provide extremely detailed descriptions. Explain every detail about the tool,
-      including what it does, when it should be used (and when it should not), what
-      each parameter means, how the parameters affect behaviour, and any important
-      caveats or limitations such as information the tool does not return. Offer
-      enough context for the LLM to decide when and how to call the tool effectively.
-    - Prioritise descriptions over examples. Examples may help clarify use, but the
-      primary goal is to deliver a clear, comprehensive explanation of the tool's
-      purpose, parameters, outputs, and restrictions. Add examples only after the
+    - Provide extremely detailed descriptions. 
+    - Explain every detail about the tool,including what it does , e.g., Purpose 
+    - when it should be used (and when it should not), e.g., usage guideline, 
+    - what each parameter means, how the parameters affect behaviour,e.g., parameter explanation, 
+    - and any important caveats or limitations such as information the tool does not return, e.g., limitation. 
+    Offer  enough context for the LLM to decide when and how to call the tool effectively. Prioritise descriptions over examples. 
+    Examples may help clarify use, but the  primary goal is to deliver a clear, comprehensive explanation of the tool's
+      purpose, guideline, parameters, and restrictions. Add examples only after the
       description is fully fleshed out and only if they enhance clarity.
 
     Example of a high-quality tool description:

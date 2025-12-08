@@ -1,0 +1,2 @@
+mcp_server_name,tool_name,description_label,description_quality_score,description_reason,description_improvement_needed,purpose_score,usage_guideline_score,limitation_score,parameter_explanation_score,examples_balance_score,length_completeness_score
+fetch,fetch,Bad,8,"The description lacks clear parameter explanations, usage guidelines, limitations, and relies solely on minimal prose without examples, resulting in poor completeness and clarity.",usage_guideline; limitation; parameter_explanation; examples_balance; length_completeness,3,2,1,1,1,2

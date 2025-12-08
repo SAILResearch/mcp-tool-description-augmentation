@@ -3,7 +3,7 @@ spec:
   name: llm-1
   type: openrouter
   config:
-    model_name: qwen/qwen3-coder
+    model_name: z-ai/glm-4.5
 
 ---
 kind: agent

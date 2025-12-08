@@ -1,0 +1,2337 @@
+server_name,tool.name,tool.description
+Bing_CN_MCP,bing_search,使用必应搜索指定的关键词，并返回搜索结果列表，包括标题、链接、摘要和ID
+Bing_CN_MCP,fetch_webpage,根据提供的ID获取对应网页的内容
+MCP Yahoo Finance,get_current_stock_price,Get the current stock price based on stock symbol.
+MCP Yahoo Finance,get_stock_price_by_date,Get the stock price for a given stock symbol on a specific date.
+MCP Yahoo Finance,get_stock_price_date_range,Get the stock prices for a given date range for a given stock symbol.
+MCP Yahoo Finance,get_historical_stock_prices,Get historical stock prices for a given stock symbol.
+MCP Yahoo Finance,get_dividends,Get dividends for a given stock symbol.
+MCP Yahoo Finance,get_income_statement,Get income statement for a given stock symbol.
+MCP Yahoo Finance,get_cashflow,Get cashflow for a given stock symbol.
+MCP Yahoo Finance,get_earning_dates,Get earning dates.
+MCP Yahoo Finance,get_news,Get news for a given stock symbol.
+MCP Yahoo Finance,get_recommendations,Get analyst recommendations for a given symbol.
+NPM Sentinel MCP,npmVersions,Get all available versions of an NPM package
+NPM Sentinel MCP,npmLatest,Get the latest version and changelog of an NPM package
+NPM Sentinel MCP,npmDeps,Analyze dependencies and devDependencies of an NPM package
+NPM Sentinel MCP,npmTypes,Check TypeScript types availability and version for a package
+NPM Sentinel MCP,npmSize,Get package size information including dependencies and bundle size
+NPM Sentinel MCP,npmVulnerabilities,Check for known vulnerabilities in packages
+NPM Sentinel MCP,npmTrends,Get download trends and popularity metrics for packages
+NPM Sentinel MCP,npmCompare,Compare multiple NPM packages based on various metrics
+NPM Sentinel MCP,npmMaintainers,Get maintainers information for NPM packages
+NPM Sentinel MCP,npmScore,"Get consolidated package score based on quality, maintenance, and popularity metrics"
+NPM Sentinel MCP,npmPackageReadme,Get the README content for NPM packages
+NPM Sentinel MCP,npmSearch,Search for NPM packages with optional limit
+NPM Sentinel MCP,npmLicenseCompatibility,Check license compatibility between multiple packages
+NPM Sentinel MCP,npmRepoStats,Get repository statistics for NPM packages
+NPM Sentinel MCP,npmDeprecated,Check if packages are deprecated
+NPM Sentinel MCP,npmChangelogAnalysis,Analyze changelog and release history of packages
+NPM Sentinel MCP,npmAlternatives,Find alternative packages with similar functionality
+NPM Sentinel MCP,npmQuality,Analyze package quality metrics
+NPM Sentinel MCP,npmMaintenance,Analyze package maintenance metrics
+Hugeicons MCP Server,list_icons,Get a list of all available Hugeicons icons
+Hugeicons MCP Server,search_icons,"Search for icons by name or tags. Use commas to search for multiple icons (e.g. 'home, notification, settings')"
+Hugeicons MCP Server,get_platform_usage,Get platform-specific usage instructions for Hugeicons
+OP.GG MCP Server,lol-champion-leader-board,"Retrieves the leaderboard of master players who play a specific champion well. You can also look up the high ranked players, like the high winrate 5 players in #1-#30, to retrieve their champion performance or recent match history to teach how to play the champions."
+OP.GG MCP Server,lol-champion-analysis,"Retrieves very detailed information about a specific champion, such as win rate, pick rate, recommended builds, recommended skill order, recommended items, etc. If a user mentions a specific champion, you *must* always call this function, review the data, and then respond. If the user asks some tips during playing game, you should also occasionally call this function to advice how to play the game well. If the users asks like 'what items should I buy?', 'which skill should I level up?', also you need to call this function to see the high winrate champions. (Counter Picks ban/pick data is available in the `weakCounters` field). You must assume the position user want to know."
+OP.GG MCP Server,lol-champion-meta-data,"Retrieves meta data for a specific champion, including statistics and performance metrics."
+OP.GG MCP Server,lol-champion-skin-sale,Retrieves information about champion skins that are currently on sale.
+OP.GG MCP Server,lol-summoner-search,"Retrieves information about a specific summoner, such as their rank, win rate, and recent match history. If a user mentions a specific summoner or wants to know about themselves, you *must* always call this function. If you can't find the summoner, ask to the user which region do they play."
+OP.GG MCP Server,lol-champion-positions-data,"Retrieves the analytics of champions by each positions. You can also look up the winrate, banrate, plays, wins, kills, kda and etc. `tier_data` is champion tier which tells which champion is powerful (OP) or not, for example `tier 1` champion is easy to play and powerful champion. (You can recommend this champion to the user if they want recommandation)"
+OP.GG MCP Server,lol-summoner-game-history,"Retrieves the recent match history of a specific summoner. If a user mentions a specific summoner, wants to know about their recent matches, wants to know how to improve or wants to get an advice, you *must* always call this function."
+OP.GG MCP Server,lol-summoner-renewal,"Renew the summoner's data of OP.GG through RiotAPI. When you retrieve summoner data, you *must* always call this function first, and then call the next functions."
+OP.GG MCP Server,lol-brawl-champion-tier-rank,Retrieves champion tier ranking list in brawl mode.
+OP.GG MCP Server,esports-lol-schedules,Get upcoming LoL match schedules.
+OP.GG MCP Server,esports-lol-team-standings,Get team standings for a LoL league.
+OP.GG MCP Server,tft-meta-trend-deck-list,TFT deck list tool for retrieving current meta decks.
+OP.GG MCP Server,tft-meta-item-combinations,TFT tool for retrieving information about item combinations and recipes.
+OP.GG MCP Server,tft-champion-item-build,TFT tool for retrieving champion item build information.
+OP.GG MCP Server,tft-recommend-champion-for-item,TFT tool for retrieving champion recommendations for a specific item.
+OP.GG MCP Server,tft-play-style-comment,This tool provides comments on the playstyle of TFT champions.
+OP.GG MCP Server,valorant-meta-maps,Valorant map meta data
+OP.GG MCP Server,valorant-meta-characters,Valorant character meta data
+OP.GG MCP Server,valorant-leaderboard,Fetch Valorant leaderboard by region
+OP.GG MCP Server,valorant-agents-composition-with-map,Retrieve agent composition data for a Valorant map.
+OP.GG MCP Server,valorant-characters-statistics,"Retrieve character statistics data for Valorant, optionally filtered by map."
+OP.GG MCP Server,valorant-player-match-history,Retrieve match history for a Valorant player using their game name and tag line.
+PDF Reader MCP Server,read_pdf,Reads content/metadata from one or more PDFs (local/URL). Each source can specify pages to extract.
+HowToCook-MCP Server,mcp_howtocook_getAllRecipes,获取所有菜谱
+HowToCook-MCP Server,mcp_howtocook_getRecipesByCategory,"根据分类查询菜谱，可选分类有: 水产, 早餐, 调料, 甜品, 饮品, 荤菜, 半成品加工, 汤, 主食, 素菜"
+HowToCook-MCP Server,mcp_howtocook_recommendMeals,根据用户的忌口、过敏原、人数智能推荐菜谱，创建一周的膳食计划以及大致的购物清单
+HowToCook-MCP Server,mcp_howtocook_whatToEat,不知道吃什么？根据人数直接推荐适合的菜品组合
+HowToCook-MCP Server,mcp_howtocook_getRecipeById,根据菜谱名称或ID查询指定菜谱的完整详情，包括食材、步骤等
+BioMCP: Biomedical Model Context Protocol,search,"Search biomedical literature, clinical trials, and genetic variants.
+
+    ⚠️ IMPORTANT: Have you used the 'think' tool first? If not, STOP and use it NOW!
+    The 'think' tool is REQUIRED for proper research planning and should be your FIRST step.
+
+    This tool provides access to biomedical data from PubMed/PubTator3, ClinicalTrials.gov,
+    and MyVariant.info. It supports two search modes:
+
+    ## 1. UNIFIED QUERY LANGUAGE
+    Use the 'query' parameter with field-based syntax for precise cross-domain searches.
+
+    Syntax:
+    - Basic: ""gene:BRAF""
+    - AND logic: ""gene:BRAF AND disease:melanoma""
+    - OR logic: ""gene:PTEN AND (R173 OR Arg173 OR 'position 173')""
+    - Domain-specific: ""trials.condition:melanoma AND trials.phase:3""
+
+    Common fields:
+    - Cross-domain: gene, disease, variant, chemical/drug
+    - Articles: pmid, title, abstract, journal, author
+    - Trials: trials.condition, trials.intervention, trials.phase, trials.status
+    - Variants: variants.hgvs, variants.rsid, variants.significance
+
+    Example:
+    ```
+    await search(
+        query=""gene:BRAF AND disease:melanoma AND trials.phase:3"",
+        max_results_per_domain=20
+    )
+    ```
+
+    ## 2. DOMAIN-SPECIFIC SEARCH
+    Use the 'domain' parameter with specific filters for targeted searches.
+
+    Domains:
+    - ""article"": Search PubMed/PubTator3 for research articles and preprints ABOUT genes, variants, diseases, or chemicals
+    - ""trial"": Search ClinicalTrials.gov for clinical studies
+    - ""variant"": Search MyVariant.info for genetic variant DATABASE RECORDS (population frequency, clinical significance, etc.) - NOT for articles about variants!
+
+    Example:
+    ```
+    await search(
+        domain=""article"",
+        genes=[""BRAF"", ""NRAS""],
+        diseases=[""melanoma""],
+        page_size=50
+    )
+    ```
+
+    ## DOMAIN SELECTION EXAMPLES:
+    - To find ARTICLES about BRAF V600E mutation: domain=""article"", genes=[""BRAF""], variants=[""V600E""]
+    - To find VARIANT DATA for BRAF mutations: domain=""variant"", gene=""BRAF""
+    - To find articles about ERBB2 p.D277Y: domain=""article"", genes=[""ERBB2""], variants=[""p.D277Y""]
+    - Common mistake: Using domain=""variant"" when you want articles about a variant
+
+    ## IMPORTANT NOTES:
+    - For complex research questions, use the separate 'think' tool for systematic analysis
+    - The tool returns results in OpenAI MCP format: {""results"": [{""id"", ""title"", ""text"", ""url""}, ...]}
+    - Search results do NOT include metadata (per OpenAI MCP specification)
+    - Use the fetch tool to get detailed metadata for specific records
+    - Use get_schema=True to explore available search fields
+    - Use explain_query=True to understand query parsing (unified mode)
+    - Domain-specific searches use AND logic for multiple values
+    - For OR logic, use the unified query language
+    - NEW: Article search keywords support OR with pipe separator: ""R173|Arg173|p.R173""
+    - Remember: domain=""article"" finds LITERATURE, domain=""variant"" finds DATABASE RECORDS
+
+    ## RETURN FORMAT:
+    All search modes return results in this format:
+    ```json
+    {
+        ""results"": [
+            {
+                ""id"": ""unique_identifier"",
+                ""title"": ""Human-readable title"",
+                ""text"": ""Summary or snippet of content"",
+                ""url"": ""Link to full resource""
+            }
+        ]
+    }
+    ```
+    "
+BioMCP: Biomedical Model Context Protocol,fetch,"Fetch comprehensive details for a specific biomedical record.
+
+    This tool retrieves full information for articles, clinical trials, or genetic variants
+    using their unique identifiers. It returns data in a standardized format suitable for
+    detailed analysis and research.
+
+    ## IDENTIFIER FORMATS:
+    - Articles: PMID (PubMed ID) - e.g., ""35271234"" OR DOI - e.g., ""10.1101/2024.01.20.23288905""
+    - Trials: NCT ID (ClinicalTrials.gov ID) - e.g., ""NCT04280705""
+    - Variants: HGVS notation or dbSNP ID - e.g., ""chr7:g.140453136A>T"" or ""rs121913254""
+
+    The domain is automatically detected from the ID format if not provided:
+    - NCT* → trial
+    - Contains ""/"" with numeric prefix (DOI) → article
+    - Pure numeric → article (PMID)
+    - rs* or contains ':' or 'g.' → variant
+
+    ## DOMAIN-SPECIFIC OPTIONS:
+
+    ### Articles (domain=""article""):
+    - Returns full article metadata, abstract, and full text when available
+    - Supports both PubMed articles (via PMID) and Europe PMC preprints (via DOI)
+    - Includes annotations for genes, diseases, chemicals, and variants (PubMed only)
+    - detail=""full"" attempts to retrieve full text content (PubMed only)
+
+    ### Clinical Trials (domain=""trial""):
+    - detail=None or ""protocol"": Core study information
+    - detail=""locations"": Study sites and contact information
+    - detail=""outcomes"": Primary/secondary outcomes and results
+    - detail=""references"": Related publications and citations
+    - detail=""all"": Complete trial record with all sections
+
+    ### Variants (domain=""variant""):
+    - Returns comprehensive variant information including:
+      - Clinical significance and interpretations
+      - Population frequencies
+      - Gene/protein effects
+      - External database links
+    - detail parameter is ignored (always returns full data)
+
+    ## RETURN FORMAT:
+    All fetch operations return a standardized format:
+    ```json
+    {
+        ""id"": ""unique_identifier"",
+        ""title"": ""Record title or name"",
+        ""text"": ""Full content or comprehensive description"",
+        ""url"": ""Link to original source"",
+        ""metadata"": {
+            // Domain-specific additional fields
+        }
+    }
+    ```
+
+    ## EXAMPLES:
+
+    Fetch article by PMID (domain auto-detected):
+    ```
+    await fetch(id=""35271234"")
+    ```
+
+    Fetch article by DOI (domain auto-detected):
+    ```
+    await fetch(id=""10.1101/2024.01.20.23288905"")
+    ```
+
+    Fetch complete trial information (domain auto-detected):
+    ```
+    await fetch(
+        id=""NCT04280705"",
+        detail=""all""
+    )
+    ```
+
+    Fetch variant with clinical interpretations:
+    ```
+    await fetch(id=""rs121913254"")
+    ```
+
+    Explicitly specify domain (optional):
+    ```
+    await fetch(
+        domain=""variant"",
+        id=""chr7:g.140453136A>T""
+    )
+    ```
+    "
+BioMCP: Biomedical Model Context Protocol,think,"REQUIRED FIRST STEP: Perform structured sequential thinking for ANY biomedical research task.
+
+    🚨 IMPORTANT: You MUST use this tool BEFORE any search or fetch operations when:
+    - Researching ANY biomedical topic (genes, diseases, variants, trials)
+    - Planning to use multiple BioMCP tools
+    - Answering questions that require analysis or synthesis
+    - Comparing information from different sources
+    - Making recommendations or drawing conclusions
+
+    ⚠️ FAILURE TO USE THIS TOOL FIRST will result in:
+    - Incomplete or poorly structured analysis
+    - Missing important connections between data
+    - Suboptimal search strategies
+    - Overlooked critical information
+
+    Sequential thinking ensures you:
+    1. Fully understand the research question
+    2. Plan an optimal search strategy
+    3. Identify all relevant data sources
+    4. Structure your analysis properly
+    5. Deliver comprehensive, well-reasoned results
+
+    ## Usage Pattern:
+    1. Start with thoughtNumber=1 to initiate analysis
+    2. Progress through numbered thoughts sequentially
+    3. Adjust totalThoughts estimate as understanding develops
+    4. Set nextThoughtNeeded=False only when analysis is complete
+
+    ## Example:
+    ```python
+    # Initial analysis
+    await think(
+        thought=""Breaking down the relationship between BRAF mutations and melanoma treatment resistance..."",
+        thoughtNumber=1,
+        totalThoughts=5,
+        nextThoughtNeeded=True
+    )
+
+    # Continue analysis
+    await think(
+        thought=""Examining specific BRAF V600E mutation mechanisms..."",
+        thoughtNumber=2,
+        totalThoughts=5,
+        nextThoughtNeeded=True
+    )
+
+    # Final thought
+    await think(
+        thought=""Synthesizing findings and proposing research directions..."",
+        thoughtNumber=5,
+        totalThoughts=5,
+        nextThoughtNeeded=False
+    )
+    ```
+
+    ## Important Notes:
+    - Each thought builds on previous ones within a session
+    - State is maintained throughout the MCP session
+    - Use thoughtful, detailed analysis in each step
+    - Revisions and branching are supported through the underlying implementation
+    "
+BioMCP: Biomedical Model Context Protocol,article_searcher,"Search PubMed/PubTator3 for research articles and preprints.
+
+    ⚠️ PREREQUISITE: Use the 'think' tool FIRST to plan your research strategy!
+
+    Use this tool to find scientific literature ABOUT genes, variants, diseases, or chemicals.
+    Results include articles from PubMed and optionally preprints from bioRxiv/medRxiv.
+
+    Important: This searches for ARTICLES ABOUT these topics, not database records.
+    For genetic variant database records, use variant_searcher instead.
+
+    Example usage:
+    - Find articles about BRAF mutations in melanoma
+    - Search for papers on a specific drug's effects
+    - Locate research on gene-disease associations
+    "
+BioMCP: Biomedical Model Context Protocol,article_getter,"Fetch detailed information for a specific article.
+
+    Retrieves the full abstract and available text for an article by its identifier.
+    Supports:
+    - PubMed IDs (PMID) for published articles
+    - PMC IDs for articles in PubMed Central
+    - DOIs for preprints from Europe PMC
+
+    Returns formatted text including:
+    - Title
+    - Abstract
+    - Full text (when available from PMC for published articles)
+    - Source information (PubMed or Europe PMC)
+    "
+BioMCP: Biomedical Model Context Protocol,trial_searcher,"Search ClinicalTrials.gov for clinical studies.
+
+    ⚠️ PREREQUISITE: Use the 'think' tool FIRST to plan your research strategy!
+
+    Comprehensive search tool for finding clinical trials based on multiple criteria.
+    Supports filtering by conditions, interventions, location, phase, and eligibility.
+
+    Location search notes:
+    - Use either location term OR lat/long coordinates, not both
+    - For city-based searches, AI agents should geocode to lat/long first
+    - Distance parameter only works with lat/long coordinates
+
+    Returns a formatted list of matching trials with key details.
+    "
+BioMCP: Biomedical Model Context Protocol,trial_getter,"Fetch comprehensive details for a specific clinical trial.
+
+    Retrieves all available information for a clinical trial by its NCT ID.
+    This includes protocol details, locations, outcomes, and references.
+
+    For specific sections only, use the specialized getter tools:
+    - trial_protocol_getter: Core protocol information
+    - trial_locations_getter: Site locations and contacts
+    - trial_outcomes_getter: Primary/secondary outcomes and results
+    - trial_references_getter: Publications and references
+    "
+BioMCP: Biomedical Model Context Protocol,trial_protocol_getter,"Fetch core protocol information for a clinical trial.
+
+    Retrieves essential protocol details including:
+    - Official title and brief summary
+    - Study status and sponsor information
+    - Study design (type, phase, allocation, masking)
+    - Eligibility criteria
+    - Primary completion date
+    "
+BioMCP: Biomedical Model Context Protocol,trial_references_getter,"Fetch publications and references for a clinical trial.
+
+    Retrieves all linked publications including:
+    - Published results papers
+    - Background literature
+    - Protocol publications
+    - Related analyses
+
+    Includes PubMed IDs when available for easy cross-referencing.
+    "
+BioMCP: Biomedical Model Context Protocol,trial_outcomes_getter,"Fetch outcome measures and results for a clinical trial.
+
+    Retrieves detailed outcome information including:
+    - Primary outcome measures
+    - Secondary outcome measures
+    - Results data (if available)
+    - Adverse events (if reported)
+
+    Note: Results are only available for completed trials that have posted data.
+    "
+BioMCP: Biomedical Model Context Protocol,trial_locations_getter,"Fetch contact and location details for a clinical trial.
+
+    Retrieves all study locations including:
+    - Facility names and addresses
+    - Principal investigator information
+    - Contact details (when recruiting)
+    - Recruitment status by site
+
+    Useful for finding trials near specific locations or contacting study teams.
+    "
+BioMCP: Biomedical Model Context Protocol,variant_searcher,"Search MyVariant.info for genetic variant DATABASE RECORDS.
+
+    ⚠️ PREREQUISITE: Use the 'think' tool FIRST to plan your research strategy!
+
+    Important: This searches for variant DATABASE RECORDS (frequency, significance, etc.),
+    NOT articles about variants. For articles about variants, use article_searcher.
+
+    Searches the comprehensive variant database including:
+    - Population frequencies (gnomAD, 1000 Genomes, etc.)
+    - Clinical significance (ClinVar)
+    - Functional predictions (SIFT, PolyPhen, CADD)
+    - Gene and protein consequences
+
+    Search by various identifiers or filter by clinical/functional criteria.
+    "
+BioMCP: Biomedical Model Context Protocol,variant_getter,"Fetch comprehensive details for a specific genetic variant.
+
+    Retrieves all available information for a variant including:
+    - Gene location and consequences
+    - Population frequencies across databases
+    - Clinical significance from ClinVar
+    - Functional predictions
+    - External annotations (TCGA cancer data, conservation scores)
+
+    Accepts various ID formats:
+    - HGVS: NM_004333.4:c.1799T>A
+    - rsID: rs113488022
+    - MyVariant ID: chr7:g.140753336A>T
+    "
+BioMCP: Biomedical Model Context Protocol,alphagenome_predictor,"Predict variant effects on gene regulation using Google DeepMind's AlphaGenome.
+
+    ⚠️ PREREQUISITE: Use the 'think' tool FIRST to plan your analysis strategy!
+
+    AlphaGenome provides state-of-the-art predictions for how genetic variants
+    affect gene regulation, including:
+    - Gene expression changes (RNA-seq)
+    - Chromatin accessibility impacts (ATAC-seq, DNase-seq)
+    - Splicing alterations
+    - Promoter activity changes (CAGE)
+
+    This tool requires:
+    1. AlphaGenome to be installed (see error message for instructions)
+    2. An API key from https://deepmind.google.com/science/alphagenome
+
+    API Key Options:
+    - Provide directly via the api_key parameter
+    - Or set ALPHAGENOME_API_KEY environment variable
+
+    Example usage:
+    - Predict regulatory effects of BRAF V600E mutation: chr7:140753336 A>T
+    - Assess non-coding variant impact on gene expression
+    - Evaluate promoter variants in specific tissues
+
+    Note: This is an optional tool that enhances variant interpretation
+    with AI predictions. Standard annotations remain available via variant_getter.
+    "
+duckduckgo-search MCP Server,duckduckgo_web_search,"Performs a web search using the DuckDuckGo, ideal for general queries, news, articles, and online content. Use this for broad information gathering, recent events, or when you need diverse web sources. Supports content filtering and region-specific searches. Maximum 20 results per request."
+Baige (ygocdb.com) MCP Server,search_cards,通过关键字搜索游戏王卡牌，可以搜索卡牌名称、效果文本等。
+Baige (ygocdb.com) MCP Server,get_card_by_id,通过卡牌ID获取单张游戏王卡牌的详细信息
+Baige (ygocdb.com) MCP Server,get_card_image,通过卡牌ID获取游戏王卡牌的图片
+MCP Image Extractor,extract_image_from_file,"Extract and analyze images from local file paths. Supports visual content understanding, OCR text extraction, and object recognition for screenshots, photos, diagrams, and documents."
+MCP Image Extractor,extract_image_from_url,"Extract and analyze images from web URLs. Perfect for analyzing web screenshots, online photos, diagrams, or any image accessible via HTTP/HTTPS for visual content analysis and text extraction."
+MCP Image Extractor,extract_image_from_base64,"Extract and analyze images from base64-encoded data. Ideal for processing screenshots from clipboard, dynamically generated images, or images embedded in applications without requiring file system access."
+Trends Hub,get-36kr-trending,获取 36 氪热榜，提供创业、商业、科技领域的热门资讯，包含投融资动态、新兴产业分析和商业模式创新信息
+Trends Hub,get-9to5mac-news,获取 9to5Mac 苹果相关新闻，包含苹果产品发布、iOS 更新、Mac 硬件、应用推荐及苹果公司动态的英文资讯
+Trends Hub,get-bbc-news,获取 BBC 新闻，提供全球新闻、英国新闻、商业、政治、健康、教育、科技、娱乐等资讯
+Trends Hub,get-bilibili-rank,获取哔哩哔哩视频排行榜，包含全站、动画、音乐、游戏等多个分区的热门视频，反映当下年轻人的内容消费趋势
+Trends Hub,get-douban-rank,获取豆瓣实时热门榜单，提供当前热门的图书、电影、电视剧、综艺等作品信息，包含评分和热度数据
+Trends Hub,get-douyin-trending,获取抖音热搜榜单，展示当下最热门的社会话题、娱乐事件、网络热点和流行趋势
+Trends Hub,get-gcores-new,获取机核网游戏相关资讯，包含电子游戏评测、玩家文化、游戏开发和游戏周边产品的深度内容
+Trends Hub,get-ifanr-news,获取爱范儿科技快讯，包含最新的科技产品、数码设备、互联网动态等前沿科技资讯
+Trends Hub,get-infoq-news,获取 InfoQ 技术资讯，包含软件开发、架构设计、云计算、AI等企业级技术内容和前沿开发者动态
+Trends Hub,get-juejin-article-rank,获取掘金文章榜，包含前端开发、后端技术、人工智能、移动开发及技术架构等领域的高质量中文技术文章和教程
+Trends Hub,get-netease-news-trending,获取网易新闻热点榜，包含时政要闻、社会事件、财经资讯、科技动态及娱乐体育的全方位中文新闻资讯
+Trends Hub,get-nytimes-news,获取纽约时报新闻，包含国际政治、经济金融、社会文化、科学技术及艺术评论的高质量英文或中文国际新闻资讯
+Trends Hub,get-smzdm-rank,获取什么值得买热门，包含商品推荐、优惠信息、购物攻略、产品评测及消费经验分享的实用中文消费类资讯
+Trends Hub,get-sspai-rank,获取少数派热榜，包含数码产品评测、软件应用推荐、生活方式指南及效率工作技巧的优质中文科技生活类内容
+Trends Hub,get-tencent-news-trending,获取腾讯新闻热点榜，包含国内外时事、社会热点、财经资讯、娱乐动态及体育赛事的综合性中文新闻资讯
+Trends Hub,get-thepaper-trending,获取澎湃新闻热榜，包含时政要闻、财经动态、社会事件、文化教育及深度报道的高质量中文新闻资讯
+Trends Hub,get-theverge-news,获取 The Verge 新闻，包含科技创新、数码产品评测、互联网趋势及科技公司动态的英文科技资讯
+Trends Hub,get-toutiao-trending,获取今日头条热榜，包含时政要闻、社会事件、国际新闻、科技发展及娱乐八卦等多领域的热门中文资讯
+Trends Hub,get-weibo-trending,获取微博热搜榜，包含时事热点、社会现象、娱乐新闻、明星动态及网络热议话题的实时热门中文资讯
+Trends Hub,get-weread-rank,获取微信读书排行榜，包含热门小说、畅销书籍、新书推荐及各类文学作品的阅读数据和排名信息
+Trends Hub,get-zhihu-trending,获取知乎热榜，包含时事热点、社会话题、科技动态、娱乐八卦等多领域的热门问答和讨论的中文资讯
+OpenStreetMap (OSM) MCP Server,geocode_address,"
+Convert an address or place name to geographic coordinates with detailed location information.
+
+This tool takes a text description of a location (such as an address, landmark name, or
+place of interest) and returns its precise geographic coordinates along with rich metadata.
+The results can be used for mapping, navigation, location-based analysis, and as input to
+other geospatial tools.
+
+Args:
+    address: The address, place name, landmark, or description to geocode (e.g., ""Empire State Building"", 
+            ""123 Main St, Springfield"", ""Golden Gate Park, San Francisco"")
+    
+Returns:
+    List of matching locations with:
+    - Geographic coordinates (latitude/longitude)
+    - Formatted address
+    - Administrative boundaries (city, state, country)
+    - OSM type and ID
+    - Bounding box (if applicable)
+    - Importance ranking
+"
+OpenStreetMap (OSM) MCP Server,reverse_geocode,"
+Convert geographic coordinates to a detailed address and location description.
+
+This tool takes a specific point on Earth (latitude and longitude) and returns 
+comprehensive information about that location, including its address, nearby landmarks,
+administrative boundaries, and other contextual information. Useful for translating
+GPS coordinates into human-readable locations.
+
+Args:
+    latitude: The latitude coordinate (decimal degrees, WGS84)
+    longitude: The longitude coordinate (decimal degrees, WGS84)
+    
+Returns:
+    Detailed address and location information including:
+    - Formatted address
+    - Building, street, city, state, country
+    - Administrative hierarchy
+    - OSM metadata
+    - Postal code and other relevant identifiers
+"
+OpenStreetMap (OSM) MCP Server,find_nearby_places,"
+Discover points of interest and amenities near a specific location.
+
+This tool performs a comprehensive search around a geographic point to identify
+nearby establishments, amenities, and points of interest. Results are organized by
+category and subcategory, making it easy to find specific types of places. Essential
+for location-based recommendations, neighborhood analysis, and proximity-based decision making.
+
+Args:
+    latitude: Center point latitude (decimal degrees)
+    longitude: Center point longitude (decimal degrees)
+    radius: Search radius in meters (defaults to 1000m/1km)
+    categories: List of OSM categories to search for (e.g., [""amenity"", ""shop"", ""tourism""]).
+               If omitted, searches common categories.
+    limit: Maximum number of total results to return
+    
+Returns:
+    Structured dictionary containing:
+    - Original query parameters
+    - Total count of places found
+    - Results grouped by category and subcategory
+    - Each place includes name, coordinates, and associated tags
+"
+OpenStreetMap (OSM) MCP Server,get_route_directions,"
+Calculate detailed route directions between two geographic points.
+
+This tool provides comprehensive turn-by-turn navigation directions between any two locations
+on Earth. It calculates the optimal route based on the specified transportation mode and
+returns detailed information about distance, duration, maneuvers, and the route geometry.
+Perfect for trip planning, navigation assistance, and commute analysis.
+
+Args:
+    from_latitude: Starting point latitude (decimal degrees)
+    from_longitude: Starting point longitude (decimal degrees)
+    to_latitude: Destination latitude (decimal degrees)
+    to_longitude: Destination longitude (decimal degrees)
+    mode: Transportation mode - options include:
+          - ""car"" (default): Standard automobile routing
+          - ""bike"": Bicycle-friendly routes
+          - ""foot"": Pedestrian walking paths
+    
+Returns:
+    Comprehensive routing information including:
+    - Summary with total distance (meters) and duration (seconds)
+    - Turn-by-turn directions with individual segments
+    - Route geometry for mapping visualization
+    - Waypoint information
+"
+OpenStreetMap (OSM) MCP Server,search_category,"
+Search for specific types of places within a defined geographic area.
+
+This tool allows targeted searches for places matching specific categories within
+a rectangular geographic region. It's particularly useful for filtering places by type
+(restaurants, schools, parks, etc.) within a neighborhood or city district. Results include
+complete location details and metadata about each matching place.
+
+Args:
+    category: Main OSM category to search for (e.g., ""amenity"", ""shop"", ""tourism"", ""building"")
+    min_latitude: Southern boundary of search area (decimal degrees)
+    min_longitude: Western boundary of search area (decimal degrees)
+    max_latitude: Northern boundary of search area (decimal degrees)
+    max_longitude: Eastern boundary of search area (decimal degrees)
+    subcategories: Optional list of specific subcategories to filter by (e.g., [""restaurant"", ""cafe""])
+    
+Returns:
+    Structured results including:
+    - Query parameters
+    - Count of matching places
+    - List of matching places with coordinates, names, and metadata
+"
+OpenStreetMap (OSM) MCP Server,suggest_meeting_point,"
+Find the optimal meeting place for multiple people coming from different locations.
+
+This tool calculates a central meeting point based on the locations of multiple individuals,
+then recommends suitable venues near that central point. Ideal for planning social gatherings,
+business meetings, or any situation where multiple people need to converge from different
+starting points.
+
+Args:
+    locations: List of dictionaries, each containing the latitude and longitude of a person's location
+              Example: [{""latitude"": 37.7749, ""longitude"": -122.4194}, {""latitude"": 37.3352, ""longitude"": -121.8811}]
+    venue_type: Type of venue to suggest as a meeting point. Options include:
+               ""cafe"", ""restaurant"", ""bar"", ""library"", ""park"", etc.
+    
+Returns:
+    Meeting point recommendations including:
+    - Calculated center point coordinates
+    - List of suggested venues with names and details
+    - Total number of matching venues in the area
+"
+OpenStreetMap (OSM) MCP Server,explore_area,"
+Generate a comprehensive profile of an area including all amenities and features.
+
+This powerful analysis tool creates a detailed overview of a neighborhood or area by
+identifying and categorizing all geographic features, amenities, and points of interest.
+Results are organized by category for easy analysis. Excellent for neighborhood research,
+area comparisons, and location-based decision making.
+
+Args:
+    latitude: Center point latitude (decimal degrees)
+    longitude: Center point longitude (decimal degrees)
+    radius: Search radius in meters (defaults to 500m)
+    
+Returns:
+    In-depth area profile including:
+    - Address and location context
+    - Total feature count
+    - Features organized by category and subcategory
+    - Each feature includes name, coordinates, and detailed metadata
+"
+OpenStreetMap (OSM) MCP Server,find_schools_nearby,"
+Locate educational institutions near a specific location, filtered by education level.
+
+This specialized search tool identifies schools, colleges, and other educational institutions
+within a specified distance from a location. Results can be filtered by education level
+(elementary, middle, high school, university, etc.). Essential for families evaluating
+neighborhoods or real estate purchases with education considerations.
+
+Args:
+    latitude: Center point latitude (decimal degrees)
+    longitude: Center point longitude (decimal degrees)
+    radius: Search radius in meters (defaults to 2000m/2km)
+    education_levels: Optional list of specific education levels to filter by
+                     (e.g., [""elementary"", ""secondary"", ""university""])
+    
+Returns:
+    List of educational institutions with:
+    - Name and type
+    - Distance from search point
+    - Education levels offered
+    - Contact information if available
+    - Other relevant metadata
+"
+OpenStreetMap (OSM) MCP Server,analyze_commute,"
+Perform a detailed commute analysis between home and work locations.
+
+This advanced tool analyzes commute options between two locations (typically home and work),
+comparing multiple transportation modes and providing detailed metrics for each option.
+Includes estimated travel times, distances, turn-by-turn directions, and other commute-relevant
+data. Essential for real estate decisions, lifestyle planning, and workplace relocation analysis.
+
+Args:
+    home_latitude: Home location latitude (decimal degrees)
+    home_longitude: Home location longitude (decimal degrees)
+    work_latitude: Workplace location latitude (decimal degrees)
+    work_longitude: Workplace location longitude (decimal degrees)
+    modes: List of transportation modes to analyze (options: ""car"", ""foot"", ""bike"")
+    depart_at: Optional departure time (format: ""HH:MM"") for time-sensitive routing
+    
+Returns:
+    Comprehensive commute analysis with:
+    - Summary comparing all transportation modes
+    - Detailed route information for each mode
+    - Total distance and duration for each option
+    - Turn-by-turn directions
+"
+OpenStreetMap (OSM) MCP Server,find_ev_charging_stations,"
+Locate electric vehicle charging stations near a specific location.
+
+This specialized search tool identifies EV charging infrastructure within a specified
+distance from a location. Results can be filtered by connector type (Tesla, CCS, CHAdeMO, etc.)
+and minimum power delivery. Essential for EV owners planning trips or evaluating potential
+charging stops.
+
+Args:
+    latitude: Center point latitude (decimal degrees)
+    longitude: Center point longitude (decimal degrees)
+    radius: Search radius in meters (defaults to 5000m/5km)
+    connector_types: Optional list of specific connector types to filter by
+                    (e.g., [""type2"", ""ccs"", ""tesla""])
+    min_power: Minimum charging power in kW
+    
+Returns:
+    List of charging stations with:
+    - Location name and operator
+    - Available connector types
+    - Charging speeds
+    - Number of charging points
+    - Access restrictions
+    - Other relevant metadata
+"
+OpenStreetMap (OSM) MCP Server,analyze_neighborhood,"
+Generate a comprehensive neighborhood analysis focused on livability factors.
+
+This advanced analysis tool evaluates a neighborhood based on multiple livability factors,
+including amenities, transportation options, green spaces, and services. Results include
+counts and proximity scores for various categories, helping to assess the overall quality
+and convenience of a residential area. Invaluable for real estate decisions, relocation
+planning, and neighborhood comparisons.
+
+Args:
+    latitude: Center point latitude (decimal degrees)
+    longitude: Center point longitude (decimal degrees)
+    radius: Analysis radius in meters (defaults to 1000m/1km)
+    
+Returns:
+    Comprehensive neighborhood profile including:
+    - Overall neighborhood score
+    - Walkability assessment
+    - Public transportation access
+    - Nearby amenities (shops, restaurants, services)
+    - Green spaces and recreation
+    - Education and healthcare facilities
+    - Detailed counts and distance metrics for each category
+"
+OpenStreetMap (OSM) MCP Server,find_parking_facilities,"
+Locate parking facilities near a specific location.
+
+This tool finds parking options (lots, garages, street parking) near a specified location.
+Results can be filtered by parking type and include capacity information where available.
+Useful for trip planning, city navigation, and evaluating parking availability in urban areas.
+
+Args:
+    latitude: Center point latitude (decimal degrees)
+    longitude: Center point longitude (decimal degrees)
+    radius: Search radius in meters (defaults to 1000m/1km)
+    parking_type: Optional filter for specific types of parking facilities
+                 (""surface"", ""underground"", ""multi-storey"", etc.)
+    
+Returns:
+    List of parking facilities with:
+    - Name and type
+    - Capacity information if available
+    - Fee structure if available
+    - Access restrictions
+    - Distance from search point
+"
+Sequential Thinking MCP Server,sequentialthinking,"A detailed tool for dynamic and reflective problem-solving through thoughts.
+This tool helps analyze problems through a flexible thinking process that can adapt and evolve.
+Each thought can build on, question, or revise previous insights as understanding deepens.
+
+When to use this tool:
+- Breaking down complex problems into steps
+- Planning and design with room for revision
+- Analysis that might need course correction
+- Problems where the full scope might not be clear initially
+- Problems that require a multi-step solution
+- Tasks that need to maintain context over multiple steps
+- Situations where irrelevant information needs to be filtered out
+
+Key features:
+- You can adjust total_thoughts up or down as you progress
+- You can question or revise previous thoughts
+- You can add more thoughts even after reaching what seemed like the end
+- You can express uncertainty and explore alternative approaches
+- Not every thought needs to build linearly - you can branch or backtrack
+- Generates a solution hypothesis
+- Verifies the hypothesis based on the Chain of Thought steps
+- Repeats the process until satisfied
+- Provides a correct answer
+
+Parameters explained:
+- thought: Your current thinking step, which can include:
+* Regular analytical steps
+* Revisions of previous thoughts
+* Questions about previous decisions
+* Realizations about needing more analysis
+* Changes in approach
+* Hypothesis generation
+* Hypothesis verification
+- next_thought_needed: True if you need more thinking, even if at what seemed like the end
+- thought_number: Current number in sequence (can go beyond initial total if needed)
+- total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
+- is_revision: A boolean indicating if this thought revises previous thinking
+- revises_thought: If is_revision is true, which thought number is being reconsidered
+- branch_from_thought: If branching, which thought number is the branching point
+- branch_id: Identifier for the current branch (if any)
+- needs_more_thoughts: If reaching end but realizing more thoughts needed
+
+You should:
+1. Start with an initial estimate of needed thoughts, but be ready to adjust
+2. Feel free to question or revise previous thoughts
+3. Don't hesitate to add more thoughts if needed, even at the ""end""
+4. Express uncertainty when present
+5. Mark thoughts that revise previous thinking or branch into new paths
+6. Ignore information that is irrelevant to the current step
+7. Generate a solution hypothesis when appropriate
+8. Verify the hypothesis based on the Chain of Thought steps
+9. Repeat the process until satisfied with the solution
+10. Provide a single, ideally correct answer as the final output
+11. Only set next_thought_needed to false when truly done and a satisfactory answer is reached"
+Bazi MCP (八字 MCP) by Cantian AI,getBaziDetail,根据时间（公历或农历）、性别来获取八字信息。solarDatetime和lunarDatetime必须传且只传其中一个。
+Bazi MCP (八字 MCP) by Cantian AI,getSolarTimes,根据八字获取公历时间列表。返回的时间格式为：YYYY-MM-DD hh:mm:ss。例如时间1998年7月31日下午2点整表示为：1998-07-31 14:00:00
+Bazi MCP (八字 MCP) by Cantian AI,getChineseCalendar,获取指定公历时间（默认今天）的黄历信息。
+Bazi MCP (八字 MCP) by Cantian AI,buildBaziFromLunarDatetime,根据农历时间、性别来获取八字信息。
+Bazi MCP (八字 MCP) by Cantian AI,buildBaziFromSolarDatetime,根据阳历时间、性别来获取八字信息。
+Maven Dependencies MCP Server,get_latest_release,Get the latest release version of a Maven dependency (excludes pre-releases by default)
+Maven Dependencies MCP Server,check_maven_version_exists,Check if a specific version of a Maven dependency exists
+Maven Dependencies MCP Server,list_maven_versions,List Maven dependency versions sorted by last updated date (most recent first)
+Met Museum MCP Server,list-departments,List all departments in the Metropolitan Museum of Art (Met Museum)
+Met Museum MCP Server,search-museum-objects,"Search for objects in the Metropolitan Museum of Art (Met Museum). Will return Total objects found, followed by a list of Object Ids.The parameter title should be set to true if you want to search for objects by title.The parameter hasImages is false by default, but can be set to true to return objects without images.If the parameter hasImages is true, the parameter title should be false."
+Met Museum MCP Server,get-museum-object,"Get a museum object by its ID, from the Metropolitan Museum of Art Collection"
+mcp-github-trending MCP Server,get_github_trending_repositories,Get trending repositories on github
+mcp-github-trending MCP Server,get_github_trending_developers,Get trending developers on github
+Simple Document Processing MCP Server,document_reader,"Read content from non-image document-files at specified paths, supporting various file formats: .pdf, .docx, .txt, .html, .csv"
+Simple Document Processing MCP Server,pdf_merger,Merge multiple PDF files into one
+Simple Document Processing MCP Server,pdf_splitter,Split a PDF file into multiple files
+Simple Document Processing MCP Server,docx_to_pdf,Convert DOCX files to PDF format
+Simple Document Processing MCP Server,docx_to_html,Convert DOCX to HTML while preserving formatting
+Simple Document Processing MCP Server,html_cleaner,Clean HTML by removing unnecessary tags and attributes
+Simple Document Processing MCP Server,html_to_text,Convert HTML to plain text while preserving structure
+Simple Document Processing MCP Server,html_to_markdown,Convert HTML to Markdown format
+Simple Document Processing MCP Server,html_extract_resources,"Extract all resources (images, videos, links) from HTML"
+Simple Document Processing MCP Server,html_formatter,Format and beautify HTML code
+Simple Document Processing MCP Server,text_diff,Compare two text files and show differences
+Simple Document Processing MCP Server,text_splitter,Split text file by specified delimiter or line count
+Simple Document Processing MCP Server,text_formatter,Format text with proper indentation and line spacing
+Simple Document Processing MCP Server,text_encoding_converter,Convert text between different encodings
+Simple Document Processing MCP Server,excel_read,Read Excel file and convert to JSON format while preserving structure
+Simple Document Processing MCP Server,format_convert,"Convert between different document formats (Markdown, HTML, XML, JSON)"
+MCP Server Chart,generate_area_chart,"Generate a area chart to show data trends under continuous independent variables and observe the overall data trend, such as, displacement = velocity (average or instantaneous) × time: s = v × t. If the x-axis is time (t) and the y-axis is velocity (v) at each moment, an area chart allows you to observe the trend of velocity over time and infer the distance traveled by the area's size."
+MCP Server Chart,generate_bar_chart,"Generate a bar chart to show data for numerical comparisons among different categories, such as, comparing categorical data and for horizontal comparisons."
+MCP Server Chart,generate_boxplot_chart,"Generate a boxplot chart to show data for statistical summaries among different categories, such as, comparing the distribution of data points across categories."
+MCP Server Chart,generate_column_chart,"Generate a column chart, which are best for comparing categorical data, such as, when values are close, column charts are preferable because our eyes are better at judging height than other visual elements like area or angles."
+MCP Server Chart,generate_district_map,"Generates regional distribution maps, which are usually used to show the administrative divisions and coverage of a dataset. It is not suitable for showing the distribution of specific locations, such as urban administrative divisions, GDP distribution maps of provinces and cities across the country, etc. This tool is limited to generating data maps within China."
+MCP Server Chart,generate_dual_axes_chart,"Generate a dual axes chart which is a combination chart that integrates two different chart types, typically combining a bar chart with a line chart to display both the trend and comparison of data, such as, the trend of sales and profit over time."
+MCP Server Chart,generate_fishbone_diagram,"Generate a fishbone diagram chart to uses a fish skeleton, like structure to display the causes or effects of a core problem, with the problem as the fish head and the causes/effects as the fish bones. It suits problems that can be split into multiple related factors."
+MCP Server Chart,generate_flow_diagram,"Generate a flow diagram chart to show the steps and decision points of a process or system, such as, scenarios requiring linear process presentation."
+MCP Server Chart,generate_funnel_chart,"Generate a funnel chart to visualize the progressive reduction of data as it passes through stages, such as, the conversion rates of users from visiting a website to completing a purchase."
+MCP Server Chart,generate_histogram_chart,"Generate a histogram chart to show the frequency of data points within a certain range. It can observe data distribution, such as, normal and skewed distributions, and identify data concentration areas and extreme points."
+MCP Server Chart,generate_line_chart,"Generate a line chart to show trends over time, such as, the ratio of Apple computer sales to Apple's profits changed from 2000 to 2016."
+MCP Server Chart,generate_liquid_chart,"Generate a liquid chart to visualize a single value as a percentage, such as, the current occupancy rate of a reservoir or the completion percentage of a project."
+MCP Server Chart,generate_mind_map,"Generate a mind map chart to organizes and presents information in a hierarchical structure with branches radiating from a central topic, such as, a diagram showing the relationship between a main topic and its subtopics."
+MCP Server Chart,generate_network_graph,"Generate a network graph chart to show relationships (edges) between entities (nodes), such as, relationships between people in social networks."
+MCP Server Chart,generate_organization_chart,"Generate an organization chart to visualize the hierarchical structure of an organization, such as, a diagram showing the relationship between a CEO and their direct reports."
+MCP Server Chart,generate_path_map,"Generate a route map to display the user's planned route, such as travel guide routes."
+MCP Server Chart,generate_pie_chart,"Generate a pie chart to show the proportion of parts, such as, market share and budget allocation."
+MCP Server Chart,generate_pin_map,"Generate a point map to display the location and distribution of point data on the map, such as the location distribution of attractions, hospitals, supermarkets, etc."
+MCP Server Chart,generate_radar_chart,"Generate a radar chart to display multidimensional data (four dimensions or more), such as, evaluate Huawei and Apple phones in terms of five dimensions: ease of use, functionality, camera, benchmark scores, and battery life."
+MCP Server Chart,generate_sankey_chart,"Generate a sankey chart to visualize the flow of data between different stages or categories, such as, the user journey from landing on a page to completing a purchase."
+MCP Server Chart,generate_scatter_chart,"Generate a scatter chart to show the relationship between two variables, helps discover their relationship or trends, such as, the strength of correlation, data distribution patterns."
+MCP Server Chart,generate_treemap_chart,"Generate a treemap chart to display hierarchical data and can intuitively show comparisons between items at the same level, such as, show disk space usage with treemap."
+MCP Server Chart,generate_venn_chart,"Generate a Venn diagram to visualize the relationships between different sets, showing how they intersect and overlap, such as the commonalities and differences between various groups."
+MCP Server Chart,generate_violin_chart,"Generate a violin chart to show data for statistical summaries among different categories, such as, comparing the distribution of data points across categories."
+MCP Server Chart,generate_word_cloud_chart,"Generate a word cloud chart to show word frequency or weight through text size variation, such as, analyzing common words in social media, reviews, or feedback."
+鸣潮 MCP Server,get_artifact_info,"获取库街区上的声骸详细信息并以 Markdown 格式返回。
+
+Args:
+    artifact_name: 要查询的声骸套装的中文名称。
+
+Returns:
+    包含声骸信息的 Markdown 字符串，
+    或者在找不到声骸或获取数据失败时返回错误消息。
+"
+鸣潮 MCP Server,get_character_info,"获取库街区上的角色详细信息包括角色技能，养成攻略等，并以 Markdown 格式返回。
+
+Args:
+    character_name: 要查询的角色的中文名称。
+
+Returns:
+    包含角色信息的 Markdown 字符串，
+    或者在找不到角色或获取数据失败时返回错误消息。
+"
+鸣潮 MCP Server,get_character_profile,"获取库街区上的角色档案信息并以 Markdown 格式返回。
+
+Args:
+    character_name: 要查询的角色的中文名称。
+
+Returns:
+    包含角色档案信息的 Markdown 字符串，
+    或者在找不到角色或获取数据失败时返回错误消息。
+"
+Yahoo Finance MCP Server,get_ticker_info,"Retrieve stock data including company info, financials, trading metrics and governance data."
+Yahoo Finance MCP Server,get_ticker_news,"Fetches recent news articles related to a specific stock symbol with title, content, and source details."
+Yahoo Finance MCP Server,search,"Fetches and organizes search results from Yahoo Finance, including stock quotes and news articles."
+Yahoo Finance MCP Server,get_top,"Get top entities (ETFs, mutual funds, companies, growth companies, or performing companies) in a sector."
+Yahoo Finance MCP Server,get_price_history,Fetch historical price data for a given stock symbol over a specified period and interval.
+Wikipedia MCP Server,search_wikipedia,Search Wikipedia for articles matching a query.
+Wikipedia MCP Server,get_article,Get the full content of a Wikipedia article.
+Wikipedia MCP Server,get_summary,Get a summary of a Wikipedia article.
+Wikipedia MCP Server,summarize_article_for_query,Get a summary of a Wikipedia article tailored to a specific query.
+Wikipedia MCP Server,summarize_article_section,Get a summary of a specific section of a Wikipedia article.
+Wikipedia MCP Server,extract_key_facts,"Extract key facts from a Wikipedia article, optionally focused on a topic."
+Wikipedia MCP Server,get_related_topics,Get topics related to a Wikipedia article based on links and categories.
+Wikipedia MCP Server,get_sections,Get the sections of a Wikipedia article.
+Wikipedia MCP Server,get_links,Get the links contained within a Wikipedia article.
+MCP OKPPT Server,insert_svg,"
+将SVG图像插入到PPTX文件的指定位置。(如果需要替换已有的幻灯片，请组合使用`delete_slide`和`insert_blank_slide`功能)
+如果未提供PPTX路径，将自动创建一个临时文件，位于服务器同级目录的tmp目录。
+如果未提供输出路径，将使用标准输出目录，位于服务器同级目录的output目录。
+如果未提供坐标，默认对齐幻灯片左上角。
+如果未提供宽度和高度，默认覆盖整个幻灯片（16:9）。
+
+支持批量处理：
+- 如果svg_path是单个字符串数组，则将SVG添加到slide_number指定的页面
+- 如果svg_path是列表，则从slide_number开始顺序添加每个SVG，即第一个SVG添加到
+  slide_number页，第二个添加到slide_number+1页，依此类推
+
+Args:
+    pptx_path: PPTX文件路径，如果未提供则自动创建一个临时文件，最好使用英文路径
+    svg_path: SVG文件路径或SVG文件路径列表，最好使用英文路径
+    slide_number: 起始幻灯片编号（从1开始）
+    x_inches: X坐标（英寸），如果未指定则默认为0
+    y_inches: Y坐标（英寸），如果未指定则默认为0
+    width_inches: 宽度（英寸），如果未指定则使用幻灯片宽度
+    height_inches: 高度（英寸），如果未指定则根据宽度计算或使用幻灯片高度
+    output_path: 输出文件路径，如果未指定则使用标准输出目录
+    create_if_not_exists: 如果为True且PPTX文件不存在，将自动创建一个新文件
+    
+Returns:
+    操作结果消息，包含详细的错误信息（如果有）
+"
+MCP OKPPT Server,list_files,"
+列出目录中的文件，可选按文件类型过滤。
+如需查看svg文件是否正确保存，请输入svg文件的保存路径。
+Args:
+    directory: 要列出文件的目录路径
+    file_type: 文件类型过滤，可以是 ""svg"" 或 ""pptx""
+    
+Returns:
+    文件列表（每行一个文件）
+"
+MCP OKPPT Server,get_file_info,"
+获取文件信息，如存在状态、大小等。
+
+Args:
+    file_path: 要查询的文件路径
+    
+Returns:
+    文件信息
+"
+MCP OKPPT Server,convert_svg_to_png,"
+将SVG文件转换为PNG图像。
+
+Args:
+    svg_path: SVG文件路径
+    output_path: 输出PNG文件路径，如果未指定则使用相同文件名但扩展名为.png
+    
+Returns:
+    操作结果消息
+"
+MCP OKPPT Server,get_pptx_info,"
+获取PPTX文件的基本信息，包括幻灯片数量。
+
+Args:
+    pptx_path: PPTX文件路径
+    
+Returns:
+    包含文件信息和幻灯片数量的字符串
+"
+MCP OKPPT Server,save_svg_code,"
+将SVG代码保存为SVG文件并返回保存的绝对路径。
+!!!注意：特殊字符如""&""需要转义为""&amp;""
+Args:
+    svg_code: SVG代码内容
+    
+Returns:
+    操作结果消息，包含保存的文件路径或错误信息
+"
+MCP OKPPT Server,delete_slide,"
+从PPTX文件中删除指定编号的幻灯片。
+
+!!!注意：
+
+在使用SVG替换PPT幻灯片内容时，我们发现了一些关键点，以下是正确替换PPT内容的方法总结：
+
+### 正确替换PPT内容的方法
+
+1. **完全替换法**（最可靠）：
+- 删除需要替换的幻灯片（使用`delete_slide`功能）
+- 在同一位置插入空白幻灯片（使用`insert_blank_slide`功能）
+- 将新的SVG内容插入到空白幻灯片（使用`insert_svg`功能）
+
+2. **新文件法**（适合多页修改）：
+- 创建全新的PPT文件
+- 将所有需要的SVG（包括已修改的）按顺序插入到新文件中
+- 这样可以避免在旧文件上操作导致的混淆和叠加问题
+
+3. **注意事项**：
+- 直接对现有幻灯片插入SVG会导致新内容叠加在原内容上，而非替换
+- 文件名可能会随着多次操作变得过长，影响可读性
+- 批量插入SVG时，`svg_path`参数必须是数组形式，即使只有一个文件
+- 操作后应检查输出文件以确认修改是否成功
+
+### 推荐工作流
+
+1. 先保存修改后的SVG内容到文件
+2. 创建一个全新的PPT文件
+3. 按顺序一次性插入所有SVG（包括已修改和未修改的）
+4. 使用简洁直观的文件名
+
+这种方法避免了多步骤操作导致的文件混乱，也能确保每张幻灯片都是干净的、不包含叠加内容的。
+
+Args:
+    pptx_path: PPTX文件路径
+    slide_number: 要删除的幻灯片编号（从1开始）
+    output_path: 输出文件路径，如果未指定则使用标准输出目录
+    
+Returns:
+    操作结果消息
+"
+MCP OKPPT Server,insert_blank_slide,"
+在PPTX文件的指定位置插入一个空白幻灯片。
+
+!!!注意：
+
+在使用SVG替换PPT幻灯片内容时，我们发现了一些关键点，以下是正确替换PPT内容的方法总结：
+
+### 正确替换PPT内容的方法
+
+1. **完全替换法**（最可靠）：
+- 删除需要替换的幻灯片（使用`delete_slide`功能）
+- 在同一位置插入空白幻灯片（使用`insert_blank_slide`功能）
+- 将新的SVG内容插入到空白幻灯片（使用`insert_svg`功能）
+
+2. **新文件法**（适合多页修改）：
+- 创建全新的PPT文件
+- 将所有需要的SVG（包括已修改的）按顺序插入到新文件中
+- 这样可以避免在旧文件上操作导致的混淆和叠加问题
+
+3. **注意事项**：
+- 直接对现有幻灯片插入SVG会导致新内容叠加在原内容上，而非替换
+- 文件名可能会随着多次操作变得过长，影响可读性
+- 批量插入SVG时，`svg_path`参数必须是数组形式，即使只有一个文件
+- 操作后应检查输出文件以确认修改是否成功
+
+### 推荐工作流
+
+1. 先保存修改后的SVG内容到文件
+2. 创建一个全新的PPT文件
+3. 按顺序一次性插入所有SVG（包括已修改和未修改的）
+4. 使用简洁直观的文件名
+
+这种方法避免了多步骤操作导致的文件混乱，也能确保每张幻灯片都是干净的、不包含叠加内容的。
+
+Args:
+    pptx_path: PPTX文件路径
+    slide_number: 要插入幻灯片的位置编号（从1开始）
+    layout_index: 幻灯片布局索引，默认为6（空白布局）
+    output_path: 输出文件路径，如果未指定则使用标准输出目录
+    create_if_not_exists: 如果为True且PPTX文件不存在，将自动创建一个新文件
+    
+Returns:
+    操作结果消息
+"
+MCP OKPPT Server,copy_svg_slide,"
+专门用于复制包含SVG图像的幻灯片，确保SVG和相关引用都被正确复制。
+
+此函数使用直接操作PPTX内部XML文件的方式，确保SVG图像及其引用在复制过程中完全保留。
+与普通的copy_slide函数相比，此函数特别关注SVG图像的复制，保证SVG的矢量属性在复制后依然可用。
+
+Args:
+    source_pptx_path: 源PPTX文件路径
+    target_pptx_path: 目标PPTX文件路径，如果为空则创建新文件
+    source_slide_number: 要复制的源幻灯片页码（从1开始）
+    target_slide_number: 要插入到目标文件的位置（从1开始），如果为None则添加到末尾
+    output_path: 输出文件路径，如果未指定则使用标准输出目录
+    create_if_not_exists: 如果为True且目标PPTX文件不存在，将自动创建一个新文件
+    
+Returns:
+    操作结果消息
+"
+MCP OKPPT Server,svg_prompt,使用SVG设计宗师角色提示，当用户希望大模型生成或优化ppt时，使用此prompt对用户需求进行细化
+MCP OKPPT Server,analyze_presentation_layouts,Analyzes the layout details of a PowerPoint presentation and returns a JSON string of the analysis.
+MCP OKPPT Server,add_slide_with_layout,Inserts a new slide with a specified layout into a presentation and returns a JSON string of the result.
+MCP OKPPT Server,clear_placeholders_from_slides,Clears content from placeholders in specified slides of a presentation and returns a JSON string of the result.
+MCP OKPPT Server,set_placeholder_value,Assigns content to a specific placeholder on a specific slide and returns a JSON string of the result.
+Time MCP Server,get_current_time,Get current time in a specific timezones
+Time MCP Server,convert_time,Convert time between timezones
+kospi-kosdaq-stock-server,load_all_tickers,"Loads all ticker symbols and names for KOSPI and KOSDAQ into memory.
+
+Returns:
+    Dict[str, str]: A dictionary mapping tickers to stock names.
+    Example: {""005930"": ""삼성전자"", ""035720"": ""카카오"", ...}
+"
+kospi-kosdaq-stock-server,get_stock_ohlcv,"Retrieves OHLCV (Open/High/Low/Close/Volume) data for a specific stock.
+
+Args:
+    fromdate (str): Start date for retrieval (YYYYMMDD)
+    todate   (str): End date for retrieval (YYYYMMDD)
+    ticker   (str): Stock ticker symbol
+    adjusted (bool, optional): Whether to use adjusted prices (True: adjusted, False: unadjusted). Defaults to True.
+
+Returns:
+    DataFrame:
+        >> get_stock_ohlcv(""20210118"", ""20210126"", ""005930"")
+                        Open     High     Low    Close   Volume
+        Date
+        2021-01-26  89500  94800  89500  93800  46415214
+        2021-01-25  87300  89400  86800  88700  25577517
+        2021-01-22  89000  89700  86800  86800  30861661
+        2021-01-21  87500  88600  86500  88100  25318011
+        2021-01-20  89000  89000  86500  87200  25211127
+        2021-01-19  84500  88000  83600  87000  39895044
+        2021-01-18  86600  87300  84100  85000  43227951
+"
+kospi-kosdaq-stock-server,get_stock_market_cap,"Retrieves market capitalization data for a specific stock.
+
+Args:
+    fromdate (str): Start date for retrieval (YYYYMMDD)
+    todate   (str): End date for retrieval (YYYYMMDD)
+    ticker   (str): Stock ticker symbol
+
+Returns:
+    DataFrame:
+        >> get_stock_market_cap(""20150720"", ""20150724"", ""005930"")
+                          Market Cap  Volume      Trading Value  Listed Shares
+        Date
+        2015-07-24  181030885173000  196584  241383636000  147299337
+        2015-07-23  181767381858000  208965  259446564000  147299337
+        2015-07-22  184566069261000  268323  333813094000  147299337
+        2015-07-21  186039062631000  194055  244129106000  147299337
+        2015-07-20  187806654675000  128928  165366199000  147299337
+"
+kospi-kosdaq-stock-server,get_stock_fundamental,"Retrieves fundamental data (PER/PBR/Dividend Yield) for a specific stock.
+
+Args:
+    fromdate (str): Start date for retrieval (YYYYMMDD)
+    todate   (str): End date for retrieval (YYYYMMDD)
+    ticker   (str): Stock ticker symbol
+
+Returns:
+    DataFrame:
+        >> get_stock_fundamental(""20210104"", ""20210108"", ""005930"")
+                          BPS        PER       PBR   EPS       DIV   DPS
+            Date
+            2021-01-08  37528  28.046875  2.369141  3166  1.589844  1416
+            2021-01-07  37528  26.187500  2.210938  3166  1.709961  1416
+            2021-01-06  37528  25.953125  2.189453  3166  1.719727  1416
+            2021-01-05  37528  26.500000  2.240234  3166  1.690430  1416
+            2021-01-04  37528  26.218750  2.210938  3166  1.709961  1416
+"
+kospi-kosdaq-stock-server,get_stock_trading_volume,"Retrieves trading volume by investor type for a specific stock.
+
+Args:
+    fromdate (str): Start date for retrieval (YYYYMMDD)
+    todate   (str): End date for retrieval (YYYYMMDD)
+    ticker   (str): Stock ticker symbol
+
+Returns:
+    DataFrame with columns:
+    - Volume (Sell/Buy/Net Buy)
+    - Trading Value (Sell/Buy/Net Buy)
+    Broken down by investor types (Financial Investment, Insurance, Trust, etc.)
+"
+MCP Server: Mermaid Validator,validateMermaid,Validates a Mermaid diagram and returns the rendered SVG if valid
+Playwright MCP Server,start_codegen_session,Start a new code generation session to record Playwright actions
+Playwright MCP Server,end_codegen_session,End a code generation session and generate the test file
+Playwright MCP Server,get_codegen_session,Get information about a code generation session
+Playwright MCP Server,clear_codegen_session,Clear a code generation session without generating a test
+Playwright MCP Server,playwright_navigate,Navigate to a URL
+Playwright MCP Server,playwright_screenshot,Take a screenshot of the current page or a specific element
+Playwright MCP Server,playwright_click,Click an element on the page
+Playwright MCP Server,playwright_iframe_click,Click an element in an iframe on the page
+Playwright MCP Server,playwright_iframe_fill,Fill an element in an iframe on the page
+Playwright MCP Server,playwright_fill,fill out an input field
+Playwright MCP Server,playwright_select,Select an element on the page with Select tag
+Playwright MCP Server,playwright_hover,Hover an element on the page
+Playwright MCP Server,playwright_upload_file,Upload a file to an input[type='file'] element on the page
+Playwright MCP Server,playwright_evaluate,Execute JavaScript in the browser console
+Playwright MCP Server,playwright_console_logs,Retrieve console logs from the browser with filtering options
+Playwright MCP Server,playwright_close,Close the browser and release all resources
+Playwright MCP Server,playwright_get,Perform an HTTP GET request
+Playwright MCP Server,playwright_post,Perform an HTTP POST request
+Playwright MCP Server,playwright_put,Perform an HTTP PUT request
+Playwright MCP Server,playwright_patch,Perform an HTTP PATCH request
+Playwright MCP Server,playwright_delete,Perform an HTTP DELETE request
+Playwright MCP Server,playwright_expect_response,Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.
+Playwright MCP Server,playwright_assert_response,Wait for and validate a previously initiated HTTP response wait operation.
+Playwright MCP Server,playwright_custom_user_agent,Set a custom User Agent for the browser
+Playwright MCP Server,playwright_get_visible_text,Get the visible text content of the current page
+Playwright MCP Server,playwright_get_visible_html,"Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false."
+Playwright MCP Server,playwright_go_back,Navigate back in browser history
+Playwright MCP Server,playwright_go_forward,Navigate forward in browser history
+Playwright MCP Server,playwright_drag,Drag an element to a target location
+Playwright MCP Server,playwright_press_key,Press a keyboard key
+Playwright MCP Server,playwright_save_as_pdf,Save the current page as a PDF file
+Playwright MCP Server,playwright_click_and_switch_tab,Click a link and switch to the newly opened tab
+investor-agent: A Financial Analysis MCP Server,get_cnn_fear_greed_index,Max 30 days of historical data.
+investor-agent: A Financial Analysis MCP Server,get_crypto_fear_greed_index,Get historical Crypto Fear & Greed Index data.
+investor-agent: A Financial Analysis MCP Server,get_ticker_data,"
+Returns:
+- info: Core financial metrics (P/E ratios, margins, growth rates, debt ratios, market cap, EPS, etc.)
+- calendar: Upcoming earnings dates and dividend dates
+- news: Recent news articles (headlines, dates, sources)
+- recommendations: Latest analyst recommendations (buy/sell/hold ratings)
+- upgrades_downgrades: Recent analyst rating changes
+"
+investor-agent: A Financial Analysis MCP Server,get_options,"Get options data. Dates: YYYY-MM-DD. Type: C=calls, P=puts."
+investor-agent: A Financial Analysis MCP Server,get_price_history,"Get historical OHLCV data: daily intervals for ≤1y periods, monthly intervals for ≥2y periods."
+investor-agent: A Financial Analysis MCP Server,get_financial_statements,No description
+investor-agent: A Financial Analysis MCP Server,get_institutional_holders,Get major institutional and mutual fund holders.
+investor-agent: A Financial Analysis MCP Server,get_earnings_history,No description
+investor-agent: A Financial Analysis MCP Server,get_insider_trades,No description
+MCP Server LeetCode,get-daily-challenge,No description
+MCP Server LeetCode,get-problem,No description
+MCP Server LeetCode,search-problems,No description
+MCP Server LeetCode,get-user-profile,No description
+MCP Server LeetCode,get-user-submissions,No description
+MCP Server LeetCode,get-contest-details,No description
+MCP Server LeetCode,get-user-contest-ranking,No description
+YouTube Transcript Server,get_transcript,Extract transcript from a YouTube video URL or ID
+Data.gov MCP Server,package_search,Search for packages (datasets) on Data.gov
+Data.gov MCP Server,package_show,Get details for a specific package (dataset)
+Data.gov MCP Server,group_list,List groups on Data.gov
+Data.gov MCP Server,tag_list,List tags on Data.gov
+Airbnb MCP Server,airbnb_search,Search for Airbnb listings with various filters and pagination. Provide direct links to the user
+Airbnb MCP Server,airbnb_listing_details,Get detailed information about a specific Airbnb listing. Provide direct links to the user
+Knowledge Graph Memory Server,create_entities,Create multiple new entities in the knowledge graph
+Knowledge Graph Memory Server,create_relations,Create multiple new relations between entities in the knowledge graph. Relations should be in active voice
+Knowledge Graph Memory Server,add_observations,Add new observations to existing entities in the knowledge graph
+Knowledge Graph Memory Server,delete_entities,Delete multiple entities and their associated relations from the knowledge graph
+Knowledge Graph Memory Server,delete_observations,Delete specific observations from entities in the knowledge graph
+Knowledge Graph Memory Server,delete_relations,Delete multiple relations from the knowledge graph
+Knowledge Graph Memory Server,read_graph,Read the entire knowledge graph
+Knowledge Graph Memory Server,search_nodes,Search for nodes in the knowledge graph based on a query
+Knowledge Graph Memory Server,open_nodes,Open specific nodes in the knowledge graph by their names
+Hacker News MCP Server,search,Search for stories and comments on Hacker News
+Hacker News MCP Server,getStory,Get a single story by ID
+Hacker News MCP Server,getStoryWithComments,Get a story with its comments
+Hacker News MCP Server,getStories,"Get multiple stories by type (top, new, best, ask, show, job)"
+Hacker News MCP Server,getComment,Get a single comment by ID
+Hacker News MCP Server,getComments,Get comments for a story
+Hacker News MCP Server,getCommentTree,Get a comment tree for a story
+Hacker News MCP Server,getUser,Get a user profile by ID
+Hacker News MCP Server,getUserSubmissions,Get a user's submissions
+Office-PowerPoint-MCP-Server,create_presentation,Create a new PowerPoint presentation.
+Office-PowerPoint-MCP-Server,create_presentation_from_template,Create a new PowerPoint presentation from a template file.
+Office-PowerPoint-MCP-Server,open_presentation,Open an existing PowerPoint presentation from a file.
+Office-PowerPoint-MCP-Server,save_presentation,Save a presentation to a file.
+Office-PowerPoint-MCP-Server,get_presentation_info,Get information about a presentation.
+Office-PowerPoint-MCP-Server,get_template_file_info,Get information about a template file including layouts and properties.
+Office-PowerPoint-MCP-Server,set_core_properties,Set core document properties.
+Office-PowerPoint-MCP-Server,add_slide,Add a new slide to the presentation with optional background styling.
+Office-PowerPoint-MCP-Server,get_slide_info,Get information about a specific slide.
+Office-PowerPoint-MCP-Server,populate_placeholder,Populate a placeholder with text.
+Office-PowerPoint-MCP-Server,add_bullet_points,Add bullet points to a placeholder.
+Office-PowerPoint-MCP-Server,manage_text,"Unified text management tool for adding, formatting, validating text, and formatting multiple text runs."
+Office-PowerPoint-MCP-Server,manage_image,Unified image management tool for adding and enhancing images.
+Office-PowerPoint-MCP-Server,add_table,Add a table to a slide with enhanced formatting options.
+Office-PowerPoint-MCP-Server,format_table_cell,Format a specific table cell.
+Office-PowerPoint-MCP-Server,add_shape,Add an auto shape to a slide with enhanced options.
+Office-PowerPoint-MCP-Server,add_chart,Add a chart to a slide with comprehensive formatting options.
+Office-PowerPoint-MCP-Server,apply_professional_design,"Unified professional design tool for themes, slides, and visual enhancements.
+This applies professional styling and themes rather than structural layout changes."
+Office-PowerPoint-MCP-Server,apply_picture_effects,Apply multiple picture effects in combination.
+Office-PowerPoint-MCP-Server,manage_fonts,"Unified font management tool for analysis, optimization, and recommendations."
+Office-PowerPoint-MCP-Server,list_slide_templates,List all available slide layout templates.
+Office-PowerPoint-MCP-Server,apply_slide_template,"
+Apply a structured layout template to an existing slide.
+This modifies slide layout and content structure using predefined templates.
+
+Args:
+    slide_index: Index of the slide to apply template to
+    template_id: ID of the template to apply (e.g., 'title_slide', 'text_with_image')
+    color_scheme: Color scheme to use ('modern_blue', 'corporate_gray', 'elegant_green', 'warm_red')
+    content_mapping: Dictionary mapping element roles to custom content
+    image_paths: Dictionary mapping image element roles to file paths
+    presentation_id: Presentation ID (uses current if None)
+"
+Office-PowerPoint-MCP-Server,create_slide_from_template,"
+Create a new slide using a layout template.
+
+Args:
+    template_id: ID of the template to use (e.g., 'title_slide', 'text_with_image')
+    color_scheme: Color scheme to use ('modern_blue', 'corporate_gray', 'elegant_green', 'warm_red')
+    content_mapping: Dictionary mapping element roles to custom content
+    image_paths: Dictionary mapping image element roles to file paths
+    layout_index: PowerPoint layout index to use as base (default: 1)
+    presentation_id: Presentation ID (uses current if None)
+"
+Office-PowerPoint-MCP-Server,create_presentation_from_templates,"
+Create a complete presentation from a sequence of templates.
+
+Args:
+    template_sequence: List of template configurations, each containing:
+        - template_id: Template to use
+        - content: Content mapping for the template
+        - images: Image path mapping for the template
+    color_scheme: Color scheme to apply to all slides
+    presentation_title: Optional title for the presentation
+    presentation_id: Presentation ID (uses current if None)
+
+Example template_sequence:
+[
+    {
+        ""template_id"": ""title_slide"",
+        ""content"": {
+            ""title"": ""My Presentation"",
+            ""subtitle"": ""Annual Report 2024"",
+            ""author"": ""John Doe""
+        }
+    },
+    {
+        ""template_id"": ""text_with_image"",
+        ""content"": {
+            ""title"": ""Key Results"",
+            ""content"": ""• Achievement 1\n• Achievement 2""
+        },
+        ""images"": {
+            ""supporting"": ""/path/to/image.jpg""
+        }
+    }
+]
+"
+Office-PowerPoint-MCP-Server,get_template_info,"
+Get detailed information about a specific template.
+
+Args:
+    template_id: ID of the template to get information about
+"
+Office-PowerPoint-MCP-Server,auto_generate_presentation,"
+Automatically generate a presentation based on topic and preferences.
+
+Args:
+    topic: Main topic/theme for the presentation
+    slide_count: Number of slides to generate (3-20)
+    presentation_type: Type of presentation ('business', 'academic', 'creative')
+    color_scheme: Color scheme to use
+    include_charts: Whether to include chart slides
+    include_images: Whether to include image placeholders
+    presentation_id: Presentation ID (uses current if None)
+"
+Office-PowerPoint-MCP-Server,optimize_slide_text,"
+Optimize text elements on a slide for better readability and fit.
+
+Args:
+    slide_index: Index of the slide to optimize
+    auto_resize: Whether to automatically resize fonts to fit containers
+    auto_wrap: Whether to apply intelligent text wrapping
+    optimize_spacing: Whether to optimize line spacing
+    min_font_size: Minimum allowed font size
+    max_font_size: Maximum allowed font size
+    presentation_id: Presentation ID (uses current if None)
+"
+Office-PowerPoint-MCP-Server,manage_hyperlinks,"
+Manage hyperlinks in text shapes and runs.
+
+Args:
+    operation: Operation type (""add"", ""remove"", ""list"", ""update"")
+    slide_index: Index of the slide (0-based)
+    shape_index: Index of the shape on the slide (0-based)
+    text: Text to make into hyperlink (for ""add"" operation)
+    url: URL for the hyperlink
+    run_index: Index of text run within the shape (0-based)
+    presentation_id: Optional presentation ID (uses current if not provided)
+    
+Returns:
+    Dictionary with operation results
+"
+Office-PowerPoint-MCP-Server,update_chart_data,"
+Replace existing chart data with new categories and series.
+
+Args:
+    slide_index: Index of the slide (0-based)
+    shape_index: Index of the chart shape (0-based)
+    categories: List of category names
+    series_data: List of dictionaries with 'name' and 'values' keys
+    presentation_id: Optional presentation ID (uses current if not provided)
+    
+Returns:
+    Dictionary with operation results
+"
+Office-PowerPoint-MCP-Server,add_connector,"
+Add connector lines/arrows between points on a slide.
+
+Args:
+    slide_index: Index of the slide (0-based)
+    connector_type: Type of connector (""straight"", ""elbow"", ""curved"")
+    start_x: Starting X coordinate in inches
+    start_y: Starting Y coordinate in inches
+    end_x: Ending X coordinate in inches  
+    end_y: Ending Y coordinate in inches
+    line_width: Width of the connector line in points
+    color: RGB color as [r, g, b] list
+    presentation_id: Optional presentation ID (uses current if not provided)
+    
+Returns:
+    Dictionary with operation results
+"
+Office-PowerPoint-MCP-Server,manage_slide_masters,"
+Access and manage slide master properties and layouts.
+
+Args:
+    operation: Operation type (""list"", ""get_layouts"", ""get_info"")
+    master_index: Index of the slide master (0-based)
+    layout_index: Index of specific layout within master (0-based)
+    presentation_id: Optional presentation ID (uses current if not provided)
+    
+Returns:
+    Dictionary with slide master information
+"
+Office-PowerPoint-MCP-Server,manage_slide_transitions,"
+Manage slide transitions and timing.
+
+Args:
+    slide_index: Index of the slide (0-based)
+    operation: Operation type (""set"", ""remove"", ""get"")
+    transition_type: Type of transition (basic support)
+    duration: Duration of transition in seconds
+    presentation_id: Optional presentation ID (uses current if not provided)
+    
+Returns:
+    Dictionary with transition information
+"
+Office-PowerPoint-MCP-Server,list_presentations,List all loaded presentations.
+Office-PowerPoint-MCP-Server,switch_presentation,Switch to a different loaded presentation.
+Office-PowerPoint-MCP-Server,get_server_info,Get information about the MCP server.
+Calculator MCP Server,calculate,Calculates/evaluates the given expression.
+Ant Design Components MCP Service,get-component-docs,"获取 Ant Design 特定组件的详细文档
+适用场景：
+1. 用户询问如何使用特定组件
+2. 用户需要查看该组件的 api 属性"
+Ant Design Components MCP Service,list-component-examples,"获取 Ant Design 特定组件的代码示例
+适用场景：
+1. 用户询问特定组件的示例时
+2. 用户想要实现某个功能时直接告知可使用的例子
+3. 生成页面前需要获取组件的示例代码"
+Ant Design Components MCP Service,get-component-changelog,"列出 Ant Design 特定组件的更新日志
+适用场景：
+1. 用户询问特定组件的更新日志
+2. 在知道用户 antd 版本的情况下，当用户需要实现相关组件功能时判断是否在后续版本中才实现，来决定是否需要升级依赖"
+Ant Design Components MCP Service,list-components,"当用户请求一个新的用户界面（UI）使用 Ant Design 组件时使用此工具。
+此工具仅返回可用的组件列表。
+调用此工具后，你必须编辑或添加文件，以便将代码片段集成到代码库中"
+Context7 MCP - Up-to-date Code Docs For Any Prompt,resolve-library-id,"Resolves a package/product name to a Context7-compatible library ID and returns a list of matching libraries.
+
+You MUST call this function before 'get-library-docs' to obtain a valid Context7-compatible library ID UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query.
+
+Selection Process:
+1. Analyze the query to understand what library/package the user is looking for
+2. Return the most relevant match based on:
+- Name similarity to the query (exact matches prioritized)
+- Description relevance to the query's intent
+- Documentation coverage (prioritize libraries with higher Code Snippet counts)
+- Trust score (consider libraries with scores of 7-10 more authoritative)
+
+Response Format:
+- Return the selected library ID in a clearly marked section
+- Provide a brief explanation for why this library was chosen
+- If multiple good matches exist, acknowledge this but proceed with the most relevant one
+- If no good matches exist, clearly state this and suggest query refinements
+
+For ambiguous queries, request clarification before proceeding with a best-guess match."
+Context7 MCP - Up-to-date Code Docs For Any Prompt,get-library-docs,"Fetches up-to-date documentation for a library. You must call 'resolve-library-id' first to obtain the exact Context7-compatible library ID required to use this tool, UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query."
+MCP Text Editor Server,get_text_file_contents,Read text file contents from multiple files and line ranges. Returns file contents with hashes for concurrency control and line numbers for reference. The hashes are used to detect conflicts when editing the files. File paths must be absolute.
+MCP Text Editor Server,edit_text_file_contents,"A line editor that supports editing text file contents by specifying line ranges and content. It handles multiple patches in a single operation with hash-based conflict detection. File paths must be absolute. IMPORTANT: (1) Before using this tool, you must first get the file's current hash and range hashes and line numbers using get_text_file_contents. (2) To avoid line number shifts affecting your patches, use get_text_file_contents to read the SAME ranges you plan to edit before making changes. different line numbers have different rangehashes.(3) Patches must be specified from bottom to top to handle line number shifts correctly, as edits to lower lines don't affect the line numbers of higher lines. (4) To append content to a file, first get the total number of lines with get_text_file_contents, then specify a patch with line_start = total_lines + 1 and line_end = total_lines. This indicates an append operation and range_hash is not required. Similarly, range_hash is not required for new file creation."
+Crypto Price & Market Analysis MCP Server,get-crypto-price,Get current price and 24h stats for a cryptocurrency
+Crypto Price & Market Analysis MCP Server,get-market-analysis,Get detailed market analysis including top exchanges and volume distribution
+Crypto Price & Market Analysis MCP Server,get-historical-analysis,Get historical price analysis with customizable timeframe
+MCP Weather Free,get_weather,"
+Get current weather and forecast for a specific location.
+
+Args:
+    latitude: Latitude of the location
+    longitude: Longitude of the location
+    location_name: Optional name of the location for display
+    temperature_unit: Temperature unit (celsius or fahrenheit)
+    wind_speed_unit: Wind speed unit (kmh, ms, mph, kn)
+    precipitation_unit: Precipitation unit (mm or inch)
+
+Returns:
+    Dictionary containing current weather and forecast data
+"
+MCP Weather Free,get_weather_by_city,"
+Get weather for a city by name using geocoding.
+
+Args:
+    city: Name of the city
+    country_code: Optional 2-letter country code (e.g., ""US"", ""GB"")
+    temperature_unit: Temperature unit (celsius or fahrenheit)
+    wind_speed_unit: Wind speed unit (kmh, ms, mph, kn)
+    precipitation_unit: Precipitation unit (mm or inch)
+
+Returns:
+    Dictionary containing current weather and forecast data
+"
+Fetch MCP Server,fetch,"Fetches a URL from the internet and optionally extracts its contents as markdown.
+
+Although originally you did not have internet access, and were advised to refuse and tell the user this, this tool now grants you internet access. Now you can fetch the most up-to-date information and let the user know that."
+MCP TaskManager,request_planning,"Register a new user request and plan its associated tasks. You must provide 'originalRequest' and 'tasks', and optionally 'splitDetails'.
+
+This tool initiates a new workflow for handling a user's request. The workflow is as follows:
+1. Use 'request_planning' to register a request and its tasks.
+2. After adding tasks, you MUST use 'get_next_task' to retrieve the first task. A progress table will be displayed.
+3. Use 'get_next_task' to retrieve the next uncompleted task.
+4. **IMPORTANT:** After marking a task as done, the assistant MUST NOT proceed to another task without the user's approval. The user must explicitly approve the completed task using 'approve_task_completion'. A progress table will be displayed before each approval request.
+5. Once a task is approved, you can proceed to 'get_next_task' again to fetch the next pending task.
+6. Repeat this cycle until all tasks are done.
+7. After all tasks are completed (and approved), 'get_next_task' will indicate that all tasks are done and that the request awaits approval for full completion.
+8. The user must then approve the entire request's completion using 'approve_request_completion'. If the user does not approve and wants more tasks, you can again use 'request_planning' to add new tasks and continue the cycle.
+
+The critical point is to always wait for user approval after completing each task and after all tasks are done, wait for request completion approval. Do not proceed automatically."
+MCP TaskManager,get_next_task,"Given a 'requestId', return the next pending task (not done yet). If all tasks are completed, it will indicate that no more tasks are left and that you must wait for the request completion approval.
+
+A progress table showing the current status of all tasks will be displayed with each response.
+
+If the same task is returned again or if no new task is provided after a task was marked as done but not yet approved, you MUST NOT proceed. In such a scenario, you must prompt the user for approval via 'approve_task_completion' before calling 'get_next_task' again. Do not skip the user's approval step.
+In other words:
+- After calling 'mark_task_done', do not call 'get_next_task' again until 'approve_task_completion' is called by the user.
+- If 'get_next_task' returns 'all_tasks_done', it means all tasks have been completed. At this point, you must not start a new request or do anything else until the user decides to 'approve_request_completion' or possibly add more tasks via 'request_planning'."
+MCP TaskManager,mark_task_done,"Mark a given task as done after you've completed it. Provide 'requestId' and 'taskId', and optionally 'completedDetails'.
+
+After marking a task as done, a progress table will be displayed showing the updated status of all tasks.
+
+After this, DO NOT proceed to 'get_next_task' again until the user has explicitly approved this completed task using 'approve_task_completion'."
+MCP TaskManager,approve_task_completion,"Once the assistant has marked a task as done using 'mark_task_done', the user must call this tool to approve that the task is genuinely completed. Only after this approval can you proceed to 'get_next_task' to move on.
+
+A progress table will be displayed before requesting approval, showing the current status of all tasks.
+
+If the user does not approve, do not call 'get_next_task'. Instead, the user may request changes, or even re-plan tasks by using 'request_planning' again."
+MCP TaskManager,approve_request_completion,"After all tasks are done and approved, this tool finalizes the entire request. The user must call this to confirm that the request is fully completed.
+
+A progress table showing the final status of all tasks will be displayed before requesting final approval.
+
+If not approved, the user can add new tasks using 'request_planning' and continue the process."
+MCP TaskManager,open_task_details,Get details of a specific task by 'taskId'. This is for inspecting task information at any point.
+MCP TaskManager,list_requests,List all requests with their basic information and summary of tasks. This provides a quick overview of all requests in the system.
+MCP TaskManager,add_tasks_to_request,"Add new tasks to an existing request. This allows extending a request with additional tasks.
+
+A progress table will be displayed showing all tasks including the newly added ones."
+MCP TaskManager,update_task,"Update an existing task's title and/or description. Only uncompleted tasks can be updated.
+
+A progress table will be displayed showing the updated task information."
+MCP TaskManager,delete_task,"Delete a specific task from a request. Only uncompleted tasks can be deleted.
+
+A progress table will be displayed showing the remaining tasks after deletion."
+Sitemap MCP Server,get_sitemap_tree,Fetch and parse the sitemap tree from a website URL
+Sitemap MCP Server,get_sitemap_pages,Get all pages from a website's sitemap with optional limits and filtering options. Supports cursor-based pagination.
+Sitemap MCP Server,get_sitemap_stats,Get comprehensive statistics about a website's sitemap structure
+Sitemap MCP Server,parse_sitemap_content,Parse a sitemap directly from its XML or text content
+mcp-server-git: A git MCP server,git_status,Shows the working tree status
+mcp-server-git: A git MCP server,git_diff_unstaged,Shows changes in the working directory that are not yet staged
+mcp-server-git: A git MCP server,git_diff_staged,Shows changes that are staged for commit
+mcp-server-git: A git MCP server,git_diff,Shows differences between branches or commits
+mcp-server-git: A git MCP server,git_commit,Records changes to the repository
+mcp-server-git: A git MCP server,git_add,Adds file contents to the staging area
+mcp-server-git: A git MCP server,git_reset,Unstages all staged changes
+mcp-server-git: A git MCP server,git_log,Shows the commit logs
+mcp-server-git: A git MCP server,git_create_branch,Creates a new branch from an optional base branch
+mcp-server-git: A git MCP server,git_checkout,Switches branches
+mcp-server-git: A git MCP server,git_show,Shows the contents of a commit
+mcp-server-git: A git MCP server,git_init,Initialize a new Git repository
+mcp-server-git: A git MCP server,git_branch,List Git branches
+Drawing MCP Server,drawing_generateCanvas,Generate a new drawing canvas with specified width and height.
+Drawing MCP Server,drawing_fillRectangle,Fill a rectangle on the drawing canvas with a specified color and coordinates.
+Drawing MCP Server,drawing_getCanvasPng,Get the current drawing canvas as a PNG image (base64 encoded).
+Drawing MCP Server,drawing_getCanvasData,Get the current pixel data of the drawing canvas as JSON.
+magicuidesign_mcp,getUIComponents,Provides a comprehensive list of all Magic UI components.
+magicuidesign_mcp,getComponents,"Provides implementation details for marquee, terminal, hero-video-dialog, bento-grid, animated-list, dock, globe, tweet-card, client-tweet-card, orbiting-circles, avatar-circles, icon-cloud, animated-circular-progress-bar, file-tree, code-comparison, script-copy-btn, scroll-progress, lens, pointer components."
+magicuidesign_mcp,getDeviceMocks,"Provides implementation details for safari, iphone-15-pro, android components."
+magicuidesign_mcp,getSpecialEffects,"Provides implementation details for animated-beam, border-beam, shine-border, magic-card, meteors, neon-gradient-card, confetti, particles, cool-mode, scratch-to-reveal components."
+magicuidesign_mcp,getAnimations,Provides implementation details for blur-fade components.
+magicuidesign_mcp,getTextAnimations,"Provides implementation details for text-animate, line-shadow-text, aurora-text, number-ticker, animated-shiny-text, animated-gradient-text, text-reveal, hyper-text, word-rotate, typing-animation, scroll-based-velocity, flip-text, box-reveal, sparkles-text, morphing-text, spinning-text components."
+magicuidesign_mcp,getButtons,"Provides implementation details for rainbow-button, shimmer-button, shiny-button, interactive-hover-button, animated-subscribe-button, pulsating-button, ripple-button components."
+magicuidesign_mcp,getBackgrounds,"Provides implementation details for warp-background, flickering-grid, animated-grid-pattern, retro-grid, ripple, dot-pattern, grid-pattern, interactive-grid-pattern components."
+Office-Word-MCP-Server,create_document,Create a new Word document with optional metadata.
+Office-Word-MCP-Server,copy_document,Create a copy of a Word document.
+Office-Word-MCP-Server,get_document_info,Get information about a Word document.
+Office-Word-MCP-Server,get_document_text,Extract all text from a Word document.
+Office-Word-MCP-Server,get_document_outline,Get the structure of a Word document.
+Office-Word-MCP-Server,list_available_documents,List all .docx files in the specified directory.
+Office-Word-MCP-Server,add_paragraph,Add a paragraph to a Word document.
+Office-Word-MCP-Server,add_heading,Add a heading to a Word document.
+Office-Word-MCP-Server,add_picture,Add an image to a Word document.
+Office-Word-MCP-Server,add_table,Add a table to a Word document.
+Office-Word-MCP-Server,add_page_break,Add a page break to the document.
+Office-Word-MCP-Server,delete_paragraph,Delete a paragraph from a document.
+Office-Word-MCP-Server,search_and_replace,Search for text and replace all occurrences.
+Office-Word-MCP-Server,create_custom_style,Create a custom style in the document.
+Office-Word-MCP-Server,format_text,Format a specific range of text within a paragraph.
+Office-Word-MCP-Server,format_table,"Format a table with borders, shading, and structure."
+Office-Word-MCP-Server,protect_document,Add password protection to a Word document.
+Office-Word-MCP-Server,unprotect_document,Remove password protection from a Word document.
+Office-Word-MCP-Server,add_footnote_to_document,Add a footnote to a specific paragraph in a Word document.
+Office-Word-MCP-Server,add_endnote_to_document,Add an endnote to a specific paragraph in a Word document.
+Office-Word-MCP-Server,customize_footnote_style,Customize footnote numbering and formatting in a Word document.
+Office-Word-MCP-Server,get_paragraph_text_from_document,Get text from a specific paragraph in a Word document.
+Office-Word-MCP-Server,find_text_in_document,Find occurrences of specific text in a Word document.
+Office-Word-MCP-Server,convert_to_pdf,Convert a Word document to PDF format.
+Random Number MCP,random_int,"Generate a random integer between low and high (inclusive).
+
+Args:
+    low: Lower bound (inclusive)
+    high: Upper bound (inclusive)
+
+Returns:
+    Random integer between low and high"
+Random Number MCP,random_float,"Generate a random float between low and high.
+
+Args:
+    low: Lower bound (default 0.0)
+    high: Upper bound (default 1.0)
+
+Returns:
+    Random float between low and high"
+Random Number MCP,random_choices,"Choose k items from population with replacement, optionally weighted.
+
+Args:
+    population: List of items to choose from
+    k: Number of items to choose (default 1)
+    weights: Optional weights for each item (default None for equal weights)
+
+Returns:
+    List of k chosen items"
+Random Number MCP,random_shuffle,"Return a new list with items in random order.
+
+Args:
+    items: List of items to shuffle
+
+Returns:
+    New list with items in random order"
+Random Number MCP,random_sample,"Choose k unique items from population without replacement.
+
+Args:
+    population: List of items to choose from
+    k: Number of items to choose
+
+Returns:
+    List of k unique chosen items"
+Random Number MCP,secure_token_hex,"Generate a secure random hex token.
+
+Args:
+    nbytes: Number of random bytes to generate (default 32)
+
+Returns:
+    Hex string containing 2*nbytes characters"
+Random Number MCP,secure_random_int,"Generate a secure random integer below upper_bound.
+
+Args:
+    upper_bound: Upper bound (exclusive)
+
+Returns:
+    Random integer in range [0, upper_bound)"
+Mindmap MCP Server,convert_markdown_to_mindmap,"Convert Markdown content to a mindmap mind map.
+
+Args:
+    markdown_content: The Markdown content to convert
+
+Returns:
+    Either the HTML content or the file path to the generated HTML, 
+    depending on the --return-type server argument
+"
+Web3 Research MCP,search,No description
+Web3 Research MCP,create-research-plan,No description
+Web3 Research MCP,research-with-keywords,No description
+Web3 Research MCP,update-status,No description
+Web3 Research MCP,fetch-content,No description
+Web3 Research MCP,search-source,No description
+Web3 Research MCP,list-resources,No description
+Web3 Research MCP,research-source,No description
+Web3 Research MCP,research-token,No description
+Basic Memory,delete_note,Delete a note by title or permalink
+Basic Memory,read_content,Read a file's raw content by path or permalink
+Basic Memory,build_context,"Build context from a memory:// URI to continue conversations naturally.
+    
+    Use this to follow up on previous discussions or explore related topics.
+    
+    Memory URL Format:
+    - Use paths like ""folder/note"" or ""memory://folder/note"" 
+    - Pattern matching: ""folder/*"" matches all notes in folder
+    - Valid characters: letters, numbers, hyphens, underscores, forward slashes
+    - Avoid: double slashes (//), angle brackets (<>), quotes, pipes (|)
+    - Examples: ""specs/search"", ""projects/basic-memory"", ""notes/*""
+    
+    Timeframes support natural language like:
+    - ""2 days ago"", ""last week"", ""today"", ""3 months ago""
+    - Or standard formats like ""7d"", ""24h""
+    "
+Basic Memory,recent_activity,"Get recent activity from across the knowledge base.
+
+    Timeframe supports natural language formats like:
+    - ""2 days ago""  
+    - ""last week""
+    - ""yesterday"" 
+    - ""today""
+    - ""3 weeks ago""
+    Or standard formats like ""7d""
+    "
+Basic Memory,search_notes,Search across all content in the knowledge base with advanced syntax support.
+Basic Memory,read_note,Read a markdown note by title or permalink.
+Basic Memory,view_note,View a note as a formatted artifact for better readability.
+Basic Memory,write_note,Create or update a markdown note. Returns a markdown formatted summary of the semantic content.
+Basic Memory,canvas,Create an Obsidian canvas file to visualize concepts and connections.
+Basic Memory,list_directory,List directory contents with filtering and depth control.
+Basic Memory,edit_note,"Edit an existing markdown note using various operations like append, prepend, find_replace, or replace_section."
+Basic Memory,move_note,"Move a note to a new location, updating database and maintaining links."
+Basic Memory,sync_status,"Check the status of file synchronization and background operations.
+    
+    Use this tool to:
+    - Check if file sync is in progress or completed
+    - Get detailed sync progress information  
+    - Understand if your files are fully indexed
+    - Get specific error details if sync operations failed
+    - Monitor initial project setup and legacy migration
+    
+    This covers all sync operations including:
+    - Initial project setup and file indexing
+    - Legacy project migration to unified database
+    - Ongoing file monitoring and updates
+    - Background processing of knowledge graphs
+    "
+Basic Memory,list_memory_projects,"List all available projects with their status.
+
+Shows all Basic Memory projects that are available, indicating which one
+is currently active and which is the default.
+
+Returns:
+    Formatted list of projects with status indicators
+
+Example:
+    list_memory_projects()"
+Basic Memory,switch_project,"Switch to a different project context.
+
+Changes the active project context for all subsequent tool calls.
+Shows a project summary after switching successfully.
+
+Args:
+    project_name: Name of the project to switch to
+
+Returns:
+    Confirmation message with project summary
+
+Example:
+    switch_project(""work-notes"")
+    switch_project(""personal-journal"")"
+Basic Memory,get_current_project,"Show the currently active project and basic stats.
+
+Displays which project is currently active and provides basic information
+about it.
+
+Returns:
+    Current project name and basic statistics
+
+Example:
+    get_current_project()"
+Basic Memory,set_default_project,"Set default project in config. Requires restart to take effect.
+
+Updates the configuration to use a different default project. This change
+only takes effect after restarting the Basic Memory server.
+
+Args:
+    project_name: Name of the project to set as default
+
+Returns:
+    Confirmation message about config update
+
+Example:
+    set_default_project(""work-notes"")"
+Basic Memory,create_memory_project,"Create a new Basic Memory project.
+
+Creates a new project with the specified name and path. The project directory
+will be created if it doesn't exist. Optionally sets the new project as default.
+
+Args:
+    project_name: Name for the new project (must be unique)
+    project_path: File system path where the project will be stored
+    set_default: Whether to set this project as the default (optional, defaults to False)
+
+Returns:
+    Confirmation message with project details
+
+Example:
+    create_memory_project(""my-research"", ""~/Documents/research"")
+    create_memory_project(""work-notes"", ""/home/user/work"", set_default=True)"
+Basic Memory,delete_project,"Delete a Basic Memory project.
+
+Removes a project from the configuration and database. This does NOT delete
+the actual files on disk - only removes the project from Basic Memory's
+configuration and database records.
+
+Args:
+    project_name: Name of the project to delete
+
+Returns:
+    Confirmation message about project deletion
+
+Example:
+    delete_project(""old-project"")
+
+Warning:
+    This action cannot be undone. The project will need to be re-added
+    to access its content through Basic Memory again."
+docker-mcp,create-container,Create a new standalone Docker container
+docker-mcp,deploy-compose,Deploy a Docker Compose stack
+docker-mcp,get-logs,Retrieve the latest logs for a specified Docker container
+docker-mcp,list-containers,List all Docker containers
+12306-mcp,get-current-date,"获取当前日期，以上海时区（Asia/Shanghai, UTC+8）为准，返回格式为 ""yyyy-MM-dd""。主要用于解析用户提到的相对日期（如“明天”、“下周三”），为其他需要日期的接口提供准确的日期输入。"
+12306-mcp,get-stations-code-in-city,通过中文城市名查询该城市 **所有** 火车站的名称及其对应的 `station_code`，结果是一个包含多个车站信息的列表。
+12306-mcp,get-station-code-of-citys,通过中文城市名查询代表该城市的 `station_code`。此接口主要用于在用户提供**城市名**作为出发地或到达地时，为接口准备 `station_code` 参数。
+12306-mcp,get-station-code-by-names,通过具体的中文车站名查询其 `station_code` 和车站名。此接口主要用于在用户提供**具体车站名**作为出发地或到达地时，为接口准备 `station_code` 参数。
+12306-mcp,get-station-by-telecode,通过车站的 `station_telecode` 查询车站的详细信息，包括名称、拼音、所属城市等。此接口主要用于在已知 `telecode` 的情况下获取更完整的车站数据，或用于特殊查询及调试目的。一般用户对话流程中较少直接触发。
+12306-mcp,get-tickets,查询12306余票信息。
+12306-mcp,get-interline-tickets,查询12306中转余票信息。尚且只支持查询前十条。
+12306-mcp,get-train-route-stations,查询特定列车车次在指定区间内的途径车站、到站时间、出发时间及停留时间等详细经停信息。当用户询问某趟具体列车的经停站时使用此接口。
+shadcn-ui MCP Server,list_shadcn_components,Get a list of all available shadcn/ui components
+shadcn-ui MCP Server,get_component_details,Get detailed information about a specific shadcn/ui component
+shadcn-ui MCP Server,get_component_examples,Get usage examples for a specific shadcn/ui component
+shadcn-ui MCP Server,search_components,Search for shadcn/ui components by keyword
+Desktop Commander MCP,get_config,"
+                        Get the complete server configuration as JSON. Config includes fields for:
+                        - blockedCommands (array of blocked shell commands)
+                        - defaultShell (shell to use for commands)
+                        - allowedDirectories (paths the server can access)
+                        - fileReadLineLimit (max lines for read_file, default 1000)
+                        - fileWriteLineLimit (max lines per write_file call, default 50)
+                        - telemetryEnabled (boolean for telemetry opt-in/out)
+                        - currentClient (information about the currently connected MCP client)
+                        - clientHistory (history of all clients that have connected)
+                        - version (version of the DesktopCommander)
+                        - systemInfo (operating system and environment details)
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,set_config_value,"
+                        Set a specific configuration value by key.
+                        
+                        WARNING: Should be used in a separate chat from file operations and 
+                        command execution to prevent security issues.
+                        
+                        Config keys include:
+                        - blockedCommands (array)
+                        - defaultShell (string)
+                        - allowedDirectories (array of paths)
+                        - fileReadLineLimit (number, max lines for read_file)
+                        - fileWriteLineLimit (number, max lines per write_file call)
+                        - telemetryEnabled (boolean)
+                        
+                        IMPORTANT: Setting allowedDirectories to an empty array ([]) allows full access 
+                        to the entire file system, regardless of the operating system.
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,read_file,"
+                        Read the contents of a file from the file system or a URL with optional offset and length parameters.
+                        
+                        Prefer this over 'execute_command' with cat/type for viewing files.
+                        
+                        Supports partial file reading with:
+                        - 'offset' (start line, default: 0)
+                          * Positive: Start from line N (0-based indexing)
+                          * Negative: Read last N lines from end (tail behavior)
+                        - 'length' (max lines to read, default: configurable via 'fileReadLineLimit' setting, initially 1000)
+                          * Used with positive offsets for range reading
+                          * Ignored when offset is negative (reads all requested tail lines)
+                        
+                        Examples:
+                        - offset: 0, length: 10     → First 10 lines
+                        - offset: 100, length: 5    → Lines 100-104
+                        - offset: -20               → Last 20 lines  
+                        - offset: -5, length: 10    → Last 5 lines (length ignored)
+                        
+                        Performance optimizations:
+                        - Large files with negative offsets use reverse reading for efficiency
+                        - Large files with deep positive offsets use byte estimation
+                        - Small files use fast readline streaming
+                        
+                        When reading from the file system, only works within allowed directories.
+                        Can fetch content from URLs when isUrl parameter is set to true
+                        (URLs are always read in full regardless of offset/length).
+                        
+                        Handles text files normally and image files are returned as viewable images.
+                        Recognized image types: PNG, JPEG, GIF, WebP.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,read_multiple_files,"
+                        Read the contents of multiple files simultaneously.
+                        
+                        Each file's content is returned with its path as a reference.
+                        Handles text files normally and renders images as viewable content.
+                        Recognized image types: PNG, JPEG, GIF, WebP.
+                        
+                        Failed reads for individual files won't stop the entire operation.
+                        Only works within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,write_file,"
+                        Write or append to file contents. 
+
+                        CHUNKING IS STANDARD PRACTICE: Always write files in chunks of 25-30 lines maximum.
+                        This is the normal, recommended way to write files - not an emergency measure.
+
+                        STANDARD PROCESS FOR ANY FILE:
+                        1. FIRST → write_file(filePath, firstChunk, {mode: 'rewrite'})  [≤30 lines]
+                        2. THEN → write_file(filePath, secondChunk, {mode: 'append'})   [≤30 lines]
+                        3. CONTINUE → write_file(filePath, nextChunk, {mode: 'append'}) [≤30 lines]
+
+                        ALWAYS CHUNK PROACTIVELY - don't wait for performance warnings!
+
+                        WHEN TO CHUNK (always be proactive):
+                        1. Any file expected to be longer than 25-30 lines
+                        2. When writing multiple files in sequence
+                        3. When creating documentation, code files, or configuration files
+                        
+                        HANDLING CONTINUATION (""Continue"" prompts):
+                        If user asks to ""Continue"" after an incomplete operation:
+                        1. Read the file to see what was successfully written
+                        2. Continue writing ONLY the remaining content using {mode: 'append'}
+                        3. Keep chunks to 25-30 lines each
+                        
+                        Files over 50 lines will generate performance notes but are still written successfully.
+                        Only works within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,create_directory,"
+                        Create a new directory or ensure a directory exists.
+                        
+                        Can create multiple nested directories in one operation.
+                        Only works within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,list_directory,"
+                        Get a detailed listing of all files and directories in a specified path.
+                        
+                        Use this instead of 'execute_command' with ls/dir commands.
+                        Results distinguish between files and directories with [FILE] and [DIR] prefixes.
+                        Only works within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,move_file,"
+                        Move or rename files and directories.
+                        
+                        Can move files between directories and rename them in a single operation.
+                        Both source and destination must be within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,search_files,"
+                        Finds files by name using a case-insensitive substring matching.
+                        
+                        Use this instead of 'execute_command' with find/dir/ls for locating files.
+                        Searches through all subdirectories from the starting path.
+                        
+                        Has a default timeout of 30 seconds which can be customized using the timeoutMs parameter.
+                        Only searches within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,search_code,"
+                        Search for text/code patterns within file contents using ripgrep.
+                        
+                        Use this instead of 'execute_command' with grep/find for searching code content.
+                        Fast and powerful search similar to VS Code search functionality.
+                        
+                        Supports regular expressions, file pattern filtering, and context lines.
+                        Has a default timeout of 30 seconds which can be customized.
+                        Only searches within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,get_file_info,"
+                        Retrieve detailed metadata about a file or directory including:
+                        - size
+                        - creation time
+                        - last modified time 
+                        - permissions
+                        - type
+                        - lineCount (for text files)
+                        - lastLine (zero-indexed number of last line, for text files)
+                        - appendPosition (line number for appending, for text files)
+                        
+                        Only works within allowed directories.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,edit_block,"
+                        Apply surgical text replacements to files.
+                        
+                        BEST PRACTICE: Make multiple small, focused edits rather than one large edit.
+                        Each edit_block call should change only what needs to be changed - include just enough 
+                        context to uniquely identify the text being modified.
+                        
+                        Takes:
+                        - file_path: Path to the file to edit
+                        - old_string: Text to replace
+                        - new_string: Replacement text
+                        - expected_replacements: Optional parameter for number of replacements
+                        
+                        By default, replaces only ONE occurrence of the search text.
+                        To replace multiple occurrences, provide the expected_replacements parameter with
+                        the exact number of matches expected.
+                        
+                        UNIQUENESS REQUIREMENT: When expected_replacements=1 (default), include the minimal
+                        amount of context necessary (typically 1-3 lines) before and after the change point,
+                        with exact whitespace and indentation.
+                        
+                        When editing multiple sections, make separate edit_block calls for each distinct change
+                        rather than one large replacement.
+                        
+                        When a close but non-exact match is found, a character-level diff is shown in the format:
+                        common_prefix{-removed-}{+added+}common_suffix to help you identify what's different.
+                        
+                        Similar to write_file, there is a configurable line limit (fileWriteLineLimit) that warns
+                        if the edited file exceeds this limit. If this happens, consider breaking your edits into
+                        smaller, more focused changes.
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,start_process,"
+                        Start a new terminal process with intelligent state detection.
+                        
+                        PRIMARY TOOL FOR FILE ANALYSIS AND DATA PROCESSING
+                        This is the ONLY correct tool for analyzing local files (CSV, JSON, logs, etc.).
+                        The analysis tool CANNOT access local files and WILL FAIL - always use processes for file-based work.
+                        
+                        CRITICAL RULE: For ANY local file work, ALWAYS use this tool + interact_with_process, NEVER use analysis/REPL tool.
+                        
+                        Running on Linux. Default shell: bash.
+        
+LINUX-SPECIFIC NOTES:
+- Package managers vary by distro: apt, yum, dnf, pacman, zypper
+- Python 3 might be 'python3' command, not 'python'
+- Standard Unix shell tools available (grep, awk, sed, etc.)
+- File permissions and ownership important for many operations
+- Systemd services common on modern distributions
+                        
+                        REQUIRED WORKFLOW FOR LOCAL FILES:
+                        1. start_process(""python3 -i"") - Start Python REPL for data analysis
+                        2. interact_with_process(pid, ""import pandas as pd, numpy as np"")
+                        3. interact_with_process(pid, ""df = pd.read_csv('/absolute/path/file.csv')"")
+                        4. interact_with_process(pid, ""print(df.describe())"")
+                        5. Continue analysis with pandas, matplotlib, seaborn, etc.
+                        
+                        COMMON FILE ANALYSIS PATTERNS:
+                        • start_process(""python3 -i"") → Python REPL for data analysis (RECOMMENDED)
+                        • start_process(""node -i"") → Node.js for JSON processing  
+                        • start_process(""cut -d',' -f1 file.csv | sort | uniq -c"") → Quick CSV analysis
+                        • start_process(""wc -l /path/file.csv"") → Line counting
+                        • start_process(""head -10 /path/file.csv"") → File preview
+                        
+                        INTERACTIVE PROCESSES FOR DATA ANALYSIS:
+                        1. start_process(""python3 -i"") - Start Python REPL for data work
+                        2. start_process(""node -i"") - Start Node.js REPL for JSON/JS
+                        3. start_process(""bash"") - Start interactive bash shell
+                        4. Use interact_with_process() to send commands
+                        5. Use read_process_output() to get responses
+                        
+                        SMART DETECTION:
+                        - Detects REPL prompts (>>>, >, $, etc.)
+                        - Identifies when process is waiting for input
+                        - Recognizes process completion vs timeout
+                        - Early exit prevents unnecessary waiting
+                        
+                        STATES DETECTED:
+                        Process waiting for input (shows prompt)
+                        Process finished execution  
+                        Process running (use read_process_output)
+                        
+                        ALWAYS USE FOR: Local file analysis, CSV processing, data exploration, system commands
+                        NEVER USE ANALYSIS TOOL FOR: Local file access (analysis tool is browser-only and WILL FAIL)
+                        
+                        IMPORTANT: Always use absolute paths for reliability. Paths are automatically normalized regardless of slash direction. Relative paths may fail as they depend on the current working directory. Tilde paths (~/...) might not work in all contexts. Unless the user explicitly asks for relative paths, use absolute paths.
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,read_process_output,"
+                        Read output from a running process with intelligent completion detection.
+                        
+                        Automatically detects when process is ready for more input instead of timing out.
+                        
+                        SMART FEATURES:
+                        - Early exit when REPL shows prompt (>>>, >, etc.)
+                        - Detects process completion vs still running
+                        - Prevents hanging on interactive prompts
+                        - Clear status messages about process state
+                        
+                        REPL USAGE:
+                        - Stops immediately when REPL prompt detected
+                        - Shows clear status: waiting for input vs finished
+                        - Shorter timeouts needed due to smart detection
+                        - Works with Python, Node.js, R, Julia, etc.
+                        
+                        DETECTION STATES:
+                        Process waiting for input (ready for interact_with_process)
+                        Process finished execution
+                        Timeout reached (may still be running)
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,interact_with_process,"
+                        Send input to a running process and automatically receive the response.
+                        
+                        CRITICAL: THIS IS THE PRIMARY TOOL FOR ALL LOCAL FILE ANALYSIS
+                        For ANY local file analysis (CSV, JSON, data processing), ALWAYS use this instead of the analysis tool.
+                        The analysis tool CANNOT access local files and WILL FAIL - use processes for ALL file-based work.
+                        
+                        FILE ANALYSIS PRIORITY ORDER (MANDATORY):
+                        1. ALWAYS FIRST: Use this tool (start_process + interact_with_process) for local data analysis
+                        2. ALTERNATIVE: Use command-line tools (cut, awk, grep) for quick processing  
+                        3. NEVER EVER: Use analysis tool for local file access (IT WILL FAIL)
+                        
+                        REQUIRED INTERACTIVE WORKFLOW FOR FILE ANALYSIS:
+                        1. Start REPL: start_process(""python3 -i"")
+                        2. Load libraries: interact_with_process(pid, ""import pandas as pd, numpy as np"")
+                        3. Read file: interact_with_process(pid, ""df = pd.read_csv('/absolute/path/file.csv')"")
+                        4. Analyze: interact_with_process(pid, ""print(df.describe())"")
+                        5. Continue: interact_with_process(pid, ""df.groupby('column').size()"")
+                        
+                        SMART DETECTION:
+                        - Automatically waits for REPL prompt (>>>, >, etc.)
+                        - Detects errors and completion states
+                        - Early exit prevents timeout delays
+                        - Clean output formatting (removes prompts)
+                        
+                        SUPPORTED REPLs:
+                        - Python: python3 -i (RECOMMENDED for data analysis)
+                        - Node.js: node -i  
+                        - R: R
+                        - Julia: julia
+                        - Shell: bash, zsh
+                        - Database: mysql, postgres
+                        
+                        PARAMETERS:
+                        - pid: Process ID from start_process
+                        - input: Code/command to execute
+                        - timeout_ms: Max wait (default: 8000ms)
+                        - wait_for_prompt: Auto-wait for response (default: true)
+                        
+                        Returns execution result with status indicators.
+                        
+                        ALWAYS USE FOR: CSV analysis, JSON processing, file statistics, data visualization prep, ANY local file work
+                        NEVER USE ANALYSIS TOOL FOR: Local file access (it cannot read files from disk and WILL FAIL)
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,force_terminate,"
+                        Force terminate a running terminal session.
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,list_sessions,"
+                        List all active terminal sessions.
+                        
+                        Shows session status including:
+                        - PID: Process identifier  
+                        - Blocked: Whether session is waiting for input
+                        - Runtime: How long the session has been running
+                        
+                        DEBUGGING REPLs:
+                        - ""Blocked: true"" often means REPL is waiting for input
+                        - Use this to verify sessions are running before sending input
+                        - Long runtime with blocked status may indicate stuck process
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,list_processes,"
+                        List all running processes.
+                        
+                        Returns process information including PID, command name, CPU usage, and memory usage.
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,kill_process,"
+                        Terminate a running process by PID.
+                        
+                        Use with caution as this will forcefully terminate the specified process.
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,get_usage_stats,"
+                        Get usage statistics for debugging and analysis.
+                        
+                        Returns summary of tool usage, success/failure rates, and performance metrics.
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Desktop Commander MCP,give_feedback_to_desktop_commander,"
+                        Open feedback form in browser to provide feedback about Desktop Commander.
+                        
+                        IMPORTANT: This tool simply opens the feedback form - no pre-filling available.
+                        The user will fill out the form manually in their browser.
+                        
+                        WORKFLOW:
+                        1. When user agrees to give feedback, just call this tool immediately
+                        2. No need to ask questions or collect information
+                        3. Tool opens form with only usage statistics pre-filled automatically:
+                           - tool_call_count: Number of commands they've made
+                           - days_using: How many days they've used Desktop Commander
+                           - platform: Their operating system (Mac/Windows/Linux)
+                           - client_id: Analytics identifier
+                        
+                        All survey questions will be answered directly in the form:
+                        - Job title and technical comfort level
+                        - Company URL for industry context
+                        - Other AI tools they use
+                        - Desktop Commander's biggest advantage
+                        - How they typically use it
+                        - Recommendation likelihood (0-10)
+                        - User study participation interest
+                        - Email and any additional feedback
+                        
+                        EXAMPLE INTERACTION:
+                        User: ""sure, I'll give feedback""
+                        Claude: ""Perfect! Let me open the feedback form for you.""
+                        [calls tool immediately]
+                        
+                        No parameters are needed - just call the tool to open the form.
+                        
+                        This command can be referenced as ""DC: ..."" or ""use Desktop Commander to ..."" in your instructions."
+Puppeteer,puppeteer_navigate,Navigate to a URL
+Puppeteer,puppeteer_screenshot,Take a screenshot of the current page or a specific element
+Puppeteer,puppeteer_click,Click an element on the page
+Puppeteer,puppeteer_fill,Fill out an input field
+Puppeteer,puppeteer_select,Select an element on the page with Select tag
+Puppeteer,puppeteer_hover,Hover an element on the page
+Puppeteer,puppeteer_evaluate,Execute JavaScript in the browser console
+MetaTag Genie,writeImageMetadata,"Writes metadata (tags, description, people, location) to an image file."
+MCP NPX Fetch,fetch_html,Fetch a website and return the content as HTML
+MCP NPX Fetch,fetch_markdown,Fetch a website and return the content as Markdown
+MCP NPX Fetch,fetch_txt,"Fetch a website, return the content as plain text (no HTML)"
+MCP NPX Fetch,fetch_json,Fetch a JSON file from a URL
+Exchange Rate MCP Server,exchange_rate,"Retrieves exchange rates using Norges Bank's API. Returns rate information including the base currency, target currency, date, and conversion rate."
+Filesystem MCP Server,read_file,"Read the complete contents of a file from the file system. Handles various text encodings and provides detailed error messages if the file cannot be read. Use this tool when you need to examine the contents of a single file. Use the 'head' parameter to read only the first N lines of a file, or the 'tail' parameter to read only the last N lines of a file. Only works within allowed directories."
+Filesystem MCP Server,read_multiple_files,Read the contents of multiple files simultaneously. This is more efficient than reading files one by one when you need to analyze or compare multiple files. Each file's content is returned with its path as a reference. Failed reads for individual files won't stop the entire operation. Only works within allowed directories.
+Filesystem MCP Server,write_file,Create a new file or completely overwrite an existing file with new content. Use with caution as it will overwrite existing files without warning. Handles text content with proper encoding. Only works within allowed directories.
+Filesystem MCP Server,edit_file,Make line-based edits to a text file. Each edit replaces exact line sequences with new content. Returns a git-style diff showing the changes made. Only works within allowed directories.
+Filesystem MCP Server,create_directory,"Create a new directory or ensure a directory exists. Can create multiple nested directories in one operation. If the directory already exists, this operation will succeed silently. Perfect for setting up directory structures for projects or ensuring required paths exist. Only works within allowed directories."
+Filesystem MCP Server,list_directory,Get a detailed listing of all files and directories in a specified path. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is essential for understanding directory structure and finding specific files within a directory. Only works within allowed directories.
+Filesystem MCP Server,list_directory_with_sizes,"Get a detailed listing of all files and directories in a specified path, including sizes. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is useful for understanding directory structure and finding specific files within a directory. Only works within allowed directories."
+Filesystem MCP Server,directory_tree,"Get a recursive tree view of files and directories as a JSON structure. Each entry includes 'name', 'type' (file/directory), and 'children' for directories. Files have no children array, while directories always have a children array (which may be empty). The output is formatted with 2-space indentation for readability. Only works within allowed directories."
+Filesystem MCP Server,move_file,"Move or rename files and directories. Can move files between directories and rename them in a single operation. If the destination exists, the operation will fail. Works across different directories and can be used for simple renaming within the same directory. Both source and destination must be within allowed directories."
+Filesystem MCP Server,search_files,Recursively search for files and directories matching a pattern. Searches through all subdirectories from the starting path. The search is case-insensitive and matches partial names. Returns full paths to all matching items. Great for finding files when you don't know their exact location. Only searches within allowed directories.
+Filesystem MCP Server,get_file_info,"Retrieve detailed metadata about a file or directory. Returns comprehensive information including size, creation time, last modified time, permissions, and type. This tool is perfect for understanding file characteristics without reading the actual content. Only works within allowed directories."
+Filesystem MCP Server,list_allowed_directories,Returns the list of directories that this server is allowed to access. Use this to understand which directories are available before trying to access files.
+ArXiv MCP Server,search_papers,Search for papers on arXiv with advanced filtering
+ArXiv MCP Server,download_paper,Download a paper and create a resource for it
+ArXiv MCP Server,list_papers,List all existing papers available as resources
+ArXiv MCP Server,read_paper,Read the full content of a stored paper in markdown format
+MCP Chess Server,get_board_visualization,Provides the current state of the chessboard as an image.
+MCP Chess Server,get_turn,Indicates whose turn it is ('white' or 'black').
+MCP Chess Server,get_valid_moves,Lists all legal moves for the current player in UCI notation.
+MCP Chess Server,make_move,"
+Makes a move on the board using standard algebraic notation (SAN).
+Args:
+    move_san: The player's move in algebraic notation (e.g., 'e4', 'Nf3', 'Bxe5').
+Returns:
+    A dictionary containing the move in SAN format, the move in UCI format, the new board FEN,
+    whether the game is over, and the result if applicable.
+"
+MCP Chess Server,new_game,"
+Starts a new game, resetting the board to the initial position.
+
+Args:
+    user_plays_white: Whether the user will play as white. Defaults to True.
+
+Returns:
+    A confirmation message indicating the game has started and the user's color.
+"
+MCP Chess Server,find_position_in_pgn,"
+Finds the first board position in a PGN string that matches a given condition
+(e.g., 'bishop on a3') and returns an image of that board.
+
+Args:
+    pgn_string: The PGN string of the game.
+    condition: A string describing the condition, format: ""piece_type on square_name""
+               (e.g., ""bishop on a3"", ""knight on f6"", ""king on g1"").
+
+Returns:
+    An Image dictionary containing the PNG data of the board state if found,
+    or a string with an error message.
+"
+Whois MCP,whois_domain,Looksup whois information about the domain
+Whois MCP,whois_tld,Looksup whois information about the Top Level Domain (TLD)
+Whois MCP,whois_ip,Looksup whois information about the IP
+Whois MCP,whois_as,Looksup whois information about the Autonomous System Number (ASN)
+Excel MCP Server,excel_copy_sheet,Copy existing sheet to a new sheet
+Excel MCP Server,excel_create_table,Create a table in the Excel sheet
+Excel MCP Server,excel_describe_sheets,List all sheet information of specified Excel file
+Excel MCP Server,excel_read_sheet,Read values from Excel sheet with pagination.
+Excel MCP Server,excel_write_to_sheet,Write values to the Excel sheet
+Deepwiki MCP Server,deepwiki_fetch,Fetch a deepwiki.com repo and return Markdown
+MCP Music Analysis,load,"
+Loads an audio file and returns the path to the audio time series
+Offset and duration are optional, in seconds.
+Be careful, you will never know the name of the song.
+"
+MCP Music Analysis,get_duration,"
+Returns the total duration (in seconds) of the given audio time series.
+"
+MCP Music Analysis,tempo,"
+Estimates the tempo (in BPM) of the given audio time series using librosa.
+Offset and duration are optional, in seconds.
+"
+MCP Music Analysis,chroma_cqt,"
+Computes the chroma CQT of the given audio time series using librosa.
+The chroma CQT is a representation of the audio signal in terms of its
+chromatic content, which is useful for music analysis.
+The chroma CQT is computed using the following parameters:
+- path_audio_time_series_y: The path to the audio time series (CSV file).
+    It's sometimes better to take harmonics only
+- hop_length: The number of samples between frames.
+- fmin: The minimum frequency of the chroma feature.
+- n_chroma: The number of chroma bins (default is 12).
+- n_octaves: The number of octaves to include in the chroma feature.
+The chroma CQT is saved to a CSV file with the following columns:
+- note: The note name (C, C#, D, etc.).
+- time: The time position of the note in seconds.
+- amplitude: The amplitude of the note at that time.
+The path to the CSV file is returned.
+"
+MCP Music Analysis,mfcc,"
+Computes the MFCC of the given audio time series using librosa.
+The MFCC is a representation of the audio signal in terms of its
+spectral content, which is useful for music analysis.
+The MFCC is computed using the following parameters:
+- path_audio_time_series_y: The path to the audio time series (CSV file).
+    It's sometimes better to take harmonics only
+"
+MCP Music Analysis,beat_track,"
+Computes the beat track of the given audio time series using librosa.
+The beat track is a representation of the audio signal in terms of its
+rhythmic content, which is useful for music analysis.
+The beat track is computed using the following parameters:
+- hop_length: The number of samples between frames.
+- start_bpm: The initial estimate of the tempo (in BPM).
+- tightness: The tightness of the beat tracking (default is 100).
+- units: The units of the beat track (default is ""frames""). It can be frames, samples, time.
+"
+MCP Music Analysis,download_from_url,"
+Downloads a file from a given URL and returns the path to the downloaded file.
+Be careful, you will never know the name of the song.
+"
+MCP Music Analysis,download_from_youtube,"
+Downloads a file from a given youtube URL and returns the path to the downloaded file.
+Be careful, you will never know the name of the song.
+"
+mcp-simple-arxiv,search_papers,"Search for papers on arXiv by title and abstract content.
+            
+You can use advanced search syntax:
+- Search in title: ti:""search terms""
+- Search in abstract: abs:""search terms""
+- Search by author: au:""author name""
+- Combine terms with: AND, OR, ANDNOT
+- Filter by category: cat:cs.AI (use list_categories tool to see available categories)
+
+Examples:
+- ""machine learning""  (searches all fields)
+- ti:""neural networks"" AND cat:cs.AI  (title with category)
+- au:bengio AND ti:""deep learning""  (author and title)"
+mcp-simple-arxiv,get_paper_data,Get detailed information about a specific paper including abstract and available formats
+mcp-simple-arxiv,list_categories,List all available arXiv categories and how to use them in search
+mcp-simple-arxiv,update_categories,Update the stored category taxonomy by fetching the latest version from arxiv.org
+Asset Price MCP Server (asset-price-mcp),get_asset_price,Retrieves current pricing information for various assets including precious metals and cryptocurrencies

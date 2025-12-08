@@ -156,6 +156,7 @@ class ReAct(BaseAgent):
                         "Discarding trailing content after first JSON object: %s",
                         remainder,
                     )
+                self._logger.info("Parsed response: %s", parsed_response)
                 if "thought" not in parsed_response:
                     raise ValueError("Invalid response format")
                 self._add_history(
@@ -259,6 +260,7 @@ class ReAct(BaseAgent):
 
             except json.JSONDecodeError as e:
                 self._logger.error("Failed to parse response: %s", str(e))
+                self._logger.error("Failed to parse response: %s", str(response))
                 self._add_history(
                     history_type="error",
                     message="I encountered an error in parsing LLM response. Let me try again."

@@ -1,0 +1,109 @@
+mcp_server_name,Type,Median_tool_quality_Score
+date,community,30
+weather,community,20
+echo,community,10
+google-search-new,community,50
+google-search,community,20
+wikipedia,community,20
+google-maps,community,10
+fetch,community,30
+github,official,20
+google-sheets,community,35
+filesystem,official,55
+slack,community,10
+postgres,community,10
+calculator,community,10
+yfinance,community,40
+blender,community,30
+notion,official,5
+playwright,official,10
+markitdown,official,20
+paypal,community,10
+book,community,40
+crm_bench,community,20
+healthcare,community,40
+special_calculator,community,20
+sports,community,35
+sqlite,community,30
+travel_assistant,community,40
+youtube,community,35
+arxiv-mcp-server,comunity,10
+basic-memory,official,20
+brave-search,official,55
+exa,official,40
+financial-datasets,official,30
+gmail,comunity,10
+investor,comunity,10
+mcp-telegram,comunity,30
+Semantic Scholar Server,comunity,67.5
+tavily-remote,official,55
+time,official,10
+Bing_CN_MCP,comunity,15
+MCP Yahoo Finance,comunity,12.5
+NPM Sentinel MCP,comunity,10
+Hugeicons MCP Server,official,10
+OP.GG MCP Server,official,20
+PDF Reader MCP Server,official,30
+HowToCook-MCP Server,comunity,20
+BioMCP: Biomedical Model Context Protocol,official,60
+duckduckgo-search MCP Server,comunity,50
+Baige (ygocdb.com) MCP Server,comunity,10
+MCP Image Extractor,comunity,40
+Trends Hub,comunity,20
+OpenStreetMap (OSM) MCP Server,comunity,70
+Sequential Thinking MCP Server,official,95
+Bazi MCP (八字 MCP) by Cantian AI,comunity,20
+Maven Dependencies MCP Server,comunity,20
+Met Museum MCP Server,comunity,20
+mcp-github-trending MCP Server,comunity,10
+Simple Document Processing MCP Server,comunity,10
+MCP Server Chart,official,30
+鸣潮 MCP Server,comunity,40
+Yahoo Finance MCP Server,comunity,20
+Wikipedia MCP Server,comunity,10
+MCP OKPPT Server,comunity,35
+kospi-kosdaq-stock-server,comunity,40
+MCP Server: Mermaid Validator,comunity,20
+Playwright MCP Server,comunity,10
+MCP Server LeetCode,comunity,0
+YouTube Transcript Server,comunity,10
+Data.gov MCP Server,comunity,10
+Airbnb MCP Server,official,20
+Knowledge Graph Memory Server,official,10
+Hacker News MCP Server,official,10
+Office-PowerPoint-MCP-Server,comunity,10
+Ant Design Components MCP Service,comunity,35
+Context7 MCP - Up-to-date Code Docs For Any Prompt,official,55
+MCP Text Editor Server,comunity,50
+Crypto Price & Market Analysis MCP Server,comunity,10
+MCP Weather Free,comunity,40
+Fetch MCP Server,official,40
+MCP TaskManager,comunity,40
+Sitemap MCP Server,comunity,15
+mcp-server-git: A git MCP server,comunity,10
+Drawing MCP Server,comunity,15
+magicuidesign_mcp,official,20
+Office-Word-MCP-Server,comunity,10
+Random Number MCP,comunity,40
+Mindmap MCP Server,comunity,40
+Web3 Research MCP,comunity,0
+docker-mcp,comunity,10
+12306-mcp,comunity,30
+shadcn-ui MCP Server,comunity,10
+Desktop Commander MCP,comunity,60
+Puppeteer,comunity,10
+MetaTag Genie,comunity,20
+MCP NPX Fetch,comunity,10
+Exchange Rate MCP Server,comunity,40
+Filesystem MCP Server,official,60
+MCP Chess Server,comunity,30
+Whois MCP,comunity,10
+Excel MCP Server,comunity,10
+Deepwiki MCP Server,comunity,10
+MCP Music Analysis,comunity,27.5
+mcp-simple-arxiv,comunity,15
+Asset Price MCP Server (asset-price-mcp),comunity,20
+mcp-playwright,comunity,10
+firecrawl-mcp,official,82.5
+paypal-official,official,40
+supabase,official,20

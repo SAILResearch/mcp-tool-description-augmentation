@@ -1,0 +1,67 @@
+{
+    "brave-search": {
+        "stdio": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@brave/brave-search-mcp-server"
+            ]
+        },
+        "env": {
+            "BRAVE_API_KEY": "{{BRAVE_API_KEY}}"
+        }
+    },
+    "ddg-search": {
+        "stdio": {
+            "command": "/Users/mohammedmehedihasan/.local/bin/uvx",
+            "args": [
+                "duckduckgo-mcp-server"
+            ]
+        }
+    },
+    "exa": {
+        "stdio": {
+            "command": "npx",
+            "args": [ "-y","exa-mcp-server"]
+        },
+        "env": {
+            "EXA_API_KEY": "{{EXA_API_KEY}}"
+        }
+    },
+    "firecrawl-mcp": {
+        "stdio": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "firecrawl-mcp"
+            ]
+        },
+        "env": {
+            "FIRECRAWL_API_KEY": "{{FIRECRAWL_API_KEY}}"
+        }
+    },
+    "bing-search": {
+        "stdio": {
+            "command": "/Users/mohammedmehedihasan/.local/bin/uvx",
+            "args": [
+                "-y",
+                "firecrawl-mcp"
+            ]
+        },
+        "env": {
+            "BING_API_KEY": "{{FIRECRAWL_API_KEY}}"
+        }
+    },
+    "mysql": {
+        "stdio": {
+            "command": "mysql-mcp-server"
+        },
+        "env": {
+            "MYSQL_HOST": "{{MYSQL_HOST}}",
+            "MYSQL_PORT": "{{MYSQL_PORT}}",
+            "MYSQL_USER": "{{MYSQL_USER}}",
+            "MYSQL_PASSWORD": "{{MYSQL_PASSWORD}}",
+            "MYSQL_DATABASE": "{{MYSQL_DATABASE}}"
+        }
+    }
+}

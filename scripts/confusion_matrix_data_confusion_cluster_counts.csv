@@ -1,0 +1,6 @@
+domain,Model,both,FR_only,BC_only,none
+3d_design,Qwen3-Coder,4,0,1,14
+financial_analysis,GPT-4.1,21,2,6,11
+location_navigation,GPT-4.1,9,5,3,28
+repository_management,Qwen3-Coder,6,0,1,26
+web_search,GLM-4.5,6,4,4,41

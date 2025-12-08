@@ -1,0 +1,2 @@
+mcp_server_name,tool_name,description_label,description_quality_score,description_reason,description_improvement_needed,purpose_score,usage_guideline_score,limitation_score,parameter_explanation_score,examples_balance_score,length_completeness_score
+fetch,fetch,Bad,25,"The description is extremely vague, lacks parameter details, usage guidance, and limitations, and relies on outdated context instead of clear functionality.",purpose; usage_guideline; limitation; parameter_explanation; examples_balance; length_completeness,3,2,2,1,1,3

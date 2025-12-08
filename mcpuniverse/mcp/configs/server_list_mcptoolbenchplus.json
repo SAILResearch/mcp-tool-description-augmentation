@@ -1,0 +1,65 @@
+{
+  "playwright-mcp-server": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y", "@executeautomation/playwright-mcp-server"
+      ]
+    }
+  },
+  "mcp-google-search": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@adenot/mcp-google-search"
+      ]
+    },
+    "env": {
+      "GOOGLE_API_KEY": "{{GOOGLE_API_KEY}}",
+      "GOOGLE_SEARCH_ENGINE_ID": "{{GOOGLE_SEARCH_ENGINE_ID}}"
+    }
+
+  },
+  "tavily-remote": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+       "-y",
+      "mcp-remote",
+      "https://mcp.tavily.com/mcp/?tavilyApiKey=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"
+      ]
+    }
+  },
+  "firecrawl-mcp": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y", "firecrawl-mcp"
+      ]
+    },
+    "env": {
+      "FIRECRAWL_API_KEY": "{{FIRECRAWL_API_KEY}}"
+    }
+  },
+  "paypal": {
+    "stdio": {
+      "command": "npx",
+      "args": [
+        "-y", "@paypal/mcp", "--tools=all"
+      ]
+    },
+    "env": {
+      "PAYPAL_ACCESS_TOKEN": "{{PAYPAL_ACCESS_TOKEN}}",
+      "PAYPAL_ENVIRONMENT": "SANDBOX"
+    }
+  },
+  "finance-agent-mcp-server": {
+    "stdio": {
+      "command": "/Users/mohammedmehedihasan/.local/bin/uv",
+      "args": [
+       "--directory", "/Users/mohammedmehedihasan/personal/codes/mcp-tool-description-miner/finance-agent-mcp-server/src/finance-agent-mcp-server", "run", "server.py"
+      ]
+    }
+  }
+}
