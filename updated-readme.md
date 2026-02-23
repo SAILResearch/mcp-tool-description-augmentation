@@ -242,7 +242,7 @@ the ``mcp_servers`` database table whenever they are available.
 
 
 #### Running Individual Benchmarks with augmented tool description
-
+```bash
 # Location Navigation
 python tests/benchmark/test_benchmark_location_navigation.py --tool-description-type 1
 
