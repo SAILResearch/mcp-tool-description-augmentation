@@ -268,4 +268,4 @@ python tests/benchmark/test_benchmark_3d_design.py --tool-description-type 1
 python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1 --components Purpose,Examples
 ```
 
-All possible components are : *Purpose*, *Examples*, *Limitations*, *UsageGuideline*, *Parameter_Explanation*, 
+All possible components are : **Purpose**, **Examples**, **Limitations**, **UsageGuideline**, **Parameter_Explanation**, 
