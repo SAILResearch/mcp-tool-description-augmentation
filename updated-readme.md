@@ -269,3 +269,251 @@ python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-t
 ```
 
 All possible components are : **Purpose**, **Examples**, **Limitations**, **UsageGuideline**, **Parameter_Explanation**, 
+
+
+
+### Benchmark definition
+
+Define agent(s) and benchmark in a YAML file. Here’s a simple weather forecast benchmark:
+
+```yaml
+kind: llm
+spec:
+  name: llm-1
+  type: openai
+  config:
+    model_name: gpt-4o
+
+---
+kind: agent
+spec:
+  name: ReAct-agent
+  type: react
+  config:
+    llm: llm-1
+    instruction: You are an agent for weather forecasting.
+    servers:
+      - name: weather
+
+---
+kind: benchmark
+spec:
+  description: Test the agent for weather forecasting
+  agent: ReAct-agent
+  tasks:
+    - dummy/tasks/weather.json
+```
+
+The benchmark definition mainly contains two parts: the agent definition and the benchmark configuration. The benchmark configuration is simple—you just need to specify the agent to use (by the defined agent name) and a list of tasks to evaluate. Each task entry is the task config file
+path. It can be a full file path or a partial file path. If it is a partial file path (like "dummy/tasks/weather.json"),
+it should be put in the
+folder [mcpuniverse/benchmark/configs](https://github.com/SalesforceAIResearch/MCP-Universe/tree/main/mcpuniverse/benchmark/configs)
+in this repo.
+
+This framework offers a flexible way to define both simple agents (such as ReAct) and more complex, multi-step agent
+workflows.
+
+1. **Specify LLMs:** Begin by declaring the large language models (LLMs) you want the agents to use. Each LLM component
+   must be assigned a unique name (e.g., `"llm-1"`). These names serve as identifiers that the framework uses to connect
+   the different components together.
+2. **Define an agent:** Next, define an agent by providing its name and selecting an agent class. Agent classes are
+   available in
+   the [mcpuniverse.agent](https://github.com/SalesforceAIResearch/MCP-Universe/tree/main/mcpuniverse/agent) package.
+   Commonly used classes include `"basic"`, `"function-call"`, and `"react"`. Within the agent specification (
+   `spec.config`), you must also indicate which LLM instance the agent should use by setting the `"llm"` field.
+3. **Create complex workflows:** Beyond simple agents, the framework supports the definition of sophisticated,
+   orchestrated workflows where multiple agents interact or collaborate to solve more complex tasks.
+
+For example:
+
+```yaml
+kind: llm
+spec:
+  name: llm-1
+  type: openai
+  config:
+    model_name: gpt-4o
+
+---
+kind: agent
+spec:
+  name: basic-agent
+  type: basic
+  config:
+    llm: llm-1
+    instruction: Return the latitude and the longitude of a place.
+
+---
+kind: agent
+spec:
+  name: function-call-agent
+  type: function-call
+  config:
+    llm: llm-1
+    instruction: You are an agent for weather forecast. Please return the weather today at the given latitude and longitude.
+    servers:
+      - name: weather
+
+---
+kind: workflow
+spec:
+  name: orchestrator-workflow
+  type: orchestrator
+  config:
+    llm: llm-1
+    agents:
+      - basic-agent
+      - function-call-agent
+
+---
+kind: benchmark
+spec:
+  description: Test the agent for weather forecasting
+  agent: orchestrator-workflow
+  tasks:
+    - dummy/tasks/weather.json
+```
+
+
+## Utility Scripts
+
+### Optimize MCP tool descriptions
+
+The `optimize_tool_descriptions` CLI connects to every MCP server defined in a
+JSON configuration file, retrieves their tools, and rewrites each tool's
+description with the help of an LLM following a built-in rubric. Optimized
+descriptions are versioned and stored in the `mcp_servers` database table so you
+can track how wording evolves over time.
+
+```bash
+python -m mcpuniverse.scripts.optimize_tool_descriptions \
+  --model <MODEL_ALIAS_OR_ALIAS:MODEL_NAME> \
+  [--config path/to/server_list.json] \
+  [--transport stdio|sse|auto] \
+  [--rubric-file path/to/custom_rubric.txt] \
+  [--db-url postgres://user:pass@host:port/db]
+
+Key notes:
+
+- The `--model` (`-m`) flag accepts either a registered alias (for example
+  `openai`) or a combination in the form `alias:model_name` such as
+  `openai:gpt-4.1-mini`. When only a provider-specific model name is supplied,
+  the CLI attempts to infer the correct alias (e.g. `gpt-` models map to the
+  OpenAI client). Any API keys needed for that provider are read from the
+  environment.
+- Database connectivity defaults to the `DB_URL` or `DATABASE_URL` environment
+  variables. Use `--db-url` to override them explicitly.
+- Server definitions default to `mcpuniverse/mcp/configs/server_list.json`.
+  Provide `--config` when you want to point at a different configuration file.
+- Supply `--rubric-file` to replace the built-in rubric with custom guidance for
+  the LLM.
+
+Before running the CLI, ensure the destination database contains the
+`mcp_servers` table with the schema expected by the script. The tool logs which
+server/tool pairs were updated and exits with a non-zero status if no
+descriptions could be stored.
+
+### Dissect MCP tool descriptions
+
+Before dissecting descriptions, run the database migration that adds the
+`tool_description_components` column to the `mcp_servers` table:
+
+```bash
+python -m mcpuniverse.app.db.migration \
+  --db-url postgresql+asyncpg://user:pass@host:5432/dbname
+```
+
+The CLI reads the database URL from `--db-url` or from `DB_SOURCE`, `DB_URL`, or
+`DATABASE_URL`. Provide an async-compatible SQLAlchemy URL (for PostgreSQL, use
+the `postgresql+asyncpg://` scheme).
+
+Once the column exists, use the `dissect_tool_descriptions` CLI to split each
+tool description into the required documentation components:
+
+```bash
+python -m mcpuniverse.scripts.dissect_tool_descriptions \
+  --model <MODEL_ALIAS_OR_ALIAS:MODEL_NAME> \
+  --db-url postgresql://user:pass@host:5432/dbname \
+  [--additional-descriptions path/to/additional_tool_description.json] \
+  [--all-versions] \
+  [--include-existing] \
+  [--dry-run]
+```
+
+Key notes:
+
+- The CLI combines each row's `tool_optimized_description` with the
+  server/tool-specific examples stored in
+  `mcpuniverse/mcp/additional_tool_description.json`. The merged text and the
+  component description (when present) are passed to the LLM.
+- `--model` accepts the same alias or `alias:model_name` format used by the
+  other scripts. Configure the relevant provider credentials before running the
+  CLI.
+- Supply a standard psycopg-compatible connection string through `--db-url` (or
+  set `DB_URL`/`DATABASE_URL`). Only rows missing
+  `tool_description_components` are processed by default; use
+  `--include-existing` to reprocess populated rows.
+- Enable `--dry-run` to preview the structured output without persisting it.
+- Successful runs store a JSON object with the keys `Purpose`,
+  `UsageGuideline`, `Parameter_Explanation`, `Limitation`, and `Examples` for
+  each processed server/tool pair.
+
+
+### Evaluate MCP tool description quality
+
+The `evaluate_tool_descriptions` CLI loads server definitions from an MCP
+configuration file (defaulting to `mcpuniverse/mcp/configs/server_list.json`),
+launches each server through the configured transport, and evaluates every
+exposed tool description using two dedicated LLM prompts. One prompt determines
+whether the tool is a consolidated workflow, while the other audits the
+description for missing best-practice elements. Results are saved to a CSV file
+compatible with our internal Node.js tooling, making it easy to compare outputs
+across implementations.
+
+```bash
+export OPENAI_API_KEY=sk-...  # or pass --api-key explicitly
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv
+```
+
+To target a subset of configured servers, pass one or more `--server` flags.
+
+```bash
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv \
+  --server github --server date
+```
+
+You can also add ad-hoc server scripts (not yet present in the config file) by
+supplying `--server-path` values; each path is converted into a temporary MCP
+configuration entry before evaluation.
+
+```bash
+python -m mcpuniverse.scripts.evaluate_tool_descriptions \
+  --model gpt-4o-mini \
+  --output /tmp/mcp_tool_audit.csv \
+  --server-path mcpuniverse/mcp/servers/github/server.py
+```
+
+Key flags:
+
+| Flag | Description |
+|------|-------------|
+| `--model MODEL_NAME` | Required. Target OpenAI model used for both evaluations. |
+| `--output PATH` | Required. Destination CSV path for the combined scores. |
+| `--config PATH` | Optional. Alternate MCP server configuration file (default: `mcpuniverse/mcp/configs/server_list.json`). |
+| `--transport {stdio,sse,auto}` | Optional. Preferred transport; `auto` falls back to SSE when stdio is unavailable. |
+| `--server NAME` | Optional. Limit evaluation to specific servers (repeatable). |
+| `--server-path PATH` | Optional. Explicit path to a server script or directory. Paths are merged into the loaded MCP configuration. |
+| `--pattern GLOB` | Optional. Filename pattern for locating scripts inside provided `--server-path` directories (default: `server.py`). |
+| `--limit N` | Optional. Evaluate only the first `N` discovered tools. |
+
+| `--dry-run` | Skip LLM calls and emit placeholder rows (useful for connectivity tests). |
+
+The CLI expects access to OpenAI's Chat Completions API. Provide the API key via
+`OPENAI_API_KEY`, the `--api-key` flag, or a custom `--base-url` if you are
+using a compatible proxy. Each tool evaluation spawns the corresponding MCP
+server through its stdio transport, lists available tools, and records both LLM
+assessments in the output CSV.
