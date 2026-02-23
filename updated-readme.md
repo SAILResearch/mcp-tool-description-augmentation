@@ -16,3 +16,15 @@ Unlike existing benchmarks that rely on overly simplistic tasks, MCP-Universe ad
 - 🔧 **Large, unfamiliar tool spaces** with diverse MCP servers  
 - 🌍 **Real-world data sources** and live environments
 - ⚡ **Dynamic evaluation** with time-sensitive ground truth
+
+## About This Repository
+
+This repository hosts the replication package for a study on improving tool descriptions for the Model Context Protocol (MCP). It provides tools to empirically evaluate, analyze, and augment tool descriptions to enhance the performance of Foundation Model (FM)-based agents.
+
+The key contributions of this repository are:
+
+*   A **scoring rubric** with six components to systematically assess tool description quality.
+*   An **FM-based scanner** to automatically detect "smells" (defects) in tool descriptions.
+*   A **semi-automated pipeline** to resolve these smells and generate optimized tool descriptions.
+*   The ability to run the **MCP-Universe benchmark** to evaluate the impact of these augmented descriptions on agent performance, including success rates and execution costs.
+*   Support for **ablation studies** to analyze the importance of different description components.
