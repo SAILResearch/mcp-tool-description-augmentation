@@ -1,3 +1,6 @@
+python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1 --components Purpose,Examples,Limitations
+
+
 python scripts/extract_tool_usage.py log/3d_design-Oct-6-backup.log --output log/3d-design-tools.csv
 
 python scripts/analyze_tools.py --input mcpuniverse/scripts/tool-quality-and-consolidation-all-tools.csv --outdir ./analysis_output --score-threshold 70

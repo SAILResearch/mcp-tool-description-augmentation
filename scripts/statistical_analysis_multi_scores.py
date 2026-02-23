@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from cliffs_delta import cliffs_delta
-from scipy.stats import kruskal, mannwhitneyu
+from scipy.stats import mannwhitneyu
 
 
 DEFAULT_SCORES = [
@@ -30,7 +30,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--input",
-        required=True,
+        default="/Users/mohammedmehedihasan/personal/codes/MCP-Universe/tool-quality-score-by-server-all-components.csv",
         help="Path to input CSV with columns: mcp_server_name, Type, and six median_*_score columns.",
     )
     parser.add_argument(
@@ -66,6 +66,10 @@ def _validate_columns(df: pd.DataFrame, required: Iterable[str]) -> None:
 def run_tests(df: pd.DataFrame, type_col: str, scores: List[str]) -> pd.DataFrame:
     rows: List[dict] = []
     types = sorted(df[type_col].dropna().unique().tolist())
+    pairings = list(combinations(types, 2))
+    # Adjust for all comparisons across all scores: #pairs * #scores
+    bonferroni_factor = max(1, len(pairings) * len(scores))
+    print(f"Running tests for {len(scores)} scores across {len(types)} types ({len(pairings)} pairs) with bonferroni factor {bonferroni_factor}.")
 
     for score in scores:
         groups = df.groupby(type_col)[score].apply(lambda s: s.dropna().tolist())
@@ -74,25 +78,13 @@ def run_tests(df: pd.DataFrame, type_col: str, scores: List[str]) -> pd.DataFram
         if len(valid_groups) < 2:
             continue
 
-        h_stat, p_val = kruskal(*valid_groups)
-        rows.append(
-            {
-                "score": score,
-                "test": "Kruskal-Wallis",
-                "group_a": "all",
-                "group_b": "",
-                "statistic": h_stat,
-                "p_value": p_val,
-                "effect": "",
-            }
-        )
-
         for a, b in combinations(types, 2):
             g1 = groups.get(a, [])
             g2 = groups.get(b, [])
             if len(g1) == 0 or len(g2) == 0:
                 continue
             stat, p_mwu = mannwhitneyu(g1, g2, alternative="two-sided")
+            p_bonf = min(1.0, p_mwu * bonferroni_factor)
             delta, size = cliffs_delta(g1, g2)
             rows.append(
                 {
@@ -101,7 +93,8 @@ def run_tests(df: pd.DataFrame, type_col: str, scores: List[str]) -> pd.DataFram
                     "group_a": a,
                     "group_b": b,
                     "statistic": stat,
-                    "p_value": p_mwu,
+                    "p_value_raw": p_mwu,
+                    "p_value_bonferroni": p_bonf,
                     "effect": f"{delta:.4f} ({size})",
                 }
             )

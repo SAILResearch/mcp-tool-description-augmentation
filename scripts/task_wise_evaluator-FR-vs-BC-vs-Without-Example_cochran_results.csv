@@ -1,0 +1,6 @@
+domain,Cochrans_Q_p,Significant_Difference_Exists,FR_vs_WEx_p,BC_vs_WEx_p,FR_vs_BC_p,WEx_is_Worst,Conclusion
+"('3d_design',)",0.7165313105737892,False,,,,False,No significant difference among 3 methods
+"('financial_analysis',)",0.24659696394160646,False,,,,False,No significant difference among 3 methods
+"('location_navigation',)",0.6065306597126334,False,,,,False,No significant difference among 3 methods
+"('repository_management',)",0.36787944117144245,False,,,,False,No significant difference among 3 methods
+"('web_search',)",0.2297902746730168,False,,,,False,No significant difference among 3 methods

@@ -1,185 +1,122 @@
 import pandas as pd
-import numpy as np
-from scipy import stats
+from scipy.stats import wilcoxon
 from statsmodels.stats.contingency_tables import mcnemar
+import numpy as np
 
-# ==========================================
-# 1. CONFIGURATION
-# ==========================================
-# Replace with your actual csv file path
-file_path = "/Users/mohammedmehedihasan/personal/codes/MCP-Universe/scripts/qwen3-next-80b-statistical.csv"
+# ---------------------------------------------------
+# Load and rename columns
+# ---------------------------------------------------
+df = pd.read_csv("/Users/mohammedmehedihasan/personal/codes/MCP-Universe/scripts/qwen3-next-80b-statistical.csv")
+# df = pd.read_csv("/Users/mohammedmehedihasan/personal/codes/MCP-Universe/scripts/qwen3-next-80b-statistical-old.csv")
 
-# Define your specific column names here based on your CSV headers
-# Based on your image/description, update these prefixes:
-# Example: if column is 'qwen3-next-80b-a3b-instruct-SR-baseline'
-model_name = "qwen3-next-80b" # Just for display in the table
-
-cols = {
-    'SR_base': 'qwen3-next-80b-a3b-instruct-SR-baseline',
-    'SR_opt':  'qwen3-next-80b-a3b-instruct-SR-optimized',
-    
-    'AE_base': 'qwen3-next-80b-a3b-instruct-AE-baseline',
-    'AE_opt':  'qwen3-next-80b-a3b-instruct-AE-optimized',
-    
-    'AS_base': 'qwen3-next-80b-a3b-instruct-AS-baseline',
-    'AS_opt':  'qwen3-next-80b-a3b-instruct-AS-optimized',
-    
-    'domain':  'domain'
+rename_map = {
+    "qwen3-next-80b-a3b-instruct-SR-optimized": "SR_optimized",
+    "qwen3-next-80b-a3b-instruct-SR-baseline": "SR_baseline",
+    "qwen3-next-80b-a3b-instruct-AE-optimized": "AE_optimized",
+    "qwen3-next-80b-a3b-instruct-AE-baseline": "AE_baseline",
+    "qwen3-next-80b-a3b-instruct-AS-optimized": "AS_optimized",
+    "qwen3-next-80b-a3b-instruct-AS-baseline": "AS_baseline"
 }
 
-# ==========================================
-# 2. STATISTICAL FUNCTIONS
-# ==========================================
+df = df.rename(columns=rename_map)
 
-def get_effect_size_wilcoxon(stat, n):
-    """Calculates r (Z / sqrt(N)) for Wilcoxon."""
-    # Approximate Z score from W statistic
-    # Mean W = n(n+1)/4, Sigma W = sqrt(n(n+1)(2n+1)/24)
-    if n == 0: return 0
-    mu = n * (n + 1) / 4
-    sigma = np.sqrt(n * (n + 1) * (2 * n + 1) / 24)
-    if sigma == 0: return 0
-    z = (stat - mu) / sigma
-    return z / np.sqrt(n)
+for col in [
+    "SR_baseline", "SR_optimized",
+    "AE_baseline", "AE_optimized",
+    "AS_baseline", "AS_optimized"
+]:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
 
-def analyze_subset(df, subset_name):
-    results = []
-    
-    # --- 1. SR (Success Rate) - McNemar's Test ---
-    # Logic: SR is Binary (0 or 1). We check for frequency changes.
-    # Effect Size: Phi equivalent (difference in proportions direction)
-    try:
-        # Create Contingency Table
-        # 00: Fail->Fail, 01: Fail->Pass, 10: Pass->Fail, 11: Pass->Pass
-        tbl = pd.crosstab(df[cols['SR_base']], df[cols['SR_opt']])
-        
-        # Ensure table is 2x2 for McNemar (fill missing categories with 0)
-        tbl = tbl.reindex(index=[0, 1], columns=[0, 1], fill_value=0)
-        
-        # Calculate McNemar
-        # exact=True is better for small sample sizes (<25 discordant pairs)
-        mc_res = mcnemar(tbl, exact=True)
-        p_val = mc_res.pvalue
-        
-        # Calculate Direction/Effect (Signed Phi-ish metric)
-        # b = Fail->Pass (Improvement), c = Pass->Fail (Regression)
-        b = tbl.loc[0, 1]
-        c = tbl.loc[1, 0]
-        total = b + c
-        
-        if total == 0:
-            phi = 0.0
-        else:
-            # Simple improvement ratio scaled -1 to 1 for this context
-            # +1 means all changes were improvements, -1 means all were regressions
-            phi = (b - c) / total 
-            
-        results.append({
-            'Domain': subset_name,
-            'Metric': 'SR',
-            'Model': model_name,
-            'p_value': p_val,
-            'phi_signed': round(phi, 4),
-            'Significant': p_val < 0.05
-        })
-    except Exception as e:
-        # Handle cases where column data might be missing or constant
-        results.append({'Domain': subset_name, 'Metric': 'SR', 'Model': model_name, 'p_value': 1.0, 'phi_signed': 0, 'Significant': False})
+# ---------------------------------------------------
+# Helper functions
+# ---------------------------------------------------
 
-    # --- 2. AE (Average Evaluator) - Wilcoxon Signed-Rank ---
-    # Logic: Continuous bounded 0-1.
-    try:
-        diff = df[cols['AE_opt']] - df[cols['AE_base']]
-        # Wilcoxon requires removing cases where difference is 0 (automatic in some libs, explicit here)
-        diff = diff[diff != 0]
-        n = len(diff)
-        
-        if n < 1:
-            p_val = 1.0
-            eff = 0.0
-        else:
-            w_stat, p_val = stats.wilcoxon(df[cols['AE_base']], df[cols['AE_opt']])
-            # Direction: Positive means Opt > Base (Improvement)
-            eff = get_effect_size_wilcoxon(w_stat, n)
-            # Adjust sign based on mean difference
-            if df[cols['AE_opt']].mean() < df[cols['AE_base']].mean():
-                eff = -abs(eff)
-            else:
-                eff = abs(eff)
+def signed_phi(df_subset):
+    """McNemar effect size (Cohen's g), bounded in [-1, 1]."""
 
-        results.append({
-            'Domain': subset_name,
-            'Metric': 'AE',
-            'Model': model_name,
-            'p_value': p_val,
-            'phi_signed': round(eff, 4), # Reporting r as phi_signed equivalent
-            'Significant': p_val < 0.05
-        })
-    except Exception as e:
-        results.append({'Domain': subset_name, 'Metric': 'AE', 'Model': model_name, 'p_value': 1.0, 'phi_signed': 0, 'Significant': False})
+    contingency = pd.crosstab(df_subset["SR_baseline"], df_subset["SR_optimized"])
+    contingency = contingency.reindex(index=[0, 1], columns=[0, 1], fill_value=0)
+    b = contingency.loc[0, 1]
+    c = contingency.loc[1, 0]
+    denom = b + c
+    if denom == 0:
+        return 0.0
+    return (b - c) / denom
 
-    # --- 3. AS (Average Steps) - Wilcoxon Signed-Rank ---
-    # Logic: Discrete Count.
-    # NOTE: You asked for "Regression" to be significant.
-    # Usually, Higher Steps = Regression (Worse). 
-    try:
-        diff = df[cols['AS_opt']] - df[cols['AS_base']]
-        diff = diff[diff != 0]
-        n = len(diff)
-        
-        if n < 1:
-            p_val = 1.0
-            eff = 0.0
-        else:
-            w_stat, p_val = stats.wilcoxon(df[cols['AS_base']], df[cols['AS_opt']])
-            eff = get_effect_size_wilcoxon(w_stat, n)
-            
-            # Direction: 
-            # If Opt > Base (More steps), that is a Regression. 
-            # We will use Positive Phi to indicate Increase in Steps.
-            if df[cols['AS_opt']].mean() < df[cols['AS_base']].mean():
-                # Steps decreased (Improvement)
-                eff = -abs(eff)
-            else:
-                # Steps increased (Regression)
-                eff = abs(eff)
+def run_mcnemar_stats(df_subset):
+    pair = df_subset[["SR_baseline", "SR_optimized"]].dropna()
+    contingency = pd.crosstab(pair["SR_baseline"], pair["SR_optimized"])
+    contingency = contingency.reindex(index=[0, 1], columns=[0, 1], fill_value=0)
+    print("======= Contingency Table =======")
+    result = mcnemar(contingency, exact=False, correction=True)
+    phi = signed_phi(pair)
+    return result.statistic, result.pvalue, phi, result.pvalue < 0.05
 
-        results.append({
-            'Domain': subset_name,
-            'Metric': 'AS',
-            'Model': model_name,
-            'p_value': p_val,
-            'phi_signed': round(eff, 4),
-            'Significant': p_val < 0.05
-        })
-    except Exception as e:
-        results.append({'Domain': subset_name, 'Metric': 'AS', 'Model': model_name, 'p_value': 1.0, 'phi_signed': 0, 'Significant': False})
+def run_wilcoxon_stats(df_subset, before_col, after_col):
+    paired = df_subset[[before_col, after_col]].dropna()
+    stat, p = wilcoxon(paired[before_col], paired[after_col])
+    return stat, p, p < 0.05
 
-    return results
+# ---------------------------------------------------
+# Build all three tables
+# ---------------------------------------------------
 
-# ==========================================
-# 3. EXECUTION
-# ==========================================
+domains = df["domain"].unique()
 
-# Load Data
-df = pd.read_csv(file_path)
+# Panel A: SR (McNemar)
+panelA_rows = []
+for d in domains:
+    subset = df[df["domain"] == d]
+    stat, p, phi, sig = run_mcnemar_stats(subset)
+    panelA_rows.append([d, "ModelNameHere", p, phi, sig])
 
-all_results = []
+# Add ALL_DOMAINS
+stat, p, phi, sig = run_mcnemar_stats(df)
+panelA_rows.append(["ALL_DOMAINS", "ModelNameHere", p, phi, sig])
 
-# 1. Iterate over each domain
-unique_domains = df[cols['domain']].unique()
-for domain in unique_domains:
-    domain_df = df[df[cols['domain']] == domain]
-    all_results.extend(analyze_subset(domain_df, domain))
+panelA = pd.DataFrame(
+    panelA_rows,
+    columns=["Domain", "Model", "p_value", "phi_signed", "Significant"]
+)
 
-# 2. Run for the Whole Dataset
-all_results.extend(analyze_subset(df, "OVERALL_DATASET"))
+# Panel B: AE (Wilcoxon)
+panelB_rows = []
+for d in domains:
+    subset = df[df["domain"] == d]
+    stat, p, sig = run_wilcoxon_stats(subset, "AE_baseline", "AE_optimized")
+    panelB_rows.append([d, "ModelNameHere", stat, p, sig])
 
-# 3. Create Final DataFrame
-final_df = pd.DataFrame(all_results)
+stat, p, sig = run_wilcoxon_stats(df, "AE_baseline", "AE_optimized")
+panelB_rows.append(["ALL_DOMAINS", "ModelNameHere", stat, p, sig])
 
-# Display
-print(final_df)
+panelB = pd.DataFrame(
+    panelB_rows,
+    columns=["Domain", "Model", "Statistic", "p_value", "Significant"]
+)
 
-# Save to CSV if needed
-# final_df.to_csv('statistical_results.csv', index=False)
+# Panel C: AS (Wilcoxon)
+panelC_rows = []
+for d in domains:
+    subset = df[df["domain"] == d]
+    stat, p, sig = run_wilcoxon_stats(subset, "AS_baseline", "AS_optimized")
+    panelC_rows.append([d, "ModelNameHere", stat, p, sig])
+
+stat, p, sig = run_wilcoxon_stats(df, "AS_baseline", "AS_optimized")
+panelC_rows.append(["ALL_DOMAINS", "ModelNameHere", stat, p, sig])
+
+panelC = pd.DataFrame(
+    panelC_rows,
+    columns=["Domain", "Model", "Statistic", "p_value", "Significant"]
+)
+
+# ---------------------------------------------------
+# Print all tables
+# ---------------------------------------------------
+print("\n=== Panel A: Domain-level McNemar statistics (SR) ===")
+print(panelA)
+
+print("\n=== Panel B: Wilcoxon Signed Rank test (AE) ===")
+print(panelB)
+
+print("\n=== Panel C: Wilcoxon Signed Rank test (AS) ===")
+print(panelC)

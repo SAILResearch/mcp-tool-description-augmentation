@@ -1,0 +1,6 @@
+domain,Model,FR_only_wins,WEx_only_wins,p_value,Impact_Significant,Conclusion
+3d_design,Qwen3-Coder,1,1,1.0,False,No Significant Impact (Examples Redundant)
+financial_analysis,GPT-4.1,5,4,1.0,False,No Significant Impact (Examples Redundant)
+location_navigation,GPT-4.1,5,3,0.7236736098317629,False,No Significant Impact (Examples Redundant)
+repository_management,Qwen3-Coder,0,1,1.0,False,No Significant Impact (Examples Redundant)
+web_search,GLM-4.5,9,4,0.2672574931543847,False,No Significant Impact (Examples Redundant)

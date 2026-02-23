@@ -79,6 +79,20 @@ spec:
     temperature: 0.5
 ```
 
+#### SAIL Lab vLLM (OpenAI Chat Compatible)
+```yaml
+kind: llm
+spec:
+  name: sail-lab-llm
+  type: vllm_sail_lab
+  config:
+    model_name: qwen80b
+    provider: sail-lab        # optional; include if your endpoint expects it
+    # base_url is read from VLLM_SAIL_LAB_BASE_URL and defaults to http://otto.cs.queensu.ca:8002
+```
+This provider targets an OpenAI-style `/v1/chat/completions` endpoint, forwards
+`tools`/`tool_choice` for function calling, and does not require an API key.
+
 ## Agent Configuration
 
 Agents are the core execution units that interact with LLMs and MCP servers.

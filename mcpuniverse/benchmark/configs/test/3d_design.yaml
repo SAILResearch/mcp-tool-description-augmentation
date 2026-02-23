@@ -1,9 +1,16 @@
 kind: llm
 spec:
   name: llm-1
-  type: openrouter
+  type: vllm_sail_lab
   config:
-    model_name: qwen/qwen3-coder
+    model_name: qwen_80b
+
+# kind: llm
+# spec:
+#   name: llm-1
+#   type: openrouter
+#   config:
+#     model_name: z-ai/glm-4.5
 
 ---
 kind: agent
@@ -17,6 +24,7 @@ spec:
     summarize_tool_response: false
     servers:
       - name: blender
+      # - name: filesystem
 
 ---
 kind: benchmark

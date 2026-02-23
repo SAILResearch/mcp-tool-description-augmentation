@@ -1,0 +1,6 @@
+domain,Model,FR_total_success,BC_total_success,FR_only_wins (b),BC_only_wins (c),Both_pass (a),Both_fail (d),p_value,phi_signed,BC_statistically_better
+3d_design,Qwen3-Coder,4,5,0,1,4,14,1.0,0.8640987597877148,False
+financial_analysis,GPT-4.1,23,27,2,6,21,11,0.2890625,0.5911561035156879,False
+location_navigation,GPT-4.1,14,12,5,3,9,28,0.7265625,0.571683803493863,False
+repository_management,Qwen3-Coder,6,7,0,1,6,26,1.0,0.9085135251589957,False
+web_search,GLM-4.5,10,10,4,4,6,41,1.0,0.5111111111111111,False

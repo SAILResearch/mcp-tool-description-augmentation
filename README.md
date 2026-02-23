@@ -230,6 +230,7 @@ Configure the following environment variables in your `.env` file. The required 
 | `OPENAI_API_KEY` | OpenAI | API key for GPT models (gpt-5, etc.) | All domains |
 | `ANTHROPIC_API_KEY` | Anthropic | API key for Claude models | All domains |
 | `GEMINI_API_KEY` | Google | API key for Gemini models | All domains |
+| `VLLM_SAIL_LAB_BASE_URL` | vLLM (SAIL Lab) | Base URL for OpenAI-style chat completions | All domains using SAIL Lab vLLM |
 
 > **Note**: You only need to configure the API key for the LLM provider you intend to use in your evaluation.
 
@@ -928,6 +929,19 @@ python -m mcpuniverse.scripts.evaluate_csv_tool_descriptions \
   --input path/to/tools.csv \
   --output /tmp/mcp_tool_csv_audit.csv
 ```
+
+### Wilcoxon BO vs AO component comparison
+
+Run Wilcoxon signed-rank tests comparing before-optimisation (BO) vs after-optimisation (AO) component scores using the embedded MCP-Universe table (no input file required):
+
+```bash
+python scripts/wilcoxon_bo_ao_components.py \
+  --output analysis_output/wilcoxon_bo_ao_results.csv
+```
+
+Flags:
+- `--components`: override which components to test (defaults: purpose, usage_guideline, limitation, parameter_explanation, examples, length).
+- `--input`: CSV containing BO/AO columns (default: `log/AO-BO-wilcoxon-analysis.csv` with columns like `average_purpose_BO`, `average_purpose_AO`, etc.).
 
 The input CSV must include columns for server, tool name, and description. Defaults are `server_name`, `tool.name`, and `tool.description`; override with `--server-col`, `--name-col`, and `--desc-col` if needed. The output CSV matches the schema used by `evaluate_tool_descriptions`.
 

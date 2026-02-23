@@ -101,7 +101,7 @@ A description is Bad if:
 A description is Good only if:
 - All six dimensions score 3 or higher, and
 - Requirements in points 1 through 6 are satisfied.
-
+cl
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FEW-SHOT EXAMPLES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

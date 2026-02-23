@@ -97,6 +97,35 @@ def repel_texts(ax, texts, pad_px=2, iters=200):
             break
         fig.canvas.draw()
 
+
+def push_labels_if_legend_overlap(ax, texts, legend=None, step_frac=0.02, max_iter=50):
+    """Push labels downward only when they overlap the legend."""
+
+    if not texts or legend is None:
+        return
+    fig = ax.figure
+    inv = ax.transData.inverted()
+
+    for _ in range(max_iter):
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        y_range = max(ax.get_ylim()[1] - ax.get_ylim()[0], 1e-9)
+        step = step_frac * y_range
+
+        legend_box = legend.get_window_extent(renderer=renderer)
+        moved = False
+
+        for t in texts:
+            bbox = t.get_window_extent(renderer=renderer).expanded(1.05, 1.05)
+            if legend_box and bbox.overlaps(legend_box):
+                dx_data, dy_data = inv.transform((0, step)) - inv.transform((0, 0))
+                x, y = t.get_position()
+                t.set_position((x, y - dy_data))
+                moved = True
+
+        if not moved:
+            break
+
 # -----------------------------
 # Plot configuration for LaTeX
 # -----------------------------
@@ -127,28 +156,53 @@ def plot_one_domain_pdf(data: pd.DataFrame, domain: str, out_path: str,
     texts = []
     x_range = max(data["AS"].max() - data["AS"].min(), 1.0)
     xpad = 0.02 * x_range
+    y_range = max(data["AE"].max() - data["AE"].min(), 0.1)
+    ypad = 0.02 * y_range
+    place_below = domain == "financial_analysis"
+    extra_down = 0.16 * y_range if place_below else 0.0
+    extra_up = 0.16 * y_range if domain == "web_search" else 0.0
+    x_shift = -0.02 * x_range if domain == "web_search" else xpad
 
     if label_strategy == "frontier_only":
         for _, r in frontier.iterrows():
-            t = ax.text(r["AS"] + xpad, r["AE"] + 0.008, r["modelName"],
-                        fontsize=11, va="bottom")
+            if place_below:
+                t = ax.text(r["AS"], r["AE"] - ypad - extra_down, r["modelName"],
+                            fontsize=11, va="top", ha="center", rotation=90)
+            else:
+                t = ax.text(r["AS"] + x_shift, r["AE"] + 0.008 + extra_up, r["modelName"],
+                            fontsize=11, va="bottom", rotation=90)
             texts.append(t)
     else:
         for _, r in data.iterrows():
-            t = ax.text(r["AS"] + xpad, r["AE"] + 0.008, r["modelName"],
-                        fontsize=11, va="bottom")
+            if place_below:
+                t = ax.text(r["AS"], r["AE"] - ypad - extra_down, r["modelName"],
+                            fontsize=11, va="top", ha="center", rotation=90)
+            else:
+                t = ax.text(r["AS"] + x_shift, r["AE"] + 0.008 + extra_up, r["modelName"],
+                            fontsize=11, va="bottom", rotation=90)
             texts.append(t)
         repel_texts(ax, texts, pad_px=2, iters=200)
+    # Only push labels down if they collide with the legend box
+    push_labels_if_legend_overlap(ax, texts, legend=ax.get_legend(), step_frac=0.015, max_iter=80)
 
     # Axes & layout (no title)
     ax.set_xlabel("AS (cost)")
     ax.set_ylabel("AE (accuracy)")
     ax.set_ylim(0, 1.0)
     ax.grid(alpha=0.35)
-    ax.legend(title="Model", loc="best", frameon=True, fontsize=10, title_fontsize=11)
+    ax.legend(
+        title="Model",
+        loc="upper right",
+        frameon=True,
+        fontsize=8,
+        title_fontsize=9,
+        labelspacing=0.3,
+        borderpad=0.4,
+    )
 
     fig.tight_layout()
-    fig.savefig(out_path, format="pdf", bbox_inches="tight", dpi=600)
+    # fig.savefig(out_path, format="pdf", bbox_inches="tight", dpi=600)
+    fig.savefig(out_path, format="pdf", dpi=600)
     plt.close(fig)
 
 # -----------------------------

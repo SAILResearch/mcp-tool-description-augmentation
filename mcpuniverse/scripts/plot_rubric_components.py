@@ -42,6 +42,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default="rubric_component_scores.pdf",
         help="Path to save the plotted figure (default: rubric_component_scores.pdf).",
     )
+    parser.add_argument(
+        "--smell-output",
+        default=None,
+        help="Path to save the smell-only bar chart (default: <output_stem>_smells.<suffix>).",
+    )
     return parser.parse_args(argv)
 
 
@@ -66,7 +71,7 @@ def plot(output_path: Path) -> None:
     ax.set_yticklabels(wrapped_labels, fontsize=18)
     ax.invert_yaxis()  # keep the first component at the top
     ax.tick_params(axis="x", labelsize=18)
-    legend = ax.legend(loc="lower right", fontsize=18, title_fontsize=18, handles=[rects1, rects2, rects3])
+    legend = ax.legend(loc="upper right", fontsize=18, title_fontsize=18, handles=[rects1, rects2, rects3])
     ax.grid(axis="x", linestyle="--", alpha=0.5)
 
     def _annotate(rects, include_smelly: bool = False):
@@ -108,11 +113,92 @@ def plot(output_path: Path) -> None:
     plt.close(fig)
 
 
+def plot_smell_only(output_path: Path) -> None:
+    """Plot a single bar chart showing only smelly percentages by smell type."""
+
+    smell_names = [
+        "Unclear Purpose",
+        "Missing Usage Guidance",
+        "Unstated Limitations",
+        "Opaque Parameters",
+        "Underspecified or Incomplete",
+        "Exemplar Issues",
+    ]
+    values = POOR
+    colors = [
+        "#e499a4",  # Unclear Purpose
+        "#c78b2e",  # Missing Usage Guidance
+        "#7fa05d",  # Unstated Limitations
+        "#39a8ab",  # Opaque Parameters
+        "#3b87c8",  # Underspecified or Incomplete
+        "#9a80b8",  # Exemplar Issues
+    ]
+
+    def _wrap(label: str, width: int = 18) -> str:
+        if len(label) <= width:
+            return label
+        parts = label.split(" ")
+        lines = []
+        current = []
+        for word in parts:
+            if len(" ".join(current + [word])) > width:
+                lines.append(" ".join(current))
+                current = [word]
+            else:
+                current.append(word)
+        if current:
+            lines.append(" ".join(current))
+        return "\n".join(lines)
+
+    wrapped = [
+        _wrap("Unclear Purpose"),
+        _wrap("Missing Usage Guidance"),
+        _wrap("Unstated Limitations"),
+        _wrap("Opaque\nParameters"),  # force wrap
+        _wrap("Underspecified or\nIncomplete"),  # force wrap
+        _wrap("Exemplar Issues"),
+    ]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(wrapped, values, color=colors)
+    ax.set_ylabel("Percentage", fontsize=14)
+    ax.set_xticks(np.arange(len(wrapped)))
+    ax.set_xticklabels(wrapped, rotation=0, ha="center", fontsize=12)
+    ax.tick_params(axis="y", labelsize=12)
+    ax.set_ylim(0, max(values) * 1.1)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+
+    for bar, value in zip(bars, values):
+        ax.annotate(
+            f"{value:.1f}",
+            xy=(bar.get_x() + bar.get_width() / 2, value),
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=12,
+            color="black",
+        )
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=600, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     output_path = Path(args.output).expanduser().resolve()
+    smell_output = (
+        Path(args.smell_output).expanduser().resolve()
+        if args.smell_output
+        else output_path.with_name(f"{output_path.stem}_smells{output_path.suffix}")
+    )
+
     plot(output_path)
+    plot_smell_only(smell_output)
     print(f"Saved plot to {output_path}")
+    print(f"Saved smell-only plot to {smell_output}")
     return 0
 
 

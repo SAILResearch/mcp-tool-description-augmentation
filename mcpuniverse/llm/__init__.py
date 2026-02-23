@@ -55,6 +55,11 @@ try:  # pragma: no cover - optional dependency
 except Exception:  # pragma: no cover
     GeminiModel = None  # type: ignore
 
+try:  # pragma: no cover - optional dependency
+    from .vllm_sail_lab import VLLMSailLabModel
+except Exception:  # pragma: no cover
+    VLLMSailLabModel = None  # type: ignore
+
 
 __all__ = [
     "OpenAIModel",
@@ -67,4 +72,5 @@ __all__ = [
     "OpenAIAgentModel",
     "OpenRouterModel",
     "GeminiModel",
+    "VLLMSailLabModel",
 ]
