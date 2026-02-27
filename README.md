@@ -518,3 +518,30 @@ Key notes:
   each processed server/tool pair.
 
 
+## Citation
+
+If you use this paper in your research, please cite our paper:
+
+```bibtex
+@article{hasan2026model,
+  title={Model Context Protocol (MCP) Tool Descriptions Are Smelly! Towards Improving AI Agent Efficiency with Augmented MCP Tool Descriptions},
+  author={Hasan, Mohammed Mehedi and Li, Hao and Rajbahadur, Gopi Krishnan and Adams, Bram and Hassan, Ahmed E},
+  journal={arXiv preprint arXiv:2602.14878},
+  year={2026}
+}
+```
+
+As our paper has used MCP-Universe paper, if you want to check anything in MCP-Universe paper, please feel free to cite them too.
+
+
+```bibtex
+@misc{mcpuniverse,
+  title={MCP-Universe: Benchmarking Large Language Models with Real-World Model Context Protocol Servers},
+  author={Ziyang Luo and Zhiqi Shen and Wenzhuo Yang and Zirui Zhao and Prathyusha Jwalapuram and Amrita Saha and Doyen Sahoo and Silvio Savarese and Caiming Xiong and Junnan Li},
+  year={2025},
+  eprint={2508.14704},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI},
+  url={https://arxiv.org/abs/2508.14704}, 
+}
+```
