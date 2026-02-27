@@ -34,7 +34,7 @@ Unlike existing benchmarks that rely on overly simplistic tasks, MCP-Universe ad
 
 ### Prerequisites
 
-* **Python**: Requires version 3.10 or higher.
+* **Python**: Requires version 3.10-3.12 (Python 3.13 is not yet supported).
 * **Docker**: Used for running Dockerized MCP servers.
 * **PostgreSQL** (optional): Used for database storage and persistence.
 
