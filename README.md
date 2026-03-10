@@ -405,11 +405,11 @@ server through its stdio transport, lists available tools, and records both LLM
 assessments in the output CSV.
 
 
-### Optimize MCP tool descriptions
+### Augment MCP tool descriptions
 
 The `optimize_tool_descriptions` CLI connects to every MCP server defined in a
 JSON configuration file, retrieves their tools, and rewrites each tool's
-description with the help of an LLM following a built-in rubric. Optimized
+description with the help of an LLM following a built-in rubric. Augmented
 descriptions are versioned and stored in the `mcp_servers` database table so you
 can track how wording evolves over time.
 
