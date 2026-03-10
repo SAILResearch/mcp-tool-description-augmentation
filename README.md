@@ -373,14 +373,14 @@ python -m mcpuniverse.scripts.evaluate_tool_descriptions \
 ```
 
 You can also add ad-hoc server scripts (not yet present in the config file) by
-supplying `--server-path` values; each path is converted into a temporary MCP
+supplying `--config` values; each path is converted into a temporary MCP
 configuration entry before evaluation.
 
 ```bash
 python -m mcpuniverse.scripts.evaluate_tool_descriptions \
   --model gpt-4o-mini \
   --output /tmp/mcp_tool_audit.csv \
-  --server-path mcpuniverse/mcp/servers/github/server.py
+  --config mcpuniverse/mcp/servers/github/server.json
 ```
 
 Key flags:
