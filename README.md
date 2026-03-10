@@ -203,45 +203,14 @@ spec:
 ```
 ### Execution
 
-#### Running Individual Benchmarks with original tool description
 
-Execute specific domain benchmarks using the following commands:
 
-```bash
-# Set Python path and run individual benchmarks
-export PYTHONPATH=.
 
-# Location Navigation
-python tests/benchmark/test_benchmark_location_navigation.py
-
-# Browser Automation  
-python tests/benchmark/test_benchmark_browser_automation.py
-
-# Financial Analysis
-python tests/benchmark/test_benchmark_financial_analysis.py
-# Search previous tasks and report matching tools without running the benchmark
-python tests/benchmark/test_benchmark_financial_analysis.py --task-search 1 --dry-run 1
-# Enable tool-response truncation with a 16k token window defined in `.env`
-python tests/benchmark/test_benchmark_financial_analysis.py --truncate-tool-response 1
-# Use optimised tool descriptions from the database when calling the LLM
-python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1
-python tests/benchmark/test_benchmark_financial_analysis.py --tool-description-type 1 --components Purpose,Examples
-
-# Repository Management
-python tests/benchmark/test_benchmark_repository_management.py
-
-# Web Search
-python tests/benchmark/test_benchmark_web_search.py
-
-# 3D Design
-python tests/benchmark/test_benchmark_3d_design.py
-```
-
+#### Running Individual Benchmarks with augmented tool description
 Pass ``--tool-description-type 1`` to replace MCP-supplied tool descriptions with augmented entries stored in
 the ``mcp_servers`` database table whenever they are available.
 
 
-#### Running Individual Benchmarks with augmented tool description
 ```bash
 # Location Navigation
 python tests/benchmark/test_benchmark_location_navigation.py --tool-description-type 1
