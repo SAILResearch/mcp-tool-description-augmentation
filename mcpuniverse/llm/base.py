@@ -108,6 +108,15 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
                 project_id=self.project_id))
             try:
                 response = self._generate(prepared_messages, **kwargs)
+                # Extract token usage from response if available (OpenAI/OpenRouter compatible)
+                usage_data = {}
+                if hasattr(response, 'usage') and response.usage is not None:
+                    u = response.usage
+                    usage_data = {
+                        "prompt_tokens": getattr(u, 'prompt_tokens', 0) or 0,
+                        "completion_tokens": getattr(u, 'completion_tokens', 0) or 0,
+                        "total_tokens": getattr(u, 'total_tokens', 0) or 0,
+                    }
                 # Handle different response types for tracing
                 if isinstance(response, BaseModel):
                     response_data = response.model_dump(mode="json")
@@ -133,6 +142,7 @@ class BaseLLM(ExportConfigMixin, metaclass=ComponentABCMeta):
                     "config": self.config.to_dict(),
                     "messages": prepared_messages,
                     "response": response_data,
+                    "usage": usage_data,
                     "error": ""
                 })
             except Exception as e:

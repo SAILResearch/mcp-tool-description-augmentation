@@ -74,8 +74,8 @@ class BenchmarkReport:
         section_summary = []
         section_summary.append("## Benchmark Summary")
         section_summary.append(
-            "| Name | Passed | Not Passed | Score | LLM Calls |\n"
-            "| ---  | ------ | ---------- | ----- | --------- |"
+            "| Name | Passed | Not Passed | Score | LLM Calls | Input Tokens | Output Tokens |\n"
+            "| ---  | ------ | ---------- | ----- | --------- | ------------ | ------------- |"
         )
         return section_summary
 
@@ -85,8 +85,8 @@ class BenchmarkReport:
         section_details.append("## Appendix (Benchmark Details)")
 
         for task_name in benchmark_result.task_results.keys():
-            task_details, task_passed, task_notpassed, llm_call_count, total_turns = self._process_task(
-                task_name, benchmark_result, benchmark_idx)
+            task_details, task_passed, task_notpassed, llm_call_count, total_turns, input_tokens, output_tokens = \
+                self._process_task(task_name, benchmark_result, benchmark_idx)
             section_details.extend(task_details)
             if llm_call_count == 0:
                 llm_call_count = total_turns
@@ -94,11 +94,10 @@ class BenchmarkReport:
             # Add to summary
             total_evaluations = task_passed + task_notpassed
             score = task_passed / total_evaluations if total_evaluations else 0.0
-            section_summary.append(f"|**{task_name}**:| \
-                                   {task_passed} | \
-                                   {task_notpassed} | \
-                                   {score:.2f} | \
-                                   {llm_call_count} |")
+            section_summary.append(
+                f"|**{task_name}**:| {task_passed} | {task_notpassed} | "
+                f"{score:.2f} | {llm_call_count} | {input_tokens} | {output_tokens} |"
+            )
 
         return section_details
 
@@ -106,6 +105,7 @@ class BenchmarkReport:
         """Process a single task and return its details."""
         trace_id = self.benchmark_results[benchmark_idx].task_trace_ids.get(task_name)
         stats, parent_ids, llm_call_count, total_turns = self._analyze_traces(trace_id)
+        input_tokens, output_tokens = self._get_token_totals(trace_id)
 
         task_details = []
         task_details.append("### Task")
@@ -140,7 +140,7 @@ class BenchmarkReport:
         eval_results = task_result.get("evaluation_results", [])
         task_passed, task_notpassed = self._process_evaluation_results(task_details, eval_results)
 
-        return task_details, task_passed, task_notpassed, llm_call_count, total_turns
+        return task_details, task_passed, task_notpassed, llm_call_count, total_turns, input_tokens, output_tokens
 
     def _analyze_traces(self, trace_id):
         """Analyze traces and return stats, parent IDs, and LLM call count."""
@@ -193,29 +193,28 @@ class BenchmarkReport:
         task_details.append(f"- Average Response Time: {avg_response_time:.2f}s")
         task_details.append(f"- Total Records: {total_records}")
 
+    def _get_token_totals(self, trace_id):
+        """Return (total_prompt_tokens, total_completion_tokens) for a trace."""
+        if not trace_id:
+            return 0, 0
+        llm_traces = [t for t in self.trace_collector.get(trace_id)
+                      if t.records and t.records[0].data.get('type') == 'llm']
+        total_prompt = sum(
+            t.records[0].data.get('usage', {}).get('prompt_tokens', 0) or 0
+            for t in llm_traces
+        )
+        total_completion = sum(
+            t.records[0].data.get('usage', {}).get('completion_tokens', 0) or 0
+            for t in llm_traces
+        )
+        return total_prompt, total_completion
+
     def _add_resource_metrics(self, task_details, trace_id):
         """Add resource utilization metrics."""
         if not trace_id:
             return
 
-        llm_traces = [t for t in self.trace_collector.get(trace_id)
-                     if t.records and t.records[0].data.get('type') == 'llm']
-
-        if not llm_traces:
-            return
-
-        # Calculate total prompt tokens
-        total_prompt_tokens = sum(
-            t.records[0].data.get('usage', {}).get('prompt_tokens', 0)
-            for t in llm_traces
-            if t.records[0].data.get('usage', {}).get('prompt_tokens')
-        )
-        # Calculate total completion tokens
-        total_completion_tokens = sum(
-            t.records[0].data.get('usage', {}).get('completion_tokens', 0)
-            for t in llm_traces
-            if t.records[0].data.get('usage', {}).get('completion_tokens')
-        )
+        total_prompt_tokens, total_completion_tokens = self._get_token_totals(trace_id)
         total_tokens = total_prompt_tokens + total_completion_tokens
 
         if total_prompt_tokens:
