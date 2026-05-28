@@ -27,7 +27,7 @@
       "args": [
        "-y",
       "mcp-remote",
-      "https://mcp.tavily.com/mcp/?tavilyApiKey=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"
+      "https://mcp.tavily.com/mcp/?tavilyApiKey={{TAVILY_API_KEY}}"
       ]
     }
   },
